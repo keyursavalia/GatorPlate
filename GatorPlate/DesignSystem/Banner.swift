@@ -32,20 +32,30 @@ struct Banner: View {
 
     let kind: Kind
     let message: String
+    var actionTitle: String?
+    var action: (() -> Void)?
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
-            Image(systemName: kind.systemImage)
-                .foregroundStyle(kind.tint)
-                .accessibilityHidden(true)
-            Text(message)
-                .font(.subheadline)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
+                Image(systemName: kind.systemImage)
+                    .foregroundStyle(kind.tint)
+                    .accessibilityHidden(true)
+                Text(message)
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(kind.spokenName): \(message)")
+
+            if let actionTitle, let action {
+                Button(actionTitle, action: action)
+                    .font(.subheadline.weight(.semibold))
+                    .frame(minHeight: Theme.minTapTarget)
+            }
         }
         .padding(Theme.Spacing.m)
         .background(Color.surfaceSecondary, in: RoundedRectangle(cornerRadius: Theme.Radius.photo))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(kind.spokenName): \(message)")
     }
 }
 
@@ -54,6 +64,7 @@ struct Banner: View {
         Banner(kind: .info, message: "Posts disappear after 30 minutes by default.")
         Banner(kind: .warning, message: "Double-check allergens with the host.")
         Banner(kind: .error, message: "Could not reach the server. Try again.")
+        Banner(kind: .warning, message: "Location is off for GatorPlate.", actionTitle: "Open Settings") {}
     }
     .padding()
     .environment(\.appEnvironment, .mock)

@@ -46,6 +46,43 @@ nonisolated enum SampleData {
         )
     }
 
+    /// Mock posts at verified campus buildings for the Sprint 2 map. They expire 8 to 52 minutes after `now`.
+    static func mapPosts(now: Date = Date()) -> [FoodPost] {
+        func make(
+            _ id: String, title: String, org: String, building: String, detail: String,
+            dietary: DietaryClass, allergens: [Allergen], calories: CalorieRange, minutes: Int
+        ) -> FoodPost? {
+            guard let spot = CampusBuildings.building(id: building) else { return nil }
+            var result = Self.post(now: now, id: id)
+            result.title = title
+            result.orgName = org
+            result.items = [FoodItem(name: title, dietary: dietary, calories: calories)]
+            result.overallDietary = dietary
+            result.allergenWarnings = allergens
+            result.buildingId = spot.id
+            result.locationName = spot.name
+            result.locationDetail = detail
+            result.latitude = spot.coordinate.latitude
+            result.longitude = spot.coordinate.longitude
+            result.expiresAt = now.addingTimeInterval(TimeInterval(minutes * 60))
+            return result
+        }
+        return [
+            make("map-1", title: "FREE: Pad Thai", org: "Thai Student Association", building: "student-center",
+                 detail: "Room 201", dietary: .vegetarian, allergens: [.soy, .peanuts],
+                 calories: CalorieRange(low: 420, high: 520), minutes: 28),
+            make("map-2", title: "FREE: Cheese pizza", org: "Gator Coding Club", building: "science",
+                 detail: "Lobby", dietary: .vegetarian, allergens: [.milk, .wheat],
+                 calories: CalorieRange(low: 280, high: 350), minutes: 8),
+            make("map-3", title: "FREE: Chicken burritos", org: "Latinx Student Union", building: "library",
+                 detail: "Front steps", dietary: .nonVegetarian, allergens: [.wheat],
+                 calories: CalorieRange(low: 500, high: 650), minutes: 52),
+            make("map-4", title: "FREE: Vegan wraps", org: "Green Gators", building: "village",
+                 detail: "Courtyard", dietary: .vegan, allergens: [.sesame, .wheat],
+                 calories: CalorieRange(low: 300, high: 380), minutes: 20),
+        ].compactMap { $0 }
+    }
+
     static let analysis = FoodAnalysisResult(
         title: "Pad Thai",
         description: "Vegetable pad thai, served warm.",
