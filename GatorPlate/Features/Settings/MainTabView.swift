@@ -1,17 +1,15 @@
 import SwiftUI
 
-/// Sprint 1 placeholder: tabs for Map, Feed and Settings. Real content arrives in later sprints.
+/// Tabs for Map, Feed and Settings. Feed is still a placeholder.
 struct MainTabView: View {
     let profile: UserProfile
+
+    @Environment(\.appEnvironment) private var environment
 
     var body: some View {
         TabView {
             Tab("Map", systemImage: "map") {
-                placeholder(
-                    systemImage: "map",
-                    title: "Campus map",
-                    message: "Free food near you will show up here."
-                )
+                CampusMapView(location: environment.location)
             }
             Tab("Feed", systemImage: "list.bullet") {
                 placeholder(
