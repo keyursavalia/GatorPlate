@@ -140,6 +140,8 @@ nonisolated final class FirebaseAuthService: AuthService {
         if error is CancellationError { return .unknown }
 
         let nsError = error as NSError
+        // Domain and numeric code only: no emails, passwords or messages that could contain them.
+        Logger.firebase.error("Auth service error domain=\(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public)")
         switch nsError.domain {
         case AuthErrorDomain:
             guard let code = AuthErrorCode(rawValue: nsError.code) else { return .unknown }
