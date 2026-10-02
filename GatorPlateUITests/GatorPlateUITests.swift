@@ -49,7 +49,8 @@ final class GatorPlateUITests: XCTestCase {
         let settingsTab = app.buttons["Settings"].firstMatch
         XCTAssertTrue(settingsTab.exists)
         settingsTab.tap()
-        XCTAssertTrue(app.staticTexts["Ada"].waitForExistence(timeout: 5))
+        // LabeledContent is exposed as one combined element: "<label>, <value>".
+        XCTAssertTrue(app.staticTexts["Posting as, Ada"].waitForExistence(timeout: 5))
 
         // Sign out returns to Welcome
         app.buttons["Sign out"].tap()
