@@ -1,13 +1,15 @@
 import Observation
 
-/// Steps of the Post flow so far: camera, then preview, then AI analysis, with a manual path that Sprint 5 turns into the Review form.
+/// Steps of the Post flow: camera, preview, AI analysis, then the Review form (with the success screen inside it).
+/// The manual path skips the AI (and optionally the photo) and goes straight to an empty Review form.
 @Observable
 final class PostFlowCoordinator {
     enum Step: Equatable {
         case camera
         case preview(CapturedPhoto)
         case analysis(CapturedPhoto)
-        case manual(CapturedPhoto)
+        /// `analysis` is nil on the manual path; `photo` is nil when the poster skipped the photo.
+        case review(photo: CapturedPhoto?, analysis: FoodAnalysisResult?)
     }
 
     private(set) var step: Step = .camera
@@ -25,11 +27,18 @@ final class PostFlowCoordinator {
         step = .analysis(photo)
     }
 
-    /// AI never blocks posting: reachable from every analysis screen.
+    /// The AI draft was accepted: the poster still reviews and edits everything before publishing.
+    func analysisAccepted(_ result: FoodAnalysisResult) {
+        guard case .analysis(let photo) = step else { return }
+        step = .review(photo: photo, analysis: result)
+    }
+
+    /// AI never blocks posting: reachable from the camera and from every analysis screen.
     func fillManually() {
         switch step {
-        case .analysis(let photo), .preview(let photo): step = .manual(photo)
-        default: break
+        case .analysis(let photo), .preview(let photo): step = .review(photo: photo, analysis: nil)
+        case .camera: step = .review(photo: nil, analysis: nil)
+        case .review: break
         }
     }
 }

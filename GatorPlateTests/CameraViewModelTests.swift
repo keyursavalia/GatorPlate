@@ -231,12 +231,42 @@ struct PostFlowCoordinatorTests {
         coordinator.captured(taken)
         coordinator.usePhoto()
         coordinator.fillManually()
-        #expect(coordinator.step == .manual(taken))
+        #expect(coordinator.step == .review(photo: taken, analysis: nil))
     }
 
-    @Test func fillManuallyDoesNothingOnTheCamera() {
+    @Test func fillManuallyFromTheCameraSkipsThePhoto() {
         let coordinator = PostFlowCoordinator()
         coordinator.fillManually()
+        #expect(coordinator.step == .review(photo: nil, analysis: nil))
+    }
+
+    @Test func fillManuallyFromThePreviewKeepsThePhoto() throws {
+        let coordinator = PostFlowCoordinator()
+        let taken = try photo()
+        coordinator.captured(taken)
+        coordinator.fillManually()
+        #expect(coordinator.step == .review(photo: taken, analysis: nil))
+    }
+
+    @Test func acceptedAnalysisOpensTheReviewForm() throws {
+        let coordinator = PostFlowCoordinator()
+        let taken = try photo()
+        coordinator.captured(taken)
+        coordinator.usePhoto()
+        coordinator.analysisAccepted(SampleData.analysis)
+        #expect(coordinator.step == .review(photo: taken, analysis: SampleData.analysis))
+    }
+
+    @Test func acceptedAnalysisIsIgnoredOutsideAnalysis() {
+        let coordinator = PostFlowCoordinator()
+        coordinator.analysisAccepted(SampleData.analysis)
+        #expect(coordinator.step == .camera)
+    }
+
+    @Test func retakeFromReviewReturnsToTheCamera() {
+        let coordinator = PostFlowCoordinator()
+        coordinator.fillManually()
+        coordinator.retake()
         #expect(coordinator.step == .camera)
     }
 

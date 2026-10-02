@@ -4,7 +4,7 @@ import Testing
 struct MockServiceTests {
     @Test func publishedPostAppearsInActiveFeed() async throws {
         let service = MockPostService(posts: [])
-        try await service.publish(SampleData.post(id: "a"))
+        _ = try await service.publish(SampleData.post(id: "a"), imageJPEG: nil)
 
         var latest: [FoodPost] = []
         for await posts in service.observeActivePosts() { latest = posts }

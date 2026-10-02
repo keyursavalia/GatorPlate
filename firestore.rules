@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /posts/{postId} {
+      allow read: if signedIn();
+
+      // Create: the caller owns the post, it starts active, the window is at most 75 min (the app caps at 60;
+      // the extra 15 min tolerates clock skew), and text fields stay within the app's limits.
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.status == 'active'
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 120
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 150
+        && (!('locationDetail' in request.resource.data)
+            || (request.resource.data.locationDetail is string
+                && request.resource.data.locationDetail.size() <= 80))
+        && request.resource.data.items is list
+        && request.resource.data.items.size() >= 1
+        && request.resource.data.items.size() <= 12
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(75, 'm');
+
+      // Update: only the author, and only to mark the post gone (status and updatedAt, nothing else).
+      allow update: if signedIn() && resource.data.authorUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status == 'gone';
+
+      allow delete: if signedIn() && resource.data.authorUid == request.auth.uid;
+    }
+
+    // Fallback photo store (used instead of Cloud Storage). Capped well under the 1 MiB document limit.
+    match /postImages/{postId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.jpeg is bytes
+        && request.resource.data.jpeg.size() <= 300000;
+      allow update, delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow create: if signedIn()
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() <= 300;
+      allow read, update, delete: if false;
+    }
+  }
+}
