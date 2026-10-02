@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>FoodNearby</key>
+		<string>GatorPlate uses your precise location this once to give accurate walking directions to free food.</string>
+	</dict>
 	<key>NSServices</key>
 	<array>
 		<dict/>

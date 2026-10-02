@@ -184,10 +184,33 @@ nonisolated struct MockFoodAnalyzer: FoodAnalyzing {
     }
 }
 
+/// Scriptable location: set `status` and `coordinate` to drive previews and tests.
 nonisolated struct MockLocationProvider: LocationProviding {
+    var status: LocationStatus = .authorizedFull
+    var coordinate: Coordinate? = SampleData.campusCoordinate
+
     func currentLocation() async throws -> Coordinate {
-        SampleData.campusCoordinate
+        guard status.authorization == .authorized, let coordinate else { throw AppError.permissionDenied }
+        return coordinate
     }
+
+    func statusUpdates() async -> AsyncStream<LocationStatus> {
+        AsyncStream { continuation in
+            continuation.yield(status)
+            continuation.finish()
+        }
+    }
+
+    func locationUpdates() async -> AsyncStream<Coordinate> {
+        AsyncStream { continuation in
+            if let coordinate { continuation.yield(coordinate) }
+            continuation.finish()
+        }
+    }
+
+    func requestWhenInUseAuthorization() async {}
+
+    func requestTemporaryFullAccuracy() async {}
 }
 
 actor MockImageStore: ImageStore {
