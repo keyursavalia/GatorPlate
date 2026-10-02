@@ -4,7 +4,7 @@ import SwiftUI
 struct AuthTextField: View {
     enum Kind {
         case email
-        case password(isNew: Bool)
+        case password
         case personName
         case organization
     }
@@ -51,9 +51,11 @@ struct AuthTextField: View {
                 .textContentType(.emailAddress)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-        case .password(let isNew):
+        case .password:
+            // Deliberately `.password` (not `.newPassword`) in both modes: the Strong Password overlay
+            // swallows typed characters, which breaks UI tests and is not useful in demo mode.
             SecureField(title, text: $text)
-                .textContentType(isNew ? .newPassword : .password)
+                .textContentType(.password)
         case .personName:
             TextField(title, text: $text)
                 .textContentType(.name)
@@ -71,7 +73,7 @@ struct AuthTextField: View {
     @Previewable @State var password = ""
     VStack(spacing: Theme.Spacing.l) {
         AuthTextField(title: "SFSU email", text: $email, kind: .email, error: AuthMessages.invalidEmail)
-        AuthTextField(title: "Password", text: $password, kind: .password(isNew: true))
+        AuthTextField(title: "Password", text: $password, kind: .password)
     }
     .padding()
     .environment(\.appEnvironment, .mock)

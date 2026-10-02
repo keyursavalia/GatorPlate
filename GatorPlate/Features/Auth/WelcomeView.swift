@@ -26,7 +26,7 @@ struct WelcomeView: View {
                 AuthTextField(
                     title: "Password",
                     text: $viewModel.password,
-                    kind: .password(isNew: viewModel.mode == .signUp),
+                    kind: .password,
                     error: viewModel.fieldErrors[.password]
                 )
                 .focused($focus, equals: .password)
