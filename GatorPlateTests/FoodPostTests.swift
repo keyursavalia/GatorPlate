@@ -24,6 +24,14 @@ struct FoodPostTests {
         #expect(!post(status: .active, expiresIn: 0).isActive(now: now))
     }
 
+    @Test func oneSecondBeforeExpiryIsStillActive() {
+        #expect(post(status: .active, expiresIn: 1).isActive(now: now))
+    }
+
+    @Test func expiredStatusIsNeverActive() {
+        #expect(!post(status: .expired, expiresIn: 600).isActive(now: now))
+    }
+
     @Test func goneIsNotActiveEvenBeforeExpiry() {
         #expect(!post(status: .gone, expiresIn: 600).isActive(now: now))
     }

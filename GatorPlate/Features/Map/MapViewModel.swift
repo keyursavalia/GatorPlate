@@ -11,40 +11,70 @@ enum MapBanner: Equatable {
     case offCampus
 }
 
+@MainActor
 @Observable
 final class MapViewModel {
     /// Closer than the overview, still shows the surroundings.
     static let userCameraDistance: Double = 450
 
     var cameraPosition: MapCameraPosition = .camera(SFSUCampus.overviewCamera)
-    var selectedPostID: String?
-    private(set) var posts: [FoodPost]
-    private(set) var status: LocationStatus = .notDetermined
-    private(set) var userLocation: Coordinate?
 
-    private let location: any LocationProviding
-    private var trackingTask: Task<Void, Never>?
+    let repository: PostsRepository
+    let location: UserLocationModel
+    let navigation: NavigationModel
+    let route: RouteViewModel
+    let actions: PostActionsModel
 
-    init(location: any LocationProviding, posts: [FoodPost] = SampleData.mapPosts()) {
+    @ObservationIgnored private let routing: any RoutingService
+
+    init(
+        repository: PostsRepository,
+        location: UserLocationModel,
+        navigation: NavigationModel,
+        routing: any RoutingService,
+        actions: PostActionsModel
+    ) {
+        self.repository = repository
         self.location = location
-        self.posts = posts
+        self.navigation = navigation
+        self.routing = routing
+        self.route = RouteViewModel(routing: routing)
+        self.actions = actions
     }
 
-    // MARK: Derived state
+    // MARK: Posts
 
-    var isOnCampus: Bool {
-        guard let userLocation else { return false }
-        return SFSUCampus.contains(userLocation)
+    var selectedPostID: String? {
+        get { navigation.selectedPostID }
+        set { navigation.selectedPostID = newValue }
     }
+
+    var activePosts: [FoodPost] { repository.posts }
+
+    var selectedPost: FoodPost? {
+        guard let selectedPostID else { return nil }
+        return repository.post(id: selectedPostID)
+    }
+
+    func accessibilityLabel(for post: FoodPost, now: Date = Date()) -> String {
+        let minutes = max(0, Int((post.expiresAt.timeIntervalSince(now) / 60).rounded(.up)))
+        var label = "Free food: \(post.title), \(minutes) minutes left"
+        if let distance = location.distanceText(to: post) {
+            label += ", \(distance) away"
+        }
+        return label
+    }
+
+    // MARK: Banner
 
     var banner: MapBanner? {
-        switch status.authorization {
+        switch location.status.authorization {
         case .notDetermined: .permissionPrompt
         case .denied: .locationDenied
         case .authorized:
-            if status.accuracy == .reduced {
+            if location.status.accuracy == .reduced {
                 .reducedAccuracy
-            } else if userLocation != nil && !isOnCampus {
+            } else if location.userLocation != nil && !location.isOnCampus {
                 .offCampus
             } else {
                 nil
@@ -52,88 +82,59 @@ final class MapViewModel {
         }
     }
 
-    var activePosts: [FoodPost] {
-        posts.filter { $0.isActive() }
+    // MARK: Route
+
+    /// The route state for the selected post only: a route for another post is never shown.
+    var routeState: RouteState {
+        guard let postID = route.state.postID, postID == selectedPostID else { return .idle }
+        return route.state
     }
 
-    var selectedPost: FoodPost? {
-        guard let selectedPostID else { return nil }
-        return posts.first { $0.id == selectedPostID && $0.isActive() }
+    var visibleRoute: RouteSummary? {
+        if case .routed(let summary) = routeState { summary } else { nil }
     }
 
-    /// Meters from the user to a post, if the user's location is known.
-    func distance(to post: FoodPost) -> Double? {
-        userLocation?.distance(to: Coordinate(latitude: post.latitude, longitude: post.longitude))
+    func startDirections() {
+        guard let post = selectedPost else { return }
+        route.requestRoute(to: post, from: location.userLocation)
     }
 
-    func distanceText(to post: FoodPost) -> String? {
-        guard let meters = distance(to: post) else { return nil }
-        return Measurement(value: meters, unit: UnitLength.meters)
-            .formatted(.measurement(width: .abbreviated, usage: .road))
+    func endRoute() {
+        route.endRoute()
+        recenter()
     }
 
-    func accessibilityLabel(for post: FoodPost, now: Date = Date()) -> String {
-        let minutes = max(0, Int((post.expiresAt.timeIntervalSince(now) / 60).rounded(.up)))
-        var label = "Free food: \(post.title), \(minutes) minutes left"
-        if let distance = distanceText(to: post) {
-            label += ", \(distance) away"
-        }
-        return label
+    /// Puts the camera over the route (the Map's bounds keep it on campus).
+    func fitCameraToRoute() {
+        guard let summary = visibleRoute, let rect = RouteCamera.rect(for: summary.coordinates) else { return }
+        cameraPosition = .rect(rect)
     }
 
-    // MARK: Lifecycle (call from `.task` on the map screen: it starts on appear and is cancelled on disappear)
-
-    func run() async {
-        let statuses = await location.statusUpdates()
-        for await newStatus in statuses {
-            apply(status: newStatus)
-        }
-        // The loop ends when this task is cancelled (the map is no longer visible): stop tracking too.
-        stopTracking()
+    func openInAppleMaps() -> Bool {
+        guard let post = selectedPost else { return false }
+        return routing.openInAppleMaps(
+            name: post.title,
+            coordinate: Coordinate(latitude: post.latitude, longitude: post.longitude)
+        )
     }
 
-    func apply(status newStatus: LocationStatus) {
-        status = newStatus
-        if newStatus.authorization == .authorized {
-            startTrackingIfNeeded()
-        } else {
-            stopTracking()
-            userLocation = nil
-        }
+    // MARK: Reconciliation (call when the selection or the active posts change)
+
+    func selectionChanged() {
+        route.end(unlessFor: selectedPostID)
+        actions.notice = nil
     }
 
-    func apply(location coordinate: Coordinate) {
-        userLocation = coordinate
+    func postsChanged() {
+        navigation.reconcile(activePostIDs: Set(repository.posts.map(\.id)), hasLoaded: repository.hasLoaded)
+        route.end(unlessFor: selectedPostID)
     }
 
-    private func startTrackingIfNeeded() {
-        guard trackingTask == nil else { return }
-        trackingTask = Task { [location] in
-            let updates = await location.locationUpdates()
-            for await coordinate in updates {
-                self.apply(location: coordinate)
-            }
-        }
-    }
-
-    private func stopTracking() {
-        trackingTask?.cancel()
-        trackingTask = nil
-    }
-
-    // MARK: Actions
-
-    func requestPermission() {
-        Task { await location.requestWhenInUseAuthorization() }
-    }
-
-    func requestFullAccuracy() {
-        Task { await location.requestTemporaryFullAccuracy() }
-    }
+    // MARK: Camera
 
     /// On campus: fly to the user. Otherwise (off campus, no fix, no permission): the campus overview.
     func recenter() {
-        if let userLocation, SFSUCampus.contains(userLocation) {
+        if let userLocation = location.userLocation, SFSUCampus.contains(userLocation) {
             cameraPosition = .camera(
                 MapCamera(centerCoordinate: userLocation.clCoordinate, distance: Self.userCameraDistance, heading: 0, pitch: 0)
             )

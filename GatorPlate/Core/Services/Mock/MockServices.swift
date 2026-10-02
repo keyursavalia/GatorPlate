@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// In-memory auth. Starts signed out unless seeded; failures can be injected per operation.
 actor MockAuthService: AuthService {
@@ -149,14 +150,24 @@ actor MockPostService: PostService {
     private var posts: [FoodPost]
     private var publishError: AppError?
     private let publishDelay: Duration
+    private let keepsStreamOpen: Bool
+    private var observers: [UUID: AsyncStream<[FoodPost]>.Continuation] = [:]
     private(set) var publishedImages: [String: Data] = [:]
     private(set) var reports: [(postID: String, reason: String)] = []
     private(set) var publishAttempts = 0
 
-    init(posts: [FoodPost] = [SampleData.post()], publishError: AppError? = nil, publishDelay: Duration = .zero) {
+    /// - Parameter keepsStreamOpen: When true, `observeActivePosts()` stays open and yields again after every
+    ///   publish and mark-gone, like the Firestore listener. When false it yields once and finishes.
+    init(
+        posts: [FoodPost] = [SampleData.post()],
+        publishError: AppError? = nil,
+        publishDelay: Duration = .zero,
+        keepsStreamOpen: Bool = false
+    ) {
         self.posts = posts
         self.publishError = publishError
         self.publishDelay = publishDelay
+        self.keepsStreamOpen = keepsStreamOpen
     }
 
     /// Tests use this to simulate going offline and coming back.
@@ -164,13 +175,23 @@ actor MockPostService: PostService {
         publishError = error
     }
 
+    /// Number of live `observeActivePosts()` streams (a leaked listener shows up here).
+    var observerCount: Int { observers.count }
+
+    /// Test hook: replaces the stored posts and notifies observers.
+    func setPosts(_ newPosts: [FoodPost]) {
+        posts = newPosts
+        emit()
+    }
+
     nonisolated func observeActivePosts() -> AsyncStream<[FoodPost]> {
         AsyncStream { continuation in
-            let task = Task {
-                continuation.yield(await self.activePosts())
-                continuation.finish()
+            let id = UUID()
+            let task = Task { await self.register(continuation, id: id) }
+            continuation.onTermination = { _ in
+                task.cancel()
+                Task { await self.unregister(id) }
             }
-            continuation.onTermination = { _ in task.cancel() }
         }
     }
 
@@ -183,6 +204,7 @@ actor MockPostService: PostService {
         if let imageJPEG { publishedImages[post.id] = imageJPEG }
         posts.removeAll { $0.id == post.id }
         posts.append(stored)
+        emit()
         return stored
     }
 
@@ -191,6 +213,7 @@ actor MockPostService: PostService {
             throw AppError.validation("Post not found")
         }
         posts[index].status = .gone
+        emit()
     }
 
     func report(postID: String, reason: String) async throws {
@@ -199,8 +222,67 @@ actor MockPostService: PostService {
 
     func allPosts() -> [FoodPost] { posts }
 
+    private func register(_ continuation: AsyncStream<[FoodPost]>.Continuation, id: UUID) {
+        continuation.yield(activePosts())
+        if keepsStreamOpen {
+            observers[id] = continuation
+        } else {
+            continuation.finish()
+        }
+    }
+
+    private func unregister(_ id: UUID) {
+        observers[id] = nil
+    }
+
+    private func emit() {
+        let active = activePosts()
+        for continuation in observers.values {
+            continuation.yield(active)
+        }
+    }
+
     private func activePosts() -> [FoodPost] {
         posts.filter { $0.isActive() }
+    }
+}
+
+/// Scriptable routing: the handler decides what each request returns, so tests can delay, fail, or interleave calls.
+nonisolated final class MockRoutingService: RoutingService, @unchecked Sendable {
+    typealias Handler = @Sendable (Coordinate, Coordinate) async throws -> WalkingRoute
+
+    private struct State {
+        var requests: [(from: Coordinate, to: Coordinate)] = []
+        var opened: [(name: String, coordinate: Coordinate)] = []
+    }
+
+    private let handler: Handler
+    private let opensSuccessfully: Bool
+    private let state = OSAllocatedUnfairLock(initialState: State())
+
+    init(opensSuccessfully: Bool = true, handler: @escaping Handler = { from, to in MockRoutingService.straightLine(from, to) }) {
+        self.handler = handler
+        self.opensSuccessfully = opensSuccessfully
+    }
+
+    var requests: [(from: Coordinate, to: Coordinate)] { state.withLock { $0.requests } }
+    var opened: [(name: String, coordinate: Coordinate)] { state.withLock { $0.opened } }
+
+    func walkingRoute(from: Coordinate, to: Coordinate) async throws -> WalkingRoute {
+        state.withLock { $0.requests.append((from, to)) }
+        return try await handler(from, to)
+    }
+
+    @MainActor
+    func openInAppleMaps(name: String, coordinate: Coordinate) -> Bool {
+        state.withLock { $0.opened.append((name, coordinate)) }
+        return opensSuccessfully
+    }
+
+    /// A two-point route at 1.4 m/s, good enough for previews and tests.
+    static func straightLine(_ from: Coordinate, _ to: Coordinate) -> WalkingRoute {
+        let meters = from.distance(to: to)
+        return WalkingRoute(coordinates: [from, to], distanceMeters: meters, travelTime: meters / 1.4)
     }
 }
 

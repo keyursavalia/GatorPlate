@@ -3,6 +3,7 @@ import SwiftUI
 /// Root of the app. Owns the `AuthViewModel` and switches screens on its session state.
 struct AuthGate: View {
     @State private var viewModel: AuthViewModel
+    @Environment(\.appEnvironment) private var environment
 
     init(auth: any AuthService) {
         _viewModel = State(initialValue: AuthViewModel(auth: auth))
@@ -27,7 +28,7 @@ struct AuthGate: View {
         case .signedOut, .needsTerms:
             WelcomeView()
         case .signedIn(let profile):
-            MainTabView(profile: profile)
+            MainTabView(profile: profile, environment: environment)
         case .error(let message):
             EmptyState(
                 systemImage: "wifi.exclamationmark",

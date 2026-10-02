@@ -66,7 +66,7 @@ nonisolated enum PostValidation {
             block(.roomDetail, "Shorten the room or floor note to \(AppConfig.maxRoomDetailLength) characters or fewer.")
         }
 
-        if !AppConfig.postDurationOptionsMinutes.contains(draft.durationMinutes)
+        if !AppConfig.selectableDurationOptionsMinutes.contains(draft.durationMinutes)
             || draft.durationMinutes > AppConfig.maxPostDurationMinutes {
             block(.duration, "Pick how long the food will be available.")
         }

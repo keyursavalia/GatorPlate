@@ -208,7 +208,7 @@ final class ReviewViewModel {
     }
 
     func setDuration(_ minutes: Int) {
-        guard AppConfig.postDurationOptionsMinutes.contains(minutes),
+        guard AppConfig.selectableDurationOptionsMinutes.contains(minutes),
               minutes <= AppConfig.maxPostDurationMinutes else { return }
         draft.durationMinutes = minutes
         refreshAutoTitle()
