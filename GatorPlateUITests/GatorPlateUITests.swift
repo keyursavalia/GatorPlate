@@ -41,13 +41,14 @@ final class GatorPlateUITests: XCTestCase {
         XCTAssertTrue(agree.isEnabled)
         agree.tap()
 
-        // Main tabs
-        let tabBar = app.tabBars.firstMatch
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 10))
-        XCTAssertTrue(tabBar.buttons["Map"].exists)
-        XCTAssertTrue(tabBar.buttons["Feed"].exists)
+        // Main tabs. Looked up as buttons: iPhone draws a tab bar, iPad draws a top row of buttons.
+        let mapTab = app.buttons["Map"].firstMatch
+        XCTAssertTrue(mapTab.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Feed"].firstMatch.exists)
 
-        tabBar.buttons["Settings"].tap()
+        let settingsTab = app.buttons["Settings"].firstMatch
+        XCTAssertTrue(settingsTab.exists)
+        settingsTab.tap()
         XCTAssertTrue(app.staticTexts["Ada"].waitForExistence(timeout: 5))
 
         // Sign out returns to Welcome
