@@ -142,6 +142,11 @@ nonisolated final class FirebaseAuthService: AuthService {
         let nsError = error as NSError
         // Domain and numeric code only: no emails, passwords or messages that could contain them.
         Logger.firebase.error("Auth service error domain=\(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public)")
+        // FIRAuthErrorCodeInternalError (17999) carries the backend's reason, e.g. CONFIGURATION_NOT_FOUND.
+        if let response = nsError.userInfo["FIRAuthErrorUserInfoDeserializedResponseKey"] as? [String: Any],
+           let reason = response["message"] as? String {
+            Logger.firebase.error("Auth backend reason: \(reason, privacy: .public)")
+        }
         switch nsError.domain {
         case AuthErrorDomain:
             guard let code = AuthErrorCode(rawValue: nsError.code) else { return .unknown }
