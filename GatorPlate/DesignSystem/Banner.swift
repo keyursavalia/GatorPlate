@@ -1,0 +1,60 @@
+import SwiftUI
+
+/// Inline info, warning, or error banner. Color is always paired with an icon and a spoken kind.
+struct Banner: View {
+    enum Kind {
+        case info, warning, error
+
+        var systemImage: String {
+            switch self {
+            case .info: "info.circle.fill"
+            case .warning: "exclamationmark.triangle.fill"
+            case .error: "xmark.octagon.fill"
+            }
+        }
+
+        var tint: Color {
+            switch self {
+            case .info: .brandPurple
+            case .warning: .warning
+            case .error: .danger
+            }
+        }
+
+        var spokenName: String {
+            switch self {
+            case .info: "Info"
+            case .warning: "Warning"
+            case .error: "Error"
+            }
+        }
+    }
+
+    let kind: Kind
+    let message: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
+            Image(systemName: kind.systemImage)
+                .foregroundStyle(kind.tint)
+                .accessibilityHidden(true)
+            Text(message)
+                .font(.subheadline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(Theme.Spacing.m)
+        .background(Color.surfaceSecondary, in: RoundedRectangle(cornerRadius: Theme.Radius.photo))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(kind.spokenName): \(message)")
+    }
+}
+
+#Preview("All kinds") {
+    VStack(spacing: Theme.Spacing.m) {
+        Banner(kind: .info, message: "Posts disappear after 30 minutes by default.")
+        Banner(kind: .warning, message: "Double-check allergens with the host.")
+        Banner(kind: .error, message: "Could not reach the server. Try again.")
+    }
+    .padding()
+    .environment(\.appEnvironment, .mock)
+}
