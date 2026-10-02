@@ -10,12 +10,13 @@ struct AuthGate: View {
 
     var body: some View {
         content
-            .environment(viewModel)
             .task(id: viewModel.sessionAttempt) { await viewModel.start() }
             .sheet(isPresented: needsTerms) {
                 TermsOfUseSheet(requiresAcceptance: true)
                     .interactiveDismissDisabled()
             }
+            // Must come after `.sheet`: a sheet only inherits the environment of modifiers applied outside it.
+            .environment(viewModel)
     }
 
     @ViewBuilder
