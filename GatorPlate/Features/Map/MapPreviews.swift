@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Builds a fully mocked `MapViewModel` for previews.
 @MainActor
-enum PreviewSupport {
+enum MapPreviews {
     static func mapViewModel(
         posts: [FoodPost] = SampleData.mapPosts(),
         userID: String = "someone-else",

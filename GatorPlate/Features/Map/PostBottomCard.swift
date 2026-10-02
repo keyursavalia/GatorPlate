@@ -194,13 +194,13 @@ struct PostBottomCard: View {
 }
 
 #Preview("Card") {
-    let model = PreviewSupport.mapViewModel()
+    let model = MapPreviews.mapViewModel()
     return PostBottomCard(post: SampleData.mapPosts()[0], viewModel: model)
         .environment(\.appEnvironment, .mock)
 }
 
 #Preview("Card, author, large text") {
-    let model = PreviewSupport.mapViewModel(userID: SampleData.profile.uid)
+    let model = MapPreviews.mapViewModel(userID: SampleData.profile.uid)
     var post = SampleData.mapPosts()[0]
     post.authorUid = SampleData.profile.uid
     return PostBottomCard(post: post, viewModel: model)

@@ -144,19 +144,19 @@ struct CampusMapView: View {
 }
 
 #Preview("On campus") {
-    CampusMapView(viewModel: PreviewSupport.mapViewModel())
+    CampusMapView(viewModel: MapPreviews.mapViewModel())
         .environment(\.appEnvironment, .mock)
 }
 
 #Preview("Permission needed") {
-    let model = PreviewSupport.mapViewModel()
+    let model = MapPreviews.mapViewModel()
     model.location.apply(status: .notDetermined)
     return CampusMapView(viewModel: model)
         .environment(\.appEnvironment, .mock)
 }
 
 #Preview("Off campus") {
-    let model = PreviewSupport.mapViewModel()
+    let model = MapPreviews.mapViewModel()
     model.location.apply(location: Coordinate(latitude: 37.3349, longitude: -122.0090))
     return CampusMapView(viewModel: model)
         .environment(\.appEnvironment, .mock)

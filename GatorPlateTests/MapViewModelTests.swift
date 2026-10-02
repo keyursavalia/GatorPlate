@@ -12,7 +12,7 @@ struct MapViewModelTests {
         posts: [FoodPost] = SampleData.mapPosts(),
         routing: any RoutingService = MockRoutingService()
     ) -> MapViewModel {
-        PreviewSupport.mapViewModel(posts: posts, routing: routing)
+        MapPreviews.mapViewModel(posts: posts, routing: routing)
     }
 
     // MARK: Banner priority
