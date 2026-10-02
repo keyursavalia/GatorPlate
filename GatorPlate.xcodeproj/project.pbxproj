@@ -21,11 +21,19 @@
 			remoteGlobalIDString = 000000000000000100000000;
 			remoteInfo = GatorPlate;
 		};
+		3C0B5DE23070518B001CA464 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 000000000000000100000000;
+			remoteInfo = GatorPlate;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* GatorPlate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GatorPlate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3C0B5D5430704BA8001CA464 /* GatorPlateTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GatorPlateTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3C0B5DDE3070518B001CA464 /* GatorPlateUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GatorPlateUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -52,6 +60,11 @@
 			path = GatorPlateTests;
 			sourceTree = "<group>";
 		};
+		3C0B5DDF3070518B001CA464 /* GatorPlateUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = GatorPlateUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,6 +82,11 @@
 			files = (
 			);
 		};
+		3C0B5DDB3070518B001CA464 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -77,6 +95,7 @@
 			children = (
 				000000000000000000000010 /* GatorPlate */,
 				3C0B5D5530704BA8001CA464 /* GatorPlateTests */,
+				3C0B5DDF3070518B001CA464 /* GatorPlateUITests */,
 				000000000000000000000020 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -86,6 +105,7 @@
 			children = (
 				000000000000000000000120 /* GatorPlate.app */,
 				3C0B5D5430704BA8001CA464 /* GatorPlateTests.xctest */,
+				3C0B5DDE3070518B001CA464 /* GatorPlateUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -138,6 +158,27 @@
 			productReference = 3C0B5D5430704BA8001CA464 /* GatorPlateTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		3C0B5DDD3070518B001CA464 /* GatorPlateUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3C0B5DE63070518B001CA464 /* Build configuration list for PBXNativeTarget "GatorPlateUITests" */;
+			buildPhases = (
+				3C0B5DDA3070518B001CA464 /* Sources */,
+				3C0B5DDB3070518B001CA464 /* Frameworks */,
+				3C0B5DDC3070518B001CA464 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				3C0B5DE33070518B001CA464 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				3C0B5DDF3070518B001CA464 /* GatorPlateUITests */,
+			);
+			name = GatorPlateUITests;
+			productName = GatorPlateUITests;
+			productReference = 3C0B5DDE3070518B001CA464 /* GatorPlateUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -152,6 +193,10 @@
 						CreatedOnToolsVersion = 26.3;
 					};
 					3C0B5D5330704BA8001CA464 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 000000000000000100000000;
+					};
+					3C0B5DDD3070518B001CA464 = {
 						CreatedOnToolsVersion = 27.0;
 						TestTargetID = 000000000000000100000000;
 					};
@@ -176,6 +221,7 @@
 			targets = (
 				000000000000000100000000 /* GatorPlate */,
 				3C0B5D5330704BA8001CA464 /* GatorPlateTests */,
+				3C0B5DDD3070518B001CA464 /* GatorPlateUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -187,6 +233,11 @@
 			);
 		};
 		3C0B5D5230704BA8001CA464 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		3C0B5DDC3070518B001CA464 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
 			);
@@ -204,6 +255,11 @@
 			files = (
 			);
 		};
+		3C0B5DDA3070518B001CA464 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -211,6 +267,11 @@
 			isa = PBXTargetDependency;
 			target = 000000000000000100000000 /* GatorPlate */;
 			targetProxy = 3C0B5D5830704BA8001CA464 /* PBXContainerItemProxy */;
+		};
+		3C0B5DE33070518B001CA464 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 000000000000000100000000 /* GatorPlate */;
+			targetProxy = 3C0B5DE23070518B001CA464 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -478,6 +539,49 @@
 			};
 			name = Release;
 		};
+		3C0B5DE43070518B001CA464 /* Debug configuration for PBXNativeTarget "GatorPlateUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DW9QSX99UM;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.keyurdipakbhaisavalia.GatorPlateUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = GatorPlate;
+			};
+			name = Debug;
+		};
+		3C0B5DE53070518B001CA464 /* Release configuration for PBXNativeTarget "GatorPlateUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DW9QSX99UM;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.keyurdipakbhaisavalia.GatorPlateUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = GatorPlate;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -502,6 +606,14 @@
 			buildConfigurations = (
 				3C0B5D5B30704BA9001CA464 /* Debug configuration for PBXNativeTarget "GatorPlateTests" */,
 				3C0B5D5C30704BA9001CA464 /* Release configuration for PBXNativeTarget "GatorPlateTests" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		3C0B5DE63070518B001CA464 /* Build configuration list for PBXNativeTarget "GatorPlateUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3C0B5DE43070518B001CA464 /* Debug configuration for PBXNativeTarget "GatorPlateUITests" */,
+				3C0B5DE53070518B001CA464 /* Release configuration for PBXNativeTarget "GatorPlateUITests" */,
 			);
 			defaultConfigurationName = Release;
 		};

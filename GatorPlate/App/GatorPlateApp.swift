@@ -8,8 +8,12 @@ struct GatorPlateApp: App {
     private let environment: AppEnvironment
 
     init() {
-        Self.configureFirebase()
-        environment = .live(firebaseConfigured: FirebaseApp.app() != nil)
+        if ProcessInfo.processInfo.arguments.contains(AppConfig.uiTestMockArgument) {
+            environment = .mock
+        } else {
+            Self.configureFirebase()
+            environment = .live(firebaseConfigured: FirebaseApp.app() != nil)
+        }
     }
 
     var body: some Scene {

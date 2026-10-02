@@ -7,6 +7,17 @@ nonisolated enum AppConfig {
     /// DEMO MODE: email verification is not enforced.
     static let requireEmailVerification = false
     static let termsVersion = "2026-10-demo-1"
+    /// Placeholders substituted into the bundled Terms of Use. Replace before any public demo.
+    static let teamName = "[TEAM NAME]"
+    static let contactEmail = "[CONTACT EMAIL]"
+
+    /// Auth form limits.
+    static let minPasswordLength = 8
+    static let maxDisplayNameLength = 50
+    static let maxOrgNameLength = 60
+
+    /// Launch argument that forces mock services and skips Firebase (UI tests).
+    static let uiTestMockArgument = "-UITestMock"
 
     /// Placeholder; verify the current Flash model in the Firebase AI Logic docs in Sprint 4.
     static let geminiModelName = "gemini-2.5-flash"
