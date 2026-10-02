@@ -19,4 +19,13 @@ struct AppConfigTests {
         #expect(AppConfig.defaultPostDurationMinutes == 30)
         #expect(AppConfig.maxPostDurationMinutes == 60)
     }
+
+    @Test func selectableDurationsAlwaysIncludeTheProductionOptions() {
+        #expect(AppConfig.postDurationOptionsMinutes.allSatisfy { AppConfig.selectableDurationOptionsMinutes.contains($0) })
+        #expect(AppConfig.selectableDurationOptionsMinutes.allSatisfy { $0 <= AppConfig.maxPostDurationMinutes })
+    }
+
+    @Test func expiryRefreshIsFrequentEnoughForTheFoodSafetyWindow() {
+        #expect(AppConfig.expiryRefreshSeconds <= 15)
+    }
 }

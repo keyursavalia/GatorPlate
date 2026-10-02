@@ -182,7 +182,7 @@ struct ReviewView: View {
                 get: { viewModel.draft.durationMinutes },
                 set: { viewModel.setDuration($0) }
             )) {
-                ForEach(AppConfig.postDurationOptionsMinutes, id: \.self) { Text("\($0) min").tag($0) }
+                ForEach(AppConfig.selectableDurationOptionsMinutes, id: \.self) { Text("\($0) min").tag($0) }
             }
             .pickerStyle(.segmented)
             .accessibilityLabel("Available for")

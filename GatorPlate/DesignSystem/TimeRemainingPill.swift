@@ -23,8 +23,9 @@ struct TimeRemainingPill: View {
 
         var minutesLeft: Int { max(0, Int((secondsLeft / 60).rounded(.up))) }
         var isExpired: Bool { secondsLeft <= 0 }
-        var isEndingSoon: Bool { !isExpired && minutesLeft < 5 }
-        var isWarning: Bool { !isExpired && minutesLeft < 10 }
+        /// Thresholds use the real seconds, so "under 5 minutes" is true from 4:59 down, not only once the rounded-up minute count drops.
+        var isEndingSoon: Bool { !isExpired && secondsLeft < 5 * 60 }
+        var isWarning: Bool { !isExpired && secondsLeft < 10 * 60 }
 
         var text: String {
             if isExpired { return "Expired" }

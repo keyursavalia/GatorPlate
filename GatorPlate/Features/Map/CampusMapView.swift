@@ -1,20 +1,18 @@
 import MapKit
 import SwiftUI
 
-/// The campus-locked map: pan, zoom and rotate inside SFSU, user location, mock pins, and a bottom card.
+/// The campus-locked map: pan, zoom and rotate inside SFSU, user location, live pins, the walking route, and a bottom card.
 struct CampusMapView: View {
-    @State private var viewModel: MapViewModel
+    let viewModel: MapViewModel
+
     @Namespace private var mapScope
     @Environment(\.openURL) private var openURL
 
     private static let smallDetent = PresentationDetent.height(280)
 
-    init(location: any LocationProviding, posts: [FoodPost] = SampleData.mapPosts()) {
-        _viewModel = State(initialValue: MapViewModel(location: location, posts: posts))
-    }
-
     var body: some View {
-        Map(
+        @Bindable var viewModel = viewModel
+        return Map(
             position: $viewModel.cameraPosition,
             bounds: SFSUCampus.cameraBounds,
             interactionModes: [.pan, .zoom, .rotate],
@@ -29,12 +27,23 @@ struct CampusMapView: View {
                     coordinate: CLLocationCoordinate2D(latitude: post.latitude, longitude: post.longitude),
                     anchor: .center
                 ) {
-                    MapPin(dietary: post.overallDietary, isSelected: viewModel.selectedPostID == post.id)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(viewModel.accessibilityLabel(for: post))
-                        .accessibilityAddTraits(.isButton)
+                    // Its own timeline keeps the spoken minutes current without re-running the whole ForEach.
+                    TimelineView(.periodic(from: .now, by: TimeInterval(AppConfig.timeRemainingRefreshSeconds))) { context in
+                        MapPin(dietary: post.overallDietary, isSelected: viewModel.selectedPostID == post.id)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(viewModel.accessibilityLabel(for: post, now: context.date))
+                            .accessibilityAddTraits(.isButton)
+                    }
                 }
                 .tag(post.id)
+            }
+
+            if let route = viewModel.visibleRoute {
+                MapPolyline(coordinates: route.coordinates.map(\.clCoordinate))
+                    .stroke(
+                        Color.brandPurple,
+                        style: StrokeStyle(lineWidth: AppConfig.routeLineWidth, lineCap: .round, lineJoin: .round)
+                    )
             }
         }
         .mapStyle(
@@ -53,15 +62,16 @@ struct CampusMapView: View {
         }
         .mapScope(mapScope)
         .sensoryFeedback(.impact(weight: .light), trigger: viewModel.selectedPostID)
+        .animation(.default, value: viewModel.activePosts.map(\.id))
+        .onChange(of: viewModel.route.state) { viewModel.fitCameraToRoute() }
         .sheet(isPresented: sheetBinding) {
             if let post = viewModel.selectedPost {
-                PostBottomCard(post: post, distanceText: viewModel.distanceText(to: post))
+                PostBottomCard(post: post, viewModel: viewModel)
                     .presentationDetents([Self.smallDetent, .medium])
                     .presentationBackgroundInteraction(.enabled(upThrough: Self.smallDetent))
                     .presentationDragIndicator(.visible)
             }
         }
-        .task { await viewModel.run() }
     }
 
     // MARK: Pieces
@@ -97,9 +107,9 @@ struct CampusMapView: View {
         case .permissionPrompt:
             Banner(
                 kind: .info,
-                message: "Allow location to see where you are on campus. We only use it while the map is open.",
+                message: "Allow location to see where you are on campus. We only use it while GatorPlate is open, and it never leaves your phone.",
                 actionTitle: "Allow location",
-                action: viewModel.requestPermission
+                action: viewModel.location.requestPermission
             )
             .padding(Theme.Spacing.l)
         case .locationDenied:
@@ -115,7 +125,7 @@ struct CampusMapView: View {
                 kind: .warning,
                 message: "Precise location is off, directions may be less accurate.",
                 actionTitle: "Use precise location",
-                action: viewModel.requestFullAccuracy
+                action: viewModel.location.requestFullAccuracy
             )
             .padding(Theme.Spacing.l)
         case .offCampus:
@@ -134,18 +144,20 @@ struct CampusMapView: View {
 }
 
 #Preview("On campus") {
-    CampusMapView(location: MockLocationProvider())
+    CampusMapView(viewModel: MapPreviews.mapViewModel())
         .environment(\.appEnvironment, .mock)
 }
 
 #Preview("Permission needed") {
-    CampusMapView(location: MockLocationProvider(status: .notDetermined, coordinate: nil))
+    let model = MapPreviews.mapViewModel()
+    model.location.apply(status: .notDetermined)
+    return CampusMapView(viewModel: model)
         .environment(\.appEnvironment, .mock)
 }
 
 #Preview("Off campus") {
-    CampusMapView(
-        location: MockLocationProvider(coordinate: Coordinate(latitude: 37.3349, longitude: -122.0090))
-    )
-    .environment(\.appEnvironment, .mock)
+    let model = MapPreviews.mapViewModel()
+    model.location.apply(location: Coordinate(latitude: 37.3349, longitude: -122.0090))
+    return CampusMapView(viewModel: model)
+        .environment(\.appEnvironment, .mock)
 }

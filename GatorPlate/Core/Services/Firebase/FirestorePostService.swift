@@ -81,7 +81,7 @@ nonisolated struct FirestorePostService: PostService {
         }
     }
 
-    // MARK: Observe (used from Sprint 6)
+    // MARK: Observe
 
     func observeActivePosts() -> AsyncStream<[FoodPost]> {
         AsyncStream { continuation in
@@ -94,13 +94,21 @@ nonisolated struct FirestorePostService: PostService {
                     return
                 }
                 guard let snapshot else { return }
+                // An empty cache-only snapshot is not an answer yet: the server snapshot follows, and showing
+                // "No free food" for a moment on a cold start would be wrong. (Offline, the repository's
+                // fallback timer ends the loading state.)
+                if snapshot.metadata.isFromCache && snapshot.documents.isEmpty { return }
                 let posts = snapshot.documents
                     .compactMap { FoodPostCoding.post(from: Self.normalized($0.data())) }
                     .filter { $0.isActive() }
                 continuation.yield(posts)
             }
+            Logger.firebase.info("Active-posts listener started")
             let token = ListenerToken(registration: listener)
-            continuation.onTermination = { _ in token.registration.remove() }
+            continuation.onTermination = { _ in
+                token.registration.remove()
+                Logger.firebase.info("Active-posts listener stopped")
+            }
         }
     }
 

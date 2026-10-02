@@ -32,6 +32,16 @@ nonisolated enum AppConfig {
     static let cameraHintSeenKey = "cameraHintSeen"
 
     static let postDurationOptionsMinutes = [15, 30, 45, 60]
+    /// DEBUG only: a 1-minute window so auto-expiry can be watched during manual testing.
+    static let debugShortDurationMinutes = 1
+    /// What the duration picker offers. Release builds get exactly `postDurationOptionsMinutes`.
+    static var selectableDurationOptionsMinutes: [Int] {
+        #if DEBUG
+        [debugShortDurationMinutes] + postDurationOptionsMinutes
+        #else
+        postDurationOptionsMinutes
+        #endif
+    }
     static let defaultPostDurationMinutes = 30
     static let maxPostDurationMinutes = 60
     /// Client-side anti-spam.
@@ -56,6 +66,19 @@ nonisolated enum AppConfig {
     /// `buildingId` stored when the poster drops a pin instead of choosing a building.
     static let customPinBuildingId = "custom-pin"
     static let customPinLocationName = "Pinned spot on campus"
+    /// Sprint 6: how often the feed re-checks which posts are still active (no server involved).
+    static let expiryRefreshSeconds = 15
+    /// Pin accessibility labels and similar "N minutes left" text refresh this often.
+    static let timeRemainingRefreshSeconds = 60
+    /// The Feed stops showing a spinner after this long without a first snapshot (offline).
+    static let feedLoadFallbackSeconds = 3
+    static let routeLineWidth: Double = 6
+    /// In-memory photo cache budget for the bottom card and Feed.
+    static let photoCacheMaxBytes = 8_000_000
+    /// Longest edge, in pixels, of a decoded post photo.
+    static let postPhotoMaxPixel = 800
+    /// `@AppStorage` key for the "Show calorie estimates" preference (R3). Defaults to shown; Sprint 8 adds the toggle.
+    static let showCalorieEstimatesKey = "showCalorieEstimates"
     /// Sprint 8: canned AI result if the network or AI is down.
     static let demoFallbackEnabled = false
 }
