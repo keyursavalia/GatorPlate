@@ -142,7 +142,7 @@ nonisolated final class FirebaseAuthService: AuthService {
         let nsError = error as NSError
         switch nsError.domain {
         case AuthErrorDomain:
-            guard let code = AuthErrorCode.Code(rawValue: nsError.code) else { return .unknown }
+            guard let code = AuthErrorCode(rawValue: nsError.code) else { return .unknown }
             switch code {
             case .emailAlreadyInUse: return .emailInUse
             case .wrongPassword, .invalidCredential, .userNotFound, .invalidEmail: return .invalidCredentials
