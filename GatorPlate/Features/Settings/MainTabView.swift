@@ -5,15 +5,18 @@ struct MainTabView: View {
     let profile: UserProfile
 
     @Environment(\.appEnvironment) private var environment
+    private enum AppTab: Hashable { case map, feed, settings }
+
     @State private var isPostFlowPresented = false
+    @State private var selection: AppTab = .map
 
     var body: some View {
-        TabView {
-            Tab("Map", systemImage: "map") {
+        TabView(selection: $selection) {
+            Tab("Map", systemImage: "map", value: AppTab.map) {
                 CampusMapView(location: environment.location)
                     .postFAB { isPostFlowPresented = true }
             }
-            Tab("Feed", systemImage: "list.bullet") {
+            Tab("Feed", systemImage: "list.bullet", value: AppTab.feed) {
                 placeholder(
                     systemImage: "list.bullet",
                     title: "Feed",
@@ -21,12 +24,12 @@ struct MainTabView: View {
                 )
                 .postFAB { isPostFlowPresented = true }
             }
-            Tab("Settings", systemImage: "gearshape") {
+            Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
                 SettingsView(profile: profile)
             }
         }
         .fullScreenCover(isPresented: $isPostFlowPresented) {
-            PostFlowView(camera: environment.camera)
+            PostFlowView(camera: environment.camera, profile: profile, onViewMap: { selection = .map })
         }
     }
 

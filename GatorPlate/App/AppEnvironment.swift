@@ -8,6 +8,8 @@ nonisolated struct AppEnvironment: Sendable {
     var location: any LocationProviding
     var images: any ImageStore
     var camera: any CameraProviding
+    /// Session-wide anti-spam memory for the Post flow (in memory only).
+    var cooldown: PostCooldown
     /// True once `FirebaseApp.configure()` has run. Set by the app entry point.
     var isFirebaseConfigured: Bool
 
@@ -19,6 +21,7 @@ nonisolated struct AppEnvironment: Sendable {
         location: MockLocationProvider(),
         images: MockImageStore(),
         camera: MockCameraService(),
+        cooldown: PostCooldown(),
         isFirebaseConfigured: false
     )
 
@@ -32,6 +35,9 @@ nonisolated struct AppEnvironment: Sendable {
         if firebaseConfigured {
             environment.auth = FirebaseAuthService()
             environment.analyzer = GeminiFoodAnalyzer()
+            let images = FirestoreImageStore()
+            environment.images = images
+            environment.posts = FirestorePostService(images: images)
         }
         return environment
     }

@@ -15,10 +15,17 @@ struct CameraScreen: View {
 
     private let camera: any CameraProviding
     private let onClose: () -> Void
+    private let onManual: (() -> Void)?
 
-    init(camera: any CameraProviding, onPhoto: @escaping (CapturedPhoto) -> Void, onClose: @escaping () -> Void) {
+    init(
+        camera: any CameraProviding,
+        onPhoto: @escaping (CapturedPhoto) -> Void,
+        onClose: @escaping () -> Void,
+        onManual: (() -> Void)? = nil
+    ) {
         self.camera = camera
         self.onClose = onClose
+        self.onManual = onManual
         _viewModel = State(initialValue: CameraViewModel(camera: camera, onPhoto: onPhoto))
     }
 
@@ -124,6 +131,7 @@ struct CameraScreen: View {
                         .background(.black.opacity(0.55), in: Capsule())
                 }
                 shutterButton
+                manualButton(onDark: true)
             }
             .padding(.bottom, Theme.Spacing.xl)
 
@@ -156,6 +164,19 @@ struct CameraScreen: View {
             LinearGradient(colors: [.gray.opacity(0.4), .black], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
                 .accessibilityHidden(true)
+        }
+    }
+
+    /// The no-AI, no-photo path: always reachable from the camera.
+    @ViewBuilder private func manualButton(onDark: Bool) -> some View {
+        if let onManual {
+            Button("Fill it in myself", action: onManual)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, Theme.Spacing.l)
+                .frame(minHeight: Theme.minTapTarget)
+                .background(onDark ? Color.black.opacity(0.55) : Color.brandPurple, in: Capsule())
+                .accessibilityHint("Skips the photo and opens the post form")
         }
     }
 
@@ -226,6 +247,7 @@ struct CameraScreen: View {
                 }
                 .buttonStyle(.bordered)
                 .padding(.horizontal, Theme.Spacing.l)
+                manualButton(onDark: false)
 #if DEBUG
                 Button {
                     Task { await viewModel.useSamplePhoto() }

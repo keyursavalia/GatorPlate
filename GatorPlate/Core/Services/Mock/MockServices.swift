@@ -147,9 +147,21 @@ actor MockAuthService: AuthService {
 
 actor MockPostService: PostService {
     private var posts: [FoodPost]
+    private var publishError: AppError?
+    private let publishDelay: Duration
+    private(set) var publishedImages: [String: Data] = [:]
+    private(set) var reports: [(postID: String, reason: String)] = []
+    private(set) var publishAttempts = 0
 
-    init(posts: [FoodPost] = [SampleData.post()]) {
+    init(posts: [FoodPost] = [SampleData.post()], publishError: AppError? = nil, publishDelay: Duration = .zero) {
         self.posts = posts
+        self.publishError = publishError
+        self.publishDelay = publishDelay
+    }
+
+    /// Tests use this to simulate going offline and coming back.
+    func setPublishError(_ error: AppError?) {
+        publishError = error
     }
 
     nonisolated func observeActivePosts() -> AsyncStream<[FoodPost]> {
@@ -162,8 +174,16 @@ actor MockPostService: PostService {
         }
     }
 
-    func publish(_ post: FoodPost) async throws {
-        posts.append(post)
+    func publish(_ post: FoodPost, imageJPEG: Data?) async throws -> FoodPost {
+        publishAttempts += 1
+        if publishDelay > .zero { try await Task.sleep(for: publishDelay) }
+        if let publishError { throw publishError }
+        var stored = post
+        stored.hasPhoto = imageJPEG != nil
+        if let imageJPEG { publishedImages[post.id] = imageJPEG }
+        posts.removeAll { $0.id == post.id }
+        posts.append(stored)
+        return stored
     }
 
     func markGone(postID: String) async throws {
@@ -172,6 +192,12 @@ actor MockPostService: PostService {
         }
         posts[index].status = .gone
     }
+
+    func report(postID: String, reason: String) async throws {
+        reports.append((postID, reason))
+    }
+
+    func allPosts() -> [FoodPost] { posts }
 
     private func activePosts() -> [FoodPost] {
         posts.filter { $0.isActive() }
