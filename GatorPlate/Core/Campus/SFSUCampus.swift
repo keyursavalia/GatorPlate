@@ -1,4 +1,5 @@
 import MapKit
+import SwiftUI
 
 /// San Francisco State University campus geometry.
 ///
