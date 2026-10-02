@@ -25,6 +25,9 @@ nonisolated enum AppConfig {
     static let aiMaxImageLongEdge = 1024
     static let aiJPEGQuality = 0.7
 
+    /// `@AppStorage` key: the "Photograph the food, not people." hint shows until the camera has been used once.
+    static let cameraHintSeenKey = "cameraHintSeen"
+
     static let postDurationOptionsMinutes = [15, 30, 45, 60]
     static let defaultPostDurationMinutes = 30
     static let maxPostDurationMinutes = 60

@@ -7,6 +7,7 @@ nonisolated struct AppEnvironment: Sendable {
     var analyzer: any FoodAnalyzing
     var location: any LocationProviding
     var images: any ImageStore
+    var camera: any CameraProviding
     /// True once `FirebaseApp.configure()` has run. Set by the app entry point.
     var isFirebaseConfigured: Bool
 
@@ -17,6 +18,7 @@ nonisolated struct AppEnvironment: Sendable {
         analyzer: MockFoodAnalyzer(),
         location: MockLocationProvider(),
         images: MockImageStore(),
+        camera: MockCameraService(),
         isFirebaseConfigured: false
     )
 
@@ -25,6 +27,7 @@ nonisolated struct AppEnvironment: Sendable {
     static func live(firebaseConfigured: Bool) -> AppEnvironment {
         var environment = AppEnvironment.mock
         environment.location = CoreLocationProvider()
+        environment.camera = CameraService()
         environment.isFirebaseConfigured = firebaseConfigured
         if firebaseConfigured {
             environment.auth = FirebaseAuthService()
