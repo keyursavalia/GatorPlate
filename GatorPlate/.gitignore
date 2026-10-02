@@ -1,0 +1,8 @@
+GoogleService-Info.plist
+.env
+*.xcuserstate
+DerivedData/
+docs/
+CLAUDE.md
+.DS_Store
+xcuserdata/
