@@ -7,5 +7,8 @@ nonisolated enum AppError: Error, Equatable, Sendable {
     case aiUnavailable
     case validation(String)
     case unauthorized
+    case emailInUse
+    case invalidCredentials
+    case weakPassword
     case unknown
 }

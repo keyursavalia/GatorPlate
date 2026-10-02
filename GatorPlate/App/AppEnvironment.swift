@@ -20,11 +20,13 @@ nonisolated struct AppEnvironment: Sendable {
         isFirebaseConfigured: false
     )
 
-    /// Sprint 0: the Firebase-backed services do not exist yet, so live resolves to mocks.
-    /// Later sprints swap each service for its Firebase implementation here.
+    /// Services backed by Firebase where an implementation exists; mocks for the rest until their sprint.
     static func live(firebaseConfigured: Bool) -> AppEnvironment {
         var environment = AppEnvironment.mock
         environment.isFirebaseConfigured = firebaseConfigured
+        if firebaseConfigured {
+            environment.auth = FirebaseAuthService()
+        }
         return environment
     }
 }
