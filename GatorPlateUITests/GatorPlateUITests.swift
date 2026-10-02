@@ -1,43 +1,57 @@
-//
-//  GatorPlateUITests.swift
-//  GatorPlateUITests
-//
-//  Created by Keyur Savalia on 10/2/26.
-//
-
 import XCTest
 
+/// Critical path with mock services (`-UITestMock`): signed out > sign up > terms > tabs > sign out.
 final class GatorPlateUITests: XCTestCase {
-
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
-    }
-
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
     }
 
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
+    func testSignUpAcceptTermsReachTabsAndSignOut() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["-UITestMock"]
         app.launch()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
-    }
+        // Welcome
+        let email = app.textFields["SFSU email"]
+        XCTAssertTrue(email.waitForExistence(timeout: 10))
 
-    @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
-        }
+        app.buttons["New here? Create an account"].tap()
+
+        email.tap()
+        email.typeText("ada@mail.sfsu.edu")
+
+        let password = app.secureTextFields["Password"]
+        password.tap()
+        password.typeText("password1")
+
+        let name = app.textFields["Your name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Ada")
+
+        app.buttons["Create account"].tap()
+
+        // Terms: "I agree" stays blocked until the box is checked.
+        let agree = app.buttons["I agree"]
+        XCTAssertTrue(agree.waitForExistence(timeout: 10))
+        XCTAssertFalse(agree.isEnabled)
+
+        app.descendants(matching: .any)["I have read and agree to the Terms of Use"].firstMatch.tap()
+        XCTAssertTrue(agree.isEnabled)
+        agree.tap()
+
+        // Main tabs
+        let tabBar = app.tabBars.firstMatch
+        XCTAssertTrue(tabBar.waitForExistence(timeout: 10))
+        XCTAssertTrue(tabBar.buttons["Map"].exists)
+        XCTAssertTrue(tabBar.buttons["Feed"].exists)
+
+        tabBar.buttons["Settings"].tap()
+        XCTAssertTrue(app.staticTexts["Ada"].waitForExistence(timeout: 5))
+
+        // Sign out returns to Welcome
+        app.buttons["Sign out"].tap()
+        XCTAssertTrue(app.textFields["SFSU email"].waitForExistence(timeout: 10))
     }
 }
