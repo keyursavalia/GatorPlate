@@ -136,17 +136,17 @@ actor CameraService: CameraProviding {
         observers = [
             Task { [weak self] in
                 for await _ in center.notifications(named: AVCaptureSession.wasInterruptedNotification) {
-                    self?.emit(.interrupted)
+                    await self?.emit(.interrupted)
                 }
             },
             Task { [weak self] in
                 for await _ in center.notifications(named: AVCaptureSession.interruptionEndedNotification) {
-                    self?.emit(.interruptionEnded)
+                    await self?.emit(.interruptionEnded)
                 }
             },
             Task { [weak self] in
                 for await _ in center.notifications(named: AVCaptureSession.runtimeErrorNotification) {
-                    self?.handleRuntimeError()
+                    await self?.handleRuntimeError()
                 }
             }
         ]
@@ -164,7 +164,7 @@ actor CameraService: CameraProviding {
 }
 
 /// Bridges the photo output's callback to async/await. One instance per capture.
-private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate, @unchecked Sendable {
+private nonisolated final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate, @unchecked Sendable {
     var continuation: CheckedContinuation<Data, any Error>?
 
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: (any Error)?) {
