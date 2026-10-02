@@ -31,6 +31,7 @@ nonisolated struct AppEnvironment: Sendable {
         environment.isFirebaseConfigured = firebaseConfigured
         if firebaseConfigured {
             environment.auth = FirebaseAuthService()
+            environment.analyzer = GeminiFoodAnalyzer()
         }
         return environment
     }

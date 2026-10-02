@@ -178,9 +178,28 @@ actor MockPostService: PostService {
     }
 }
 
+/// Canned analyzer for previews, tests, and the offline demo. `delay` lets tests observe the analyzing state.
 nonisolated struct MockFoodAnalyzer: FoodAnalyzing {
-    func analyze(imageJPEG: Data) async throws -> FoodAnalysisResult {
-        SampleData.analysis
+    enum Scenario: Sendable, Equatable {
+        case success
+        case cautious
+        case noAllergens
+        case rejected(RejectionReason)
+        case failure(AppError)
+    }
+
+    var scenario: Scenario = .success
+    var delay: Duration = .zero
+
+    func analyze(imageJPEG: Data) async throws -> FoodAnalysisOutcome {
+        if delay > .zero { try await Task.sleep(for: delay) }
+        switch scenario {
+        case .success: return .accepted(SampleData.analysis)
+        case .cautious: return .accepted(SampleData.analysisCautious)
+        case .noAllergens: return .accepted(SampleData.analysisNoAllergens)
+        case .rejected(let reason): return .rejected(reason)
+        case .failure(let error): throw error
+        }
     }
 }
 

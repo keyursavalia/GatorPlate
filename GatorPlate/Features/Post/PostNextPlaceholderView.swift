@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// TEMPORARY (Sprint 3): proves the photo hand-off. Sprint 4 replaces this with the analyzing screen.
+/// TEMPORARY: the manual-entry path. Sprint 5 replaces this with the editable Review form.
 struct PostNextPlaceholderView: View {
     let photo: CapturedPhoto
     let onRetake: () -> Void
@@ -22,12 +22,12 @@ struct PostNextPlaceholderView: View {
                 .accessibilityLabel("Photo ready to use")
 
             VStack(spacing: Theme.Spacing.xs) {
-                Text("Photo ready")
+                Text("Manual entry")
                     .font(.title2.bold())
                 Text(sizeText)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Text("Temporary screen: the AI draft arrives in the next sprint.")
+                Text("Temporary screen: the editable form arrives in the next sprint.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

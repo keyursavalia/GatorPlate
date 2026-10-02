@@ -7,4 +7,5 @@ extension Logger {
     nonisolated static let app = Logger(subsystem: subsystem, category: "app")
     nonisolated static let firebase = Logger(subsystem: subsystem, category: "firebase")
     nonisolated static let camera = Logger(subsystem: subsystem, category: "camera")
+    nonisolated static let ai = Logger(subsystem: subsystem, category: "ai")
 }

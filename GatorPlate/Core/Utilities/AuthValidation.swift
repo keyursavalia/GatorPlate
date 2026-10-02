@@ -30,7 +30,7 @@ nonisolated enum AuthMessages {
         case .invalidCredentials: invalidCredentials
         case .weakPassword: weakPassword
         case .network: network
-        case .permissionDenied, .unauthorized, .aiUnavailable, .validation, .unknown: generic
+        case .permissionDenied, .unauthorized, .aiUnavailable, .aiBusy, .aiTimeout, .validation, .unknown: generic
         }
     }
 }

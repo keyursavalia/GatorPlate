@@ -19,9 +19,12 @@ nonisolated enum AppConfig {
     /// Launch argument that forces mock services and skips Firebase (UI tests).
     static let uiTestMockArgument = "-UITestMock"
 
-    /// Placeholder; verify the current Flash model in the Firebase AI Logic docs in Sprint 4.
-    static let geminiModelName = "gemini-2.5-flash"
+    /// Verified against the Firebase AI Logic model list on 2026-10-02 (stable, structured output + image input).
+    /// Fallback if it is ever retired: `gemini-3.5-flash`. This is the only place the name is written.
+    static let geminiModelName = "gemini-3.8-flash"
     static let aiTimeoutSeconds = 25
+    /// Below this model confidence an analysis is rejected as "not food".
+    static let aiMinConfidence = 0.4
     static let aiMaxImageLongEdge = 1024
     static let aiJPEGQuality = 0.7
 
