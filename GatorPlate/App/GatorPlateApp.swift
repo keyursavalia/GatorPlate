@@ -5,6 +5,7 @@ import SwiftUI
 
 @main
 struct GatorPlateApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let environment: AppEnvironment
 
     init() {

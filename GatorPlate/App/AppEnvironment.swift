@@ -9,6 +9,7 @@ nonisolated struct AppEnvironment: Sendable {
     var images: any ImageStore
     var camera: any CameraProviding
     var routing: any RoutingService
+    var notifications: any NotificationService
     /// Session-wide anti-spam memory for the Post flow (in memory only).
     var cooldown: PostCooldown
     /// True once `FirebaseApp.configure()` has run. Set by the app entry point.
@@ -23,6 +24,7 @@ nonisolated struct AppEnvironment: Sendable {
         images: MockImageStore(),
         camera: MockCameraService(),
         routing: MockRoutingService(),
+        notifications: MockNotificationService(),
         cooldown: PostCooldown(),
         isFirebaseConfigured: false
     )
@@ -34,6 +36,7 @@ nonisolated struct AppEnvironment: Sendable {
         environment.location = CoreLocationProvider()
         environment.camera = CameraService()
         environment.routing = MapKitRoutingService()
+        environment.notifications = LocalNotificationService()
         environment.isFirebaseConfigured = firebaseConfigured
         if firebaseConfigured {
             environment.auth = FirebaseAuthService()
@@ -41,6 +44,7 @@ nonisolated struct AppEnvironment: Sendable {
             let images = CachedImageStore(wrapping: FirestoreImageStore())
             environment.images = images
             environment.posts = FirestorePostService(images: images)
+            environment.notifications = FirebaseNotificationService()
         }
         return environment
     }

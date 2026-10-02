@@ -428,3 +428,45 @@ actor MockImageStore: ImageStore {
         images[postID]
     }
 }
+
+/// Records calls; permission and failures are injectable. Used by previews and tests.
+actor MockNotificationService: NotificationService {
+    private var currentPermission: NotificationPermission
+    private let permissionAfterRequest: NotificationPermission
+    private var enableError: AppError?
+    private(set) var enabledUIDs: [String] = []
+    private(set) var disabledUIDs: [String] = []
+    private(set) var activatedUIDs: [String] = []
+    private(set) var detachedUIDs: [String] = []
+    private(set) var scheduled: [AlertContent] = []
+    nonisolated let deliversRemotePush: Bool
+
+    init(
+        permission: NotificationPermission = .notDetermined,
+        permissionAfterRequest: NotificationPermission = .granted,
+        deliversRemotePush: Bool = false,
+        enableError: AppError? = nil
+    ) {
+        self.currentPermission = permission
+        self.permissionAfterRequest = permissionAfterRequest
+        self.deliversRemotePush = deliversRemotePush
+        self.enableError = enableError
+    }
+
+    func permission() async -> NotificationPermission { currentPermission }
+
+    func requestPermission() async -> NotificationPermission {
+        if currentPermission == .notDetermined { currentPermission = permissionAfterRequest }
+        return currentPermission
+    }
+
+    func enable(uid: String) async throws {
+        if let enableError { throw enableError }
+        enabledUIDs.append(uid)
+    }
+
+    func disable(uid: String) async throws { disabledUIDs.append(uid) }
+    func activate(uid: String) async { activatedUIDs.append(uid) }
+    func detachDevice(uid: String) async { detachedUIDs.append(uid) }
+    func scheduleLocal(_ content: AlertContent) async { scheduled.append(content) }
+}

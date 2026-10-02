@@ -6,6 +6,7 @@ struct MainTabView: View {
     let profile: UserProfile
 
     @Environment(\.appEnvironment) private var environment
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var isPostFlowPresented = false
     @State private var navigation: NavigationModel
@@ -13,6 +14,7 @@ struct MainTabView: View {
     @State private var location: UserLocationModel
     @State private var mapModel: MapViewModel
     @State private var feedModel: FeedViewModel
+    @State private var notifications: NotificationsModel
 
     init(profile: UserProfile, environment: AppEnvironment = .mock) {
         self.profile = profile
@@ -29,6 +31,7 @@ struct MainTabView: View {
             routing: environment.routing,
             actions: PostActionsModel(service: environment.posts, currentUserID: profile.uid)
         ))
+        _notifications = State(initialValue: NotificationsModel(profile: profile, service: environment.notifications))
         _feedModel = State(initialValue: FeedViewModel(
             repository: repository,
             location: location,
@@ -47,8 +50,14 @@ struct MainTabView: View {
                     .postFAB { isPostFlowPresented = true }
             }
             Tab("Settings", systemImage: "gearshape", value: NavigationModel.AppTab.settings) {
-                SettingsView(profile: profile)
+                SettingsView(profile: profile, notifications: notifications)
             }
+        }
+        .overlay(alignment: .top) {
+            AlertBannerOverlay(model: notifications) { navigation.selectPost(id: $0) }
+        }
+        .sheet(isPresented: $notifications.showsExplainer) {
+            NotificationExplainerSheet(model: notifications)
         }
         .fullScreenCover(isPresented: $isPostFlowPresented) {
             PostFlowView(camera: environment.camera, profile: profile, onViewMap: { navigation.tab = .map })
@@ -59,9 +68,44 @@ struct MainTabView: View {
         .task(id: navigation.tab != .settings) {
             if navigation.tab != .settings { await location.run() }
         }
-        .onChange(of: repository.posts) { mapModel.postsChanged() }
-        .onChange(of: repository.hasLoaded) { mapModel.postsChanged() }
+        .task {
+            await notifications.start()
+            notifications.ingestTap(from: .shared)
+            resolveTap()
+        }
+        .onChange(of: repository.posts) {
+            mapModel.postsChanged()
+            Task { await alertForNewPosts() }
+            resolveTap()
+        }
+        .onChange(of: repository.hasLoaded) {
+            mapModel.postsChanged()
+            Task { await alertForNewPosts() }
+            resolveTap()
+        }
+        .onChange(of: NotificationTapRelay.shared.pendingPostID) {
+            notifications.ingestTap(from: .shared)
+            resolveTap()
+        }
         .onChange(of: navigation.selectedPostID) { mapModel.selectionChanged() }
+    }
+}
+
+private extension MainTabView {
+    func alertForNewPosts() async {
+        await notifications.postsChanged(
+            posts: repository.posts,
+            hasLoaded: repository.hasLoaded,
+            isForeground: scenePhase == .active
+        )
+    }
+
+    func resolveTap() {
+        notifications.resolveTap(
+            activePostIDs: Set(repository.posts.map(\.id)),
+            hasLoaded: repository.hasLoaded,
+            navigation: navigation
+        )
     }
 }
 
