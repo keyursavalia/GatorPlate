@@ -92,4 +92,28 @@ nonisolated enum SampleData {
         cautions: [],
         estimatedServings: 6
     )
+
+    static let analysisCautious = FoodAnalysisResult(
+        title: "FREE: Veggie wraps and fruit",
+        description: "Veggie wraps and cut fruit. Filling is unclear, so dietary info is unknown. May contain wheat and sesame.",
+        items: [
+            FoodItem(name: "Veggie wrap", dietary: .unknown, calories: CalorieRange(low: 250, high: 380)),
+            FoodItem(name: "Fruit cup", dietary: .vegan, calories: CalorieRange(low: 60, high: 120)),
+        ],
+        overallDietary: .unknown,
+        allergenWarnings: [.wheat, .sesame],
+        cautions: ["Keep cold food chilled or discard after 2 hours."],
+        estimatedServings: 10
+    )
+
+    static let analysisNoAllergens = FoodAnalysisResult(
+        title: "FREE: Bottled water",
+        description: "Sealed bottled water, about two dozen bottles on a table by the entrance.",
+        items: [FoodItem(name: "Bottled water", dietary: .unknown, calories: nil)],
+        overallDietary: .unknown,
+        allergenWarnings: [],
+        cautions: [],
+        estimatedServings: 24,
+        allergensUnverified: true
+    )
 }

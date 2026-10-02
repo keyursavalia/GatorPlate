@@ -209,19 +209,34 @@ struct PostFlowCoordinatorTests {
         #expect(PostFlowCoordinator().step == .camera)
     }
 
-    @Test func cameraToPreviewToNext() throws {
+    @Test func cameraToPreviewToAnalysis() throws {
         let coordinator = PostFlowCoordinator()
         let taken = try photo()
         coordinator.captured(taken)
         #expect(coordinator.step == .preview(taken))
         coordinator.usePhoto()
-        #expect(coordinator.step == .next(taken))
+        #expect(coordinator.step == .analysis(taken))
     }
 
     @Test func retakeReturnsToTheCamera() throws {
         let coordinator = PostFlowCoordinator()
         coordinator.captured(try photo())
         coordinator.retake()
+        #expect(coordinator.step == .camera)
+    }
+
+    @Test func fillManuallyLeavesAnalysisForManualEntry() throws {
+        let coordinator = PostFlowCoordinator()
+        let taken = try photo()
+        coordinator.captured(taken)
+        coordinator.usePhoto()
+        coordinator.fillManually()
+        #expect(coordinator.step == .manual(taken))
+    }
+
+    @Test func fillManuallyDoesNothingOnTheCamera() {
+        let coordinator = PostFlowCoordinator()
+        coordinator.fillManually()
         #expect(coordinator.step == .camera)
     }
 
