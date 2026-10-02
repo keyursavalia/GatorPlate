@@ -1,4 +1,4 @@
-import CoreLocation
+@preconcurrency import CoreLocation
 import OSLog
 
 /// CoreLocation-backed provider. Nothing starts at launch: updates run only while a consumer iterates
@@ -16,7 +16,9 @@ final class CoreLocationProvider: NSObject, LocationProviding, CLLocationManager
     }
 
     // MARK: LocationProviding
+    // Each witness is `@MainActor` explicitly: the protocol is `nonisolated`, which would otherwise make them nonisolated.
 
+    @MainActor
     func currentLocation() async throws -> Coordinate {
         guard currentStatus().authorization == .authorized else { throw AppError.permissionDenied }
         let session = CLServiceSession(authorization: .whenInUse)
@@ -28,6 +30,7 @@ final class CoreLocationProvider: NSObject, LocationProviding, CLLocationManager
         throw AppError.unknown
     }
 
+    @MainActor
     func statusUpdates() async -> AsyncStream<LocationStatus> {
         AsyncStream { continuation in
             let id = UUID()
@@ -39,6 +42,7 @@ final class CoreLocationProvider: NSObject, LocationProviding, CLLocationManager
         }
     }
 
+    @MainActor
     func locationUpdates() async -> AsyncStream<Coordinate> {
         AsyncStream { continuation in
             let task = Task {
@@ -59,10 +63,12 @@ final class CoreLocationProvider: NSObject, LocationProviding, CLLocationManager
         }
     }
 
+    @MainActor
     func requestWhenInUseAuthorization() async {
         manager.requestWhenInUseAuthorization()
     }
 
+    @MainActor
     func requestTemporaryFullAccuracy() async {
         do {
             try await manager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: Self.fullAccuracyPurposeKey)
