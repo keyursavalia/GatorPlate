@@ -6,4 +6,5 @@ extension Logger {
     /// Never log photos, emails, or full prompts.
     nonisolated static let app = Logger(subsystem: subsystem, category: "app")
     nonisolated static let firebase = Logger(subsystem: subsystem, category: "firebase")
+    nonisolated static let camera = Logger(subsystem: subsystem, category: "camera")
 }

@@ -213,6 +213,83 @@ nonisolated struct MockLocationProvider: LocationProviding {
     func requestTemporaryFullAccuracy() async {}
 }
 
+/// Scriptable camera: set the authorization, whether a camera exists, and what a capture returns.
+actor MockCameraService: CameraProviding {
+    nonisolated let previewSession: CameraSessionBox? = nil
+    nonisolated let events: AsyncStream<CameraEvent>
+
+    private let eventContinuation: AsyncStream<CameraEvent>.Continuation
+    private var authorization: CameraAuthorization
+    private let grantsAccess: Bool
+    private let hasCamera: Bool
+    private var captureResult: Result<Data, CameraError>
+
+    private(set) var startCount = 0
+    private(set) var stopCount = 0
+    private(set) var captureCount = 0
+    private(set) var lastFlash: FlashMode?
+    private(set) var lastRotationAngle: CGFloat?
+    private(set) var lastFocusPoint: CGPoint?
+
+    init(
+        authorization: CameraAuthorization = .authorized,
+        grantsAccess: Bool = true,
+        hasCamera: Bool = true,
+        captureResult: Result<Data, CameraError> = .success(PlaceholderImage.jpegData())
+    ) {
+        self.authorization = authorization
+        self.grantsAccess = grantsAccess
+        self.hasCamera = hasCamera
+        self.captureResult = captureResult
+        (events, eventContinuation) = AsyncStream.makeStream(of: CameraEvent.self)
+    }
+
+    /// Test hooks.
+    func setAuthorization(_ authorization: CameraAuthorization) {
+        self.authorization = authorization
+    }
+
+    func setCaptureResult(_ result: Result<Data, CameraError>) {
+        captureResult = result
+    }
+
+    func send(_ event: CameraEvent) {
+        eventContinuation.yield(event)
+    }
+
+    func authorizationStatus() async -> CameraAuthorization {
+        authorization
+    }
+
+    func requestAccess() async -> CameraAuthorization {
+        if authorization == .notDetermined {
+            authorization = grantsAccess ? .authorized : .denied
+        }
+        return authorization
+    }
+
+    func start() async throws {
+        guard authorization == .authorized else { throw CameraError.notAuthorized }
+        guard hasCamera else { throw CameraError.unavailable }
+        startCount += 1
+    }
+
+    func stop() async {
+        stopCount += 1
+    }
+
+    func capturePhoto(flash: FlashMode, rotationAngle: CGFloat) async throws -> Data {
+        captureCount += 1
+        lastFlash = flash
+        lastRotationAngle = rotationAngle
+        return try captureResult.get()
+    }
+
+    func focus(at devicePoint: CGPoint) async {
+        lastFocusPoint = devicePoint
+    }
+}
+
 actor MockImageStore: ImageStore {
     private var images: [String: Data] = [:]
 
