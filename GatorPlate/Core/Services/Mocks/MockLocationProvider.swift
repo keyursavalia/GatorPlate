@@ -1,14 +1,34 @@
 import Foundation
+import Observation
 
 @MainActor
+@Observable
 final class MockLocationProvider: LocationProviding {
-    var isAuthorized = true
-    var coordinate = Coordinate(latitude: 37.7219, longitude: -122.4782)
+    var authorization: LocationAuthorization
+    var lastCoordinate: Coordinate?
+    /// Where the simulated user stands once updates start.
+    var simulatedCoordinate: Coordinate
 
-    func requestAuthorization() { isAuthorized = true }
+    init(authorization: LocationAuthorization = .authorized(precise: true),
+         simulatedCoordinate: Coordinate = SFSUCampus.homeCoordinate) {
+        self.authorization = authorization
+        self.simulatedCoordinate = simulatedCoordinate
+    }
+
+    func requestAuthorization() { authorization = .authorized(precise: true) }
+
+    func requestTemporaryPreciseAccuracy() {
+        if authorization.isAuthorized { authorization = .authorized(precise: true) }
+    }
+
+    func startUpdates() {
+        if authorization.isAuthorized { lastCoordinate = simulatedCoordinate }
+    }
+
+    func stopUpdates() {}
 
     func currentCoordinate() async throws -> Coordinate {
-        guard isAuthorized else { throw AppError.permissionDenied }
-        return coordinate
+        guard authorization.isAuthorized else { throw AppError.permissionDenied }
+        return simulatedCoordinate
     }
 }
