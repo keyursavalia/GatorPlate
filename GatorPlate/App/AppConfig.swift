@@ -29,6 +29,10 @@ nonisolated enum AppConfig {
     /// Client-side anti-spam.
     static let postCooldownSeconds = 60
 
+    // Location
+    /// Key in `NSLocationTemporaryUsageDescriptionDictionary` (Info.plist).
+    static let preciseLocationPurposeKey = "FoodNearby"
+
     // Feature flags
     /// Sprint 08: canned AI result if network/AI is down.
     static let demoFallbackEnabled = false
