@@ -1,7 +1,13 @@
 import SwiftUI
 
-/// Inline info, warning or error banner. Icon + text, never color alone.
+/// Inline info, warning or error banner. Icon + text, never color alone. Optional action buttons.
 struct Banner: View {
+    struct Action {
+        let title: String
+        var isPrimary = true
+        let handler: () -> Void
+    }
+
     enum Style {
         case info, warning, error
 
@@ -32,17 +38,44 @@ struct Banner: View {
 
     let style: Style
     let message: String
+    var actions: [Action] = []
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.md) {
-            Image(systemName: style.icon).foregroundStyle(style.tint)
-            Text(message).font(.subheadline)
-            Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.md) {
+                Image(systemName: style.icon).foregroundStyle(style.tint)
+                Text(message).font(.subheadline)
+                Spacer(minLength: 0)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(style.spokenName): \(message)")
+
+            if !actions.isEmpty {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Theme.Spacing.sm) { actionButtons }
+                    VStack(alignment: .leading, spacing: Theme.Spacing.sm) { actionButtons }
+                }
+            }
         }
         .padding(Theme.Spacing.lg)
         .background(style.tint.opacity(0.12), in: .rect(cornerRadius: Theme.Radius.photo))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(style.spokenName): \(message)")
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private var actionButtons: some View {
+        ForEach(actions.indices, id: \.self) { index in
+            let action = actions[index]
+            if action.isPrimary {
+                Button(action.title, action: action.handler)
+                    .buttonStyle(.borderedProminent)
+                    .frame(minHeight: Theme.Size.minTapTarget)
+            } else {
+                Button(action.title, action: action.handler)
+                    .buttonStyle(.bordered)
+                    .frame(minHeight: Theme.Size.minTapTarget)
+            }
+        }
     }
 }
 
@@ -51,6 +84,8 @@ struct Banner: View {
         Banner(style: .info, message: "Posts end after 30 minutes by default.")
         Banner(style: .warning, message: "Double-check allergens with the host.")
         Banner(style: .error, message: "Couldn't reach the server.")
+        Banner(style: .warning, message: "Location is off. The map still works.",
+               actions: [Banner.Action(title: "Open Settings") {}, Banner.Action(title: "Not now", isPrimary: false) {}])
     }
     .padding()
 }

@@ -35,4 +35,8 @@ nonisolated struct FoodPost: Codable, Identifiable, Sendable {
     func isActive(now: Date = .now) -> Bool {
         status == .active && expiresAt > now
     }
+
+    var coordinate: Coordinate {
+        Coordinate(latitude: latitude, longitude: longitude)
+    }
 }
