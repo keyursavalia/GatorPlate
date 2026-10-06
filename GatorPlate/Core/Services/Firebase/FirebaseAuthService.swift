@@ -39,7 +39,7 @@ final class FirebaseAuthService: AuthService {
                                       acceptedTermsVersion: nil, acceptedTermsAt: nil,
                                       notificationsEnabled: false, createdAt: .now)
             do {
-                try users.document(profile.uid).setData(from: profile)
+                try await users.document(profile.uid).setData(from: profile)
             } catch {
                 // Roll back so the user can retry with the same email.
                 try? await result.user.delete()
@@ -131,7 +131,8 @@ final class FirebaseAuthService: AuthService {
             let profile = try await users.document(user.uid).getDocument(as: UserProfile.self)
             return .success(AuthSession(profile: profile, isEmailVerified: user.isEmailVerified))
         } catch {
-            Logger.services.error("Profile load failed")
+            let nsError = error as NSError
+            Logger.services.error("Profile load failed: \(nsError.domain, privacy: .public) \(nsError.code, privacy: .public)")
             return .failure(FirebaseErrorMapper.map(error))
         }
     }
