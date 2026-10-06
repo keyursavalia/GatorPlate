@@ -6,8 +6,9 @@ nonisolated struct UserProfile: Codable, Sendable {
     var email: String
     var accountType: AccountType
     var orgName: String?
-    var acceptedTermsVersion: String
-    var acceptedTermsAt: Date
+    /// Nil until the user accepts the Terms of Use.
+    var acceptedTermsVersion: String?
+    var acceptedTermsAt: Date?
     var notificationsEnabled: Bool
     var createdAt: Date
 }
