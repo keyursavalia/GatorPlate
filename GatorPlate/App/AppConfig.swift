@@ -8,6 +8,12 @@ nonisolated enum AppConfig {
     static let allowedEmailDomains = ["gmail.com", "outlook.com", "icloud.com"]
     static let requireEmailVerification = true
     static let termsVersion = "2026-10-demo-1"
+    static let minPasswordLength = 8
+    static let maxNameLength = 60
+    static let maxEmailLength = 254
+    /// Substituted for [TEAM NAME] / [CONTACT EMAIL] in the Terms. Empty keeps the bracketed placeholder visible.
+    static let teamName = ""
+    static let contactEmail = ""
 
     // AI (Firebase AI Logic)
     /// Placeholder; verify the current Flash model name in the Firebase AI Logic docs (Sprint 04).
