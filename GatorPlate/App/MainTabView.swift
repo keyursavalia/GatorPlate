@@ -28,7 +28,7 @@ struct MainTabView: View {
             }
         }
         .fullScreenCover(isPresented: $isPostFlowPresented) {
-            PostFlowCoordinator(camera: environment.camera)
+            PostFlowCoordinator(camera: environment.camera, analyzer: environment.analyzer)
         }
         .task {
             guard mapViewModel == nil else { return }
