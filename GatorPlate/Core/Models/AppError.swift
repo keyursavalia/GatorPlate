@@ -5,6 +5,8 @@ nonisolated enum AppError: Error, Equatable, Sendable {
     case network
     case permissionDenied
     case aiUnavailable
+    case cameraUnavailable
+    case captureFailed
     case validation(String)
     case unauthorized
     case unknown
