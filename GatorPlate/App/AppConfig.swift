@@ -48,6 +48,36 @@ nonisolated enum AppConfig {
     static let maxPostDurationMinutes = 60
     /// Client-side anti-spam.
     static let postCooldownSeconds = 60
+    /// Posts and photos are deleted this long after `expiresAt` (Firestore TTL on `deleteAt`).
+    static let postRetentionHours = 24
+    /// Review form limits; `firestore.rules` mirrors them (with a little headroom).
+    static let postTitleMaxLength = 120
+    static let postDescriptionMaxLength = 150
+    /// Below this the description shows a soft warning (school best practice is 100-150).
+    static let postDescriptionTargetMinLength = 100
+    static let postItemNameMaxLength = 60
+    static let postMaxItems = 8
+    static let postCautionMaxLength = 120
+    static let postMaxCautions = 4
+    static let postLocationDetailMaxLength = 80
+    static let postServingsRange = 1...500
+    static let postReportReasonMaxLength = 200
+    /// Total deadline for the post write to be confirmed by the server.
+    static let postPublishTimeoutSeconds = 15
+    static let postImageUploadTimeoutSeconds = 10
+
+    // Post photos (Cloud Storage `postImages/{postId}.jpg`)
+    static let postImageMaxLongEdge = 800
+    static let postImageJPEGQuality = 0.6
+    /// Tried in order when the photo is over the cap, first at `postImageMaxLongEdge`, then at the fallback edge.
+    static let postImageFallbackQualities = [0.5, 0.4]
+    static let postImageFallbackLongEdge = 640
+    /// Hard cap, also enforced by `storage.rules`.
+    static let postImageMaxBytes = 300_000
+
+    // Campus
+    /// Dropped pins may sit this far outside the campus outline (sidewalks, entrances).
+    static let campusPinEdgeToleranceMeters = 25.0
 
     // Location
     /// Key in `NSLocationTemporaryUsageDescriptionDictionary` (Info.plist).
