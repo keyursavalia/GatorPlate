@@ -11,6 +11,17 @@ extension DietaryClass {
         }
     }
 
+    /// AI-derived values in detail views read as an appearance, not a fact ("Appears vegan").
+    var estimateLabel: String {
+        switch self {
+        case .vegan: "Appears vegan"
+        case .vegetarian: "Appears vegetarian"
+        case .nonVegetarian: "Appears to contain meat or fish"
+        case .mixed: "Mixed: veg and non-veg"
+        case .unknown: "Diet unknown"
+        }
+    }
+
     var icon: String {
         switch self {
         case .vegan: "leaf.fill"
@@ -34,16 +45,22 @@ extension DietaryClass {
 /// Icon + label for a post's overall diet.
 struct DietaryBadge: View {
     let dietary: DietaryClass
+    /// Use for AI-derived values in detail views.
+    var isEstimate = false
+
+    private var text: String {
+        isEstimate ? dietary.estimateLabel : dietary.label
+    }
 
     var body: some View {
-        Label(dietary.label, systemImage: dietary.icon)
+        Label(text, systemImage: dietary.icon)
             .font(.subheadline.weight(.semibold))
             .labelStyle(BadgeLabelStyle(tint: dietary.tint))
             .padding(.horizontal, Theme.Spacing.md)
             .padding(.vertical, Theme.Spacing.xs)
             .background(dietary.tint.opacity(0.15), in: .capsule)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Diet: \(dietary.label)")
+            .accessibilityLabel("Diet: \(text)")
     }
 }
 
