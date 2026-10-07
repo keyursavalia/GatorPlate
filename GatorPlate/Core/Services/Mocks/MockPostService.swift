@@ -3,9 +3,13 @@ import Foundation
 @MainActor
 final class MockPostService: PostService {
     private(set) var posts: [FoodPost]
+    private let images: any ImageStore
+    /// Set to make `publish` fail, for previews of the error state.
+    var publishError: AppError?
 
-    init(posts: [FoodPost] = [.sample]) {
+    init(posts: [FoodPost] = [.sample], images: any ImageStore = MockImageStore()) {
         self.posts = posts
+        self.images = images
     }
 
     func observeActivePosts() -> AsyncThrowingStream<[FoodPost], Error> {
@@ -13,7 +17,22 @@ final class MockPostService: PostService {
         return AsyncThrowingStream { $0.yield(snapshot) }
     }
 
-    func createPost(_ post: FoodPost) async throws { posts.append(post) }
+    func makePostId() -> String { Self.randomPostId() }
+
+    func publish(_ submission: PostSubmission, imageJPEG: Data?) async throws -> FoodPost {
+        try await Task.sleep(for: .milliseconds(600))
+        if let publishError { throw publishError }
+        var hasPhoto = false
+        if let imageJPEG {
+            hasPhoto = (try? await images.save(jpeg: imageJPEG, forPostId: submission.postId)) != nil
+        }
+        let now = Date.now
+        let post = FoodPost(submission: submission, hasPhoto: hasPhoto, createdAt: now,
+                            expiresAt: now.addingTimeInterval(Double(submission.durationMinutes) * 60))
+        posts.removeAll { $0.id == post.id }
+        posts.append(post)
+        return post
+    }
 
     func markGone(postId: String) async throws {
         guard let index = posts.firstIndex(where: { $0.id == postId }) else { throw AppError.validation("Post not found") }
