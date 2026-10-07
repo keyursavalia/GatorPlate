@@ -10,7 +10,10 @@ nonisolated extension AppError {
         case .permissionDenied: "You don't have permission to do that."
         case .cameraUnavailable: "The camera isn't available right now. You can pick a photo from your library."
         case .captureFailed: "Couldn't take the photo. Please try again."
-        case .aiUnavailable, .unknown: "Something went wrong. Please try again."
+        case .aiUnavailable: "AI isn't available right now. You can fill it in yourself."
+        case .aiBusy: "AI is busy. Try again or fill it in yourself."
+        case .cancelled: ""
+        case .unknown: "Something went wrong. Please try again."
         }
     }
 }
