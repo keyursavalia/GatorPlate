@@ -7,6 +7,8 @@ struct CameraPermissionView: View {
     let state: CameraViewModel.State
     @Binding var pickerItem: PhotosPickerItem?
     var isProcessing = false
+    /// Manual entry with no photo; hidden when nil.
+    var onFillManually: (() -> Void)?
     let onAllow: () -> Void
 
     @Environment(\.openURL) private var openURL
@@ -31,6 +33,13 @@ struct CameraPermissionView: View {
                 VStack(spacing: Theme.Spacing.md) {
                     primaryAction
                     libraryButton
+                    if let onFillManually {
+                        Button("Fill it in myself", action: onFillManually)
+                            .font(.headline)
+                            .frame(minHeight: Theme.Size.minTapTarget)
+                            .tint(Theme.Palette.brandPurple)
+                            .accessibilityHint("Write the post without a photo or AI")
+                    }
                 }
 
                 if isProcessing {
