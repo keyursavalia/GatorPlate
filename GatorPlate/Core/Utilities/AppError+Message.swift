@@ -8,6 +8,8 @@ nonisolated extension AppError {
         case .unauthorized: "Email or password is incorrect."
         case .validation(let message): message
         case .permissionDenied: "You don't have permission to do that."
+        case .cameraUnavailable: "The camera isn't available right now. You can pick a photo from your library."
+        case .captureFailed: "Couldn't take the photo. Please try again."
         case .aiUnavailable, .unknown: "Something went wrong. Please try again."
         }
     }

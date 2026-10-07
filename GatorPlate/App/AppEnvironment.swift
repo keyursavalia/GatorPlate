@@ -7,17 +7,18 @@ struct AppEnvironment {
     var analyzer: any FoodAnalyzing
     var location: any LocationProviding
     var images: any ImageStore
+    var camera: any CameraCapturing
 
     static var live: AppEnvironment {
         AppEnvironment(auth: FirebaseAuthService(), posts: FirestorePostService(),
                        analyzer: GeminiFoodAnalyzer(), location: CoreLocationProvider(),
-                       images: FirestoreImageStore())
+                       images: FirestoreImageStore(), camera: CameraService())
     }
 
     static var mock: AppEnvironment {
         AppEnvironment(auth: MockAuthService(), posts: MockPostService(),
                        analyzer: MockFoodAnalyzer(), location: MockLocationProvider(),
-                       images: MockImageStore())
+                       images: MockImageStore(), camera: MockCameraService())
     }
 }
 

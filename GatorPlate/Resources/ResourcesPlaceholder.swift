@@ -1,1 +1,1 @@
-// Placeholder: Localizable strings and DEBUG-only sample food images arrive in later sprints.
+// Placeholder: Localizable strings arrive in a later sprint.

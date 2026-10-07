@@ -7,20 +7,28 @@ struct MainTabView: View {
 
     @Environment(\.appEnvironment) private var environment
     @State private var mapViewModel: MapViewModel?
+    @State private var isPostFlowPresented = false
 
     var body: some View {
         TabView {
             Tab("Map", systemImage: "map") {
                 if let mapViewModel {
-                    MapScreen(viewModel: mapViewModel)
+                    MapScreen(viewModel: mapViewModel) { isPostFlowPresented = true }
                 }
             }
             Tab("Feed", systemImage: "list.bullet") {
                 EmptyState(icon: "list.bullet", title: "Feed", message: "A list of active posts will show up here.")
+                    .overlay(alignment: .bottomTrailing) {
+                        PostFAB { isPostFlowPresented = true }
+                            .padding(Theme.Spacing.lg)
+                    }
             }
             Tab("Settings", systemImage: "gearshape") {
                 SettingsView(profile: profile, onSignOut: onSignOut)
             }
+        }
+        .fullScreenCover(isPresented: $isPostFlowPresented) {
+            PostFlowCoordinator(camera: environment.camera)
         }
         .task {
             guard mapViewModel == nil else { return }

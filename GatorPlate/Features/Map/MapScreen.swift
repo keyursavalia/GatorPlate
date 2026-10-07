@@ -4,6 +4,7 @@ import SwiftUI
 /// Campus map locked to SFSU with rotation, post pins and a non-modal bottom card.
 struct MapScreen: View {
     @Bindable var viewModel: MapViewModel
+    let onPostFood: () -> Void
 
     @Namespace private var mapScope
     @State private var detent: PresentationDetent = Self.smallDetent
@@ -38,6 +39,13 @@ struct MapScreen: View {
         .mapStyle(.standard(emphasis: .muted, pointsOfInterest: .including(Self.pointsOfInterest)))
         .mapControls {}
         .overlay(alignment: .top) { topOverlay }
+        .overlay(alignment: .bottomTrailing) {
+            // Hidden while the bottom card is up: the cover can't present over the sheet.
+            if viewModel.selectedPost == nil {
+                PostFAB(action: onPostFood)
+                    .padding(Theme.Spacing.lg)
+            }
+        }
         .mapScope(mapScope)
         .sensoryFeedback(.impact(weight: .light), trigger: viewModel.selectedPostId) { _, new in new != nil }
         .sheet(isPresented: isSheetPresented) { bottomCard }
@@ -140,20 +148,20 @@ struct MapScreen: View {
 
 #Preview("On campus") {
     MapScreen(viewModel: MapViewModel(posts: MockPostService(posts: FoodPost.mockCampus),
-                                      location: MockLocationProvider()))
+                                      location: MockLocationProvider()), onPostFood: {})
 }
 
 #Preview("Not asked yet") {
     MapScreen(viewModel: MapViewModel(posts: MockPostService(posts: FoodPost.mockCampus),
-                                      location: MockLocationProvider(authorization: .notDetermined)))
+                                      location: MockLocationProvider(authorization: .notDetermined)), onPostFood: {})
 }
 
 #Preview("Approximate location") {
     MapScreen(viewModel: MapViewModel(posts: MockPostService(posts: FoodPost.mockCampus),
-                                      location: MockLocationProvider(authorization: .authorized(precise: false))))
+                                      location: MockLocationProvider(authorization: .authorized(precise: false))), onPostFood: {})
 }
 
 #Preview("Denied") {
     MapScreen(viewModel: MapViewModel(posts: MockPostService(posts: FoodPost.mockCampus),
-                                      location: MockLocationProvider(authorization: .denied)))
+                                      location: MockLocationProvider(authorization: .denied)), onPostFood: {})
 }
