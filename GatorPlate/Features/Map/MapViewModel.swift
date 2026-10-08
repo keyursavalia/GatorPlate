@@ -3,12 +3,16 @@ import Observation
 import OSLog
 import SwiftUI
 
-/// Drives the campus map: active posts, pin selection, camera and location banners.
+/// Drives the campus map: live pins, selection, the walking route, poster/report actions and location banners.
 @MainActor
 @Observable
 final class MapViewModel {
     enum LocationBanner: Hashable {
         case prePrompt, denied, restricted, reducedAccuracy
+    }
+
+    enum ActionStatus: Equatable {
+        case idle, working, failed(String)
     }
 
     static let homeCamera = MapCamera(centerCoordinate: SFSUCampus.homeCoordinate.clLocationCoordinate,
@@ -19,32 +23,51 @@ final class MapViewModel {
                                               maximumDistance: SFSUCampus.maxCameraDistance)
 
     let location: any LocationProviding
+    let route: RouteController
+    let images: PostImageCache?
     var cameraPosition: MapCameraPosition = .camera(MapViewModel.homeCamera)
-    var selectedPostId: String?
-    private(set) var loadErrorMessage: String?
+    private(set) var markGoneStatus = ActionStatus.idle
+    private(set) var reportStatus = ActionStatus.idle
+    /// Posts reported in this session: Report turns into "Thanks, we'll review it."
+    private(set) var reportedPostIds: Set<String> = []
 
-    private var allPosts: [FoodPost] = []
-    /// Bumped periodically so expired posts drop off the map.
-    private var now = Date.now
     private var dismissedBanners: Set<LocationBanner> = []
 
+    @ObservationIgnored private let repository: PostsRepository
+    @ObservationIgnored private let navigation: AppNavigation
     @ObservationIgnored private let postService: any PostService
-    @ObservationIgnored private var postsTask: Task<Void, Never>?
+    @ObservationIgnored private let routing: any RoutingService
+    @ObservationIgnored private let currentUid: String?
 
-    init(posts: any PostService, location: any LocationProviding) {
-        self.postService = posts
+    init(repository: PostsRepository, navigation: AppNavigation, postService: any PostService,
+         routing: any RoutingService, location: any LocationProviding, images: PostImageCache?,
+         currentUid: String?) {
+        self.repository = repository
+        self.navigation = navigation
+        self.postService = postService
+        self.routing = routing
         self.location = location
+        self.images = images
+        self.currentUid = currentUid
+        self.route = RouteController(routing: routing, location: location)
     }
 
-    /// Active posts only: never trust `status` alone.
-    var posts: [FoodPost] {
-        allPosts.filter { $0.isActive(now: now) }
+    var posts: [FoodPost] { repository.activePosts }
+
+    var selectedPostId: String? {
+        get { navigation.selectedPostId }
+        set { navigation.selectedPostId = newValue }
     }
 
     var selectedPost: FoodPost? {
-        guard let selectedPostId else { return nil }
-        return posts.first { $0.id == selectedPostId }
+        selectedPostId.flatMap(repository.post(id:))
     }
+
+    var loadErrorMessage: String? {
+        repository.hasError ? "Couldn't load free food right now. Retrying..." : nil
+    }
+
+    var showsPostEndedNotice: Bool { navigation.showsPostEndedNotice }
 
     var locationBanner: LocationBanner? {
         let banner: LocationBanner? = switch location.authorization {
@@ -63,40 +86,102 @@ final class MapViewModel {
         location.authorization.isAuthorized && location.isOnCampus
     }
 
+    func isOwnPost(_ post: FoodPost) -> Bool {
+        currentUid == post.authorUid
+    }
+
+    // MARK: Lifecycle
+
     func onAppear() {
         location.startUpdates()
-        guard postsTask == nil else { return }
-        let stream = postService.observeActivePosts()
-        postsTask = Task { [weak self] in
-            do {
-                for try await posts in stream {
-                    self?.allPosts = posts
-                    self?.loadErrorMessage = nil
-                }
-            } catch {
-                Logger.ui.error("Map posts stream failed: \(String(describing: error), privacy: .public)")
-                self?.loadErrorMessage = "Couldn't load free food right now."
-            }
-        }
     }
 
     func onDisappear() {
         location.stopUpdates()
-        postsTask?.cancel()
-        postsTask = nil
         selectedPostId = nil
+        route.end()
     }
 
-    func refreshClock(_ date: Date = .now) {
-        now = date
-        if selectedPostId != nil, selectedPost == nil { selectedPostId = nil }
+    /// Selection changed (pin tap, feed, deep link, or the post ended).
+    func selectionDidChange() {
+        route.selectionDidChange(to: selectedPostId)
+        markGoneStatus = .idle
+        reportStatus = .idle
     }
+
+    func dismissPostEndedNotice() {
+        navigation.dismissPostEndedNotice()
+    }
+
+    // MARK: Camera
 
     func recenter() {
         cameraPosition = canCenterOnUser
             ? .userLocation(fallback: .camera(Self.homeCamera))
             : .camera(Self.homeCamera)
     }
+
+    /// Fits the active route above the sheet. `cameraBounds` still clamps it, so the campus lock holds.
+    func fitRouteIfActive() {
+        guard let route = route.route else { return }
+        cameraPosition = .rect(RouteFraming.rect(for: route.coordinates))
+    }
+
+    // MARK: Directions
+
+    func requestDirections(to post: FoodPost) {
+        route.requestDirections(to: post)
+    }
+
+    func endRoute() {
+        route.end()
+    }
+
+    func openInAppleMaps(_ post: FoodPost) {
+        routing.openInAppleMaps(to: post.coordinate, name: post.locationName)
+    }
+
+    // MARK: Poster and report actions
+
+    func markGone(_ post: FoodPost) async {
+        guard isOwnPost(post), markGoneStatus != .working else { return }
+        markGoneStatus = .working
+        navigation.expectRemoval(of: post.id)
+        do {
+            try await postService.markGone(postId: post.id)
+            markGoneStatus = .idle
+            Logger.ui.info("Post marked as gone")
+        } catch {
+            navigation.cancelExpectedRemoval(of: post.id)
+            markGoneStatus = .failed(Self.actionMessage(for: error))
+        }
+    }
+
+    /// True when the report was sent.
+    func report(_ post: FoodPost, reason: ReportReason, note: String) async -> Bool {
+        guard reportStatus != .working else { return false }
+        reportStatus = .working
+        do {
+            try await postService.report(postId: post.id, reason: reason.reportText(note: note))
+            reportedPostIds.insert(post.id)
+            reportStatus = .idle
+            return true
+        } catch {
+            reportStatus = .failed(Self.actionMessage(for: error))
+            return false
+        }
+    }
+
+    private static func actionMessage(for error: Error) -> String {
+        switch error as? AppError {
+        case .network: "Couldn't reach the server. Check your connection and try again."
+        case .validation(let message): message
+        case .permissionDenied: AppError.permissionDenied.userMessage
+        default: AppError.unknown.userMessage
+        }
+    }
+
+    // MARK: Location
 
     func enableLocation() {
         location.requestAuthorization()
@@ -110,16 +195,15 @@ final class MapViewModel {
         dismissedBanners.insert(banner)
     }
 
+    // MARK: Text
+
     /// "350 ft away" in the user's locale, or nil without a location fix.
     func distanceText(to post: FoodPost) -> String? {
-        guard let meters = location.distance(to: post.coordinate) else { return nil }
-        let measurement = Measurement(value: meters, unit: UnitLength.meters)
-        return "\(measurement.formatted(.measurement(width: .abbreviated, usage: .road))) away"
+        DistanceText.away(meters: location.distance(to: post.coordinate))
     }
 
+    /// Computed at render time, so the expiry tick never re-renders pins.
     func accessibilityLabel(for post: FoodPost) -> String {
-        let minutes = TimeRemainingPill.minutesLeft(until: post.expiresAt, now: now)
-        let distance = distanceText(to: post) ?? "distance unknown"
-        return "Free food: \(post.title), \(minutes) minutes left, \(distance)"
+        PostCard.accessibilityLabel(for: post, distanceText: distanceText(to: post))
     }
 }
