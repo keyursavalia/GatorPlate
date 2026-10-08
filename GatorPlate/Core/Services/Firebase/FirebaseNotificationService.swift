@@ -1,0 +1,212 @@
+import FirebaseFirestore
+import FirebaseMessaging
+import Observation
+import OSLog
+import UserNotifications
+
+/// Live alerts: UserNotifications for permission and taps, Firebase Messaging registration by Firebase
+/// Installation ID (`FirebaseMessagingInstallationIdEnabled`; FCM tokens are deprecated in SDK 12.19),
+/// Firestore `users/{uid}` for the opt-in, installation ID and quiet hours. Logs never include IDs or post content.
+@MainActor
+@Observable
+final class FirebaseNotificationService: NSObject, NotificationService {
+    private(set) var authorization = NotificationAuthorization.notDetermined
+    private(set) var pendingOpenPostId: String?
+
+    @ObservationIgnored private let registerForRemoteNotifications: () -> Void
+    @ObservationIgnored private var activeUid: String?
+    @ObservationIgnored private var alertsEnabled = false
+    /// Latest ID from `messaging(_:didReceiveRegistration:)`.
+    @ObservationIgnored private var installationId: String?
+    @ObservationIgnored private var savedInstallationId: String?
+
+    /// Field names; `functions/src/index.ts` reads the same ones.
+    private enum Key {
+        static let notificationsEnabled = "notificationsEnabled"
+        static let fcmInstallationId = "fcmInstallationId"
+        static let fcmInstallationIdUpdatedAt = "fcmInstallationIdUpdatedAt"
+        static let quietHoursEnabled = "quietHoursEnabled"
+    }
+
+    /// Create during app launch: the delegate must be set before launch finishes so cold-start taps arrive.
+    init(registerForRemoteNotifications: @escaping () -> Void) {
+        self.registerForRemoteNotifications = registerForRemoteNotifications
+        super.init()
+        UNUserNotificationCenter.current().delegate = self
+        Messaging.messaging().delegate = self
+        Task { await refreshAuthorization() }
+    }
+
+    private var users: CollectionReference { Firestore.firestore().collection("users") }
+
+    // MARK: NotificationService
+
+    func consumePendingOpen() -> String? {
+        defer { pendingOpenPostId = nil }
+        return pendingOpenPostId
+    }
+
+    func refreshAuthorization() async {
+        let status = await withCheckedContinuation { (continuation: CheckedContinuation<NotificationAuthorization, Never>) in
+            UNUserNotificationCenter.current().getNotificationSettings { settings in
+                continuation.resume(returning: NotificationAuthorization(settings.authorizationStatus))
+            }
+        }
+        if status != authorization { authorization = status }
+    }
+
+    func requestAuthorization() async -> NotificationAuthorization {
+        let granted = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+                if error != nil { Logger.services.error("Notification authorization request failed") }
+                continuation.resume(returning: granted)
+            }
+        }
+        Logger.services.info("Notification authorization granted: \(granted, privacy: .public)")
+        await refreshAuthorization()
+        return authorization
+    }
+
+    func activate(uid: String, alertsEnabled: Bool) {
+        if activeUid != uid { savedInstallationId = nil }
+        activeUid = uid
+        self.alertsEnabled = alertsEnabled
+        guard alertsEnabled else { return }
+        Task {
+            await refreshAuthorization()
+            guard authorization.isAuthorized, activeUid == uid else { return }
+            registerForRemoteNotifications()
+            // The delegate delivers the installation ID, which is then saved.
+            await registerWithFCM()
+            if let installationId { await saveInstallationId(installationId, uid: uid) }
+        }
+    }
+
+    func setAlertsEnabled(_ enabled: Bool, uid: String) async throws {
+        activeUid = uid
+        if enabled {
+            registerForRemoteNotifications()
+            await registerWithFCM()
+            var fields: [String: Any] = [Key.notificationsEnabled: true]
+            // Without an ID yet (e.g. APNs not ready) the opt-in still saves; the delegate stores it later.
+            if let installationId {
+                fields[Key.fcmInstallationId] = installationId
+                fields[Key.fcmInstallationIdUpdatedAt] = FieldValue.serverTimestamp()
+            }
+            try await write(fields, uid: uid)
+            savedInstallationId = installationId
+        } else {
+            try await write([Key.notificationsEnabled: false, Key.fcmInstallationId: FieldValue.delete()], uid: uid)
+            savedInstallationId = nil
+        }
+        alertsEnabled = enabled
+        Logger.services.info("Alerts enabled: \(enabled, privacy: .public)")
+    }
+
+    func setQuietHours(_ enabled: Bool, uid: String) async throws {
+        try await write([Key.quietHoursEnabled: enabled], uid: uid)
+    }
+
+    func deactivate(uid: String) async {
+        activeUid = nil
+        alertsEnabled = false
+        savedInstallationId = nil
+        pendingOpenPostId = nil
+        do {
+            try await write([Key.fcmInstallationId: FieldValue.delete()], uid: uid,
+                            deadlineSeconds: AppConfig.notificationSignOutTimeoutSeconds)
+        } catch {
+            Logger.services.error("Couldn't remove the installation ID before sign-out")
+        }
+    }
+
+    // MARK: Registration
+
+    /// Registers this app instance with FCM; `messaging(_:didReceiveRegistration:)` then delivers the ID.
+    private func registerWithFCM() async {
+        do {
+            try await awaitCompletion(deadlineSeconds: AppConfig.notificationRegisterTimeoutSeconds) { completion in
+                Messaging.messaging().register { error in completion(error) }
+            }
+        } catch {
+            // Expected until APNs registration finishes (and always without the Push Notifications capability).
+            Logger.services.error("FCM registration failed: \(String(describing: type(of: error)), privacy: .public)")
+        }
+    }
+
+    private func saveInstallationId(_ id: String, uid: String) async {
+        guard id != savedInstallationId else { return }
+        do {
+            try await write([Key.fcmInstallationId: id, Key.fcmInstallationIdUpdatedAt: FieldValue.serverTimestamp()],
+                            uid: uid)
+            savedInstallationId = id
+            Logger.services.info("FCM installation ID saved")
+        } catch {
+            Logger.services.error("FCM installation ID save failed")
+        }
+    }
+
+    fileprivate func registrationDidChange(_ id: String?) {
+        installationId = id
+        guard let id, let activeUid, alertsEnabled else { return }
+        Task { await saveInstallationId(id, uid: activeUid) }
+    }
+
+    fileprivate func didOpenNotification(postId: String) {
+        pendingOpenPostId = postId
+        Logger.ui.info("Opened a free food alert")
+    }
+
+    private func write(_ fields: [String: Any], uid: String,
+                       deadlineSeconds: Int = AppConfig.notificationWriteTimeoutSeconds) async throws {
+        let document = users.document(uid)
+        do {
+            try await awaitCompletion(deadlineSeconds: deadlineSeconds) { completion in
+                document.updateData(fields) { error in completion(error) }
+            }
+        } catch is DeadlineExceeded {
+            throw AppError.network
+        } catch {
+            throw FirebaseErrorMapper.map(error)
+        }
+    }
+
+    /// Post IDs are 20 alphanumeric characters; anything else in a payload is ignored.
+    fileprivate nonisolated static func postId(from userInfo: [AnyHashable: Any]) -> String? {
+        guard let postId = userInfo[AppConfig.notificationPostIdKey] as? String,
+              (1...40).contains(postId.count),
+              postId.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) }) else { return nil }
+        return postId
+    }
+}
+
+extension FirebaseNotificationService: UNUserNotificationCenterDelegate {
+    /// Alerts show while the app is open too.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner, .list, .sound]
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse) async {
+        guard let postId = Self.postId(from: response.notification.request.content.userInfo) else { return }
+        await MainActor.run { didOpenNotification(postId: postId) }
+    }
+}
+
+extension FirebaseNotificationService: MessagingDelegate {
+    nonisolated func messaging(_ messaging: Messaging, didReceiveRegistration installationId: String?) {
+        Task { @MainActor in registrationDidChange(installationId) }
+    }
+}
+
+private nonisolated extension NotificationAuthorization {
+    init(_ status: UNAuthorizationStatus) {
+        switch status {
+        case .authorized, .provisional, .ephemeral: self = .authorized
+        case .denied: self = .denied
+        case .notDetermined: self = .notDetermined
+        @unknown default: self = .denied
+        }
+    }
+}
