@@ -5,6 +5,8 @@ import SwiftUI
 
 @main
 struct GatorPlateApp: App {
+    /// APNs token for Firebase Messaging.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let environment: AppEnvironment
     @State private var authViewModel: AuthViewModel
 
