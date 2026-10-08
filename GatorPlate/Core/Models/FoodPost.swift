@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct FoodPost: Codable, Identifiable, Sendable {
+nonisolated struct FoodPost: Codable, Equatable, Identifiable, Sendable {
     var id: String
     var authorUid: String
     var authorName: String
