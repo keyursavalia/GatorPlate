@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3CB0AB413076EF3500FA1532 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 3CB0AB403076EF3500FA1532 /* FirebaseStorage */; };
 		3CD05A503074711D0013DE84 /* FirebaseAILogic in Frameworks */ = {isa = PBXBuildFile; productRef = 3CD05A4F3074711D0013DE84 /* FirebaseAILogic */; };
 		3CD05A523074711D0013DE84 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 3CD05A513074711D0013DE84 /* FirebaseAppCheck */; };
 		3CD05A543074711D0013DE84 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 3CD05A533074711D0013DE84 /* FirebaseAuth */; };
@@ -48,6 +49,7 @@
 				3CD05A583074711D0013DE84 /* FirebaseMessaging in Frameworks */,
 				3CD05A543074711D0013DE84 /* FirebaseAuth in Frameworks */,
 				3CD05A503074711D0013DE84 /* FirebaseAILogic in Frameworks */,
+				3CB0AB413076EF3500FA1532 /* FirebaseStorage in Frameworks */,
 			);
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -57,6 +59,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000010 /* GatorPlate */,
+				3CB0AB3F3076EF3500FA1532 /* Frameworks */,
 				000000000000000000000020 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -67,6 +70,13 @@
 				000000000000000000000120 /* GatorPlate.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		3CB0AB3F3076EF3500FA1532 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -92,6 +102,7 @@
 				3CD05A533074711D0013DE84 /* FirebaseAuth */,
 				3CD05A553074711D0013DE84 /* FirebaseFirestore */,
 				3CD05A573074711D0013DE84 /* FirebaseMessaging */,
+				3CB0AB403076EF3500FA1532 /* FirebaseStorage */,
 			);
 			productName = MyApp;
 			productReference = 000000000000000000000120 /* GatorPlate.app */;
@@ -406,6 +417,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		3CB0AB403076EF3500FA1532 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3CD05A4E3074711D0013DE84 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
 		3CD05A4F3074711D0013DE84 /* FirebaseAILogic */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 3CD05A4E3074711D0013DE84 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

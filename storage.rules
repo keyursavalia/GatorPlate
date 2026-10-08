@@ -1,0 +1,19 @@
+rules_version = '2';
+
+// GatorPlate Cloud Storage rules (Sprint 05). Only post photos; everything else is denied.
+// Photos are deleted by a bucket lifecycle rule (age 2 days, prefix postImages/).
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /postImages/{imageId} {
+      allow read: if request.auth != null;
+      // One JPEG per post (Firestore auto-ID + .jpg), up to 300 KB (AppConfig.postImageMaxBytes),
+      // tagged with the uploader. Create only: no overwrites.
+      allow create: if request.auth != null
+        && imageId.matches('[A-Za-z0-9]{20}[.]jpg')
+        && request.resource.size <= 300000
+        && request.resource.contentType == 'image/jpeg'
+        && request.resource.metadata.authorUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

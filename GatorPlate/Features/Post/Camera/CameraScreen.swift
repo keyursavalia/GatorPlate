@@ -1,12 +1,14 @@
 import PhotosUI
 import SwiftUI
 
-/// Post flow step 1: full-bleed camera with shutter, flash, library and close.
+/// Post flow step 1: full-bleed camera with shutter, flash, library, "Fill it in myself" and close.
 /// Falls back to `CameraPermissionView` whenever there is no live preview.
 struct CameraScreen: View {
     @Bindable var viewModel: CameraViewModel
     let onPhoto: (CapturedPhoto) -> Void
     let onClose: () -> Void
+    /// Manual entry: the Review form, empty, with no photo.
+    var onFillManually: (() -> Void)?
 
     @State private var pickerItem: PhotosPickerItem?
     @State private var focusPoint: CGPoint?
@@ -27,7 +29,7 @@ struct CameraScreen: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 CameraPermissionView(state: viewModel.state, pickerItem: $pickerItem,
-                                     isProcessing: viewModel.isProcessing) {
+                                     isProcessing: viewModel.isProcessing, onFillManually: onFillManually) {
                     Task { await viewModel.allowCamera() }
                 }
                 .overlay(alignment: .topLeading) {
@@ -97,6 +99,17 @@ struct CameraScreen: View {
         HStack {
             closeButton
             Spacer()
+            if let onFillManually {
+                Button(action: onFillManually) {
+                    Label("Fill it in myself", systemImage: "square.and.pencil")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(minHeight: Theme.Size.minTapTarget)
+                }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.capsule)
+                .accessibilityHint("Write the post without a photo or AI")
+                Spacer()
+            }
             if !viewModel.supportedFlashModes.isEmpty {
                 GlassIconButton(systemImage: viewModel.flashMode.systemImage,
                                 accessibilityLabel: "Flash \(viewModel.flashMode.title)",

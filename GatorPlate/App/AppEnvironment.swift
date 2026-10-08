@@ -10,15 +10,17 @@ struct AppEnvironment {
     var camera: any CameraCapturing
 
     static var live: AppEnvironment {
-        AppEnvironment(auth: FirebaseAuthService(), posts: FirestorePostService(),
-                       analyzer: GeminiFoodAnalyzer(), location: CoreLocationProvider(),
-                       images: FirestoreImageStore(), camera: CameraService())
+        let images = FirebaseStorageImageStore()
+        return AppEnvironment(auth: FirebaseAuthService(), posts: FirestorePostService(images: images),
+                              analyzer: GeminiFoodAnalyzer(), location: CoreLocationProvider(),
+                              images: images, camera: CameraService())
     }
 
     static var mock: AppEnvironment {
-        AppEnvironment(auth: MockAuthService(), posts: MockPostService(),
-                       analyzer: MockFoodAnalyzer(), location: MockLocationProvider(),
-                       images: MockImageStore(), camera: MockCameraService())
+        let images = MockImageStore()
+        return AppEnvironment(auth: MockAuthService(), posts: MockPostService(images: images),
+                              analyzer: MockFoodAnalyzer(), location: MockLocationProvider(),
+                              images: images, camera: MockCameraService())
     }
 }
 
