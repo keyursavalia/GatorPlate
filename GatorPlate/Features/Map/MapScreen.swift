@@ -65,12 +65,12 @@ struct MapScreen: View {
         }
         .onAppear { viewModel.onAppear() }
         .onDisappear { viewModel.onDisappear() }
-        .task(id: viewModel.showsPostEndedNotice) {
-            guard viewModel.showsPostEndedNotice else { return }
-            AccessibilityNotification.Announcement("That food post has ended.").post()
+        .task(id: viewModel.notice) {
+            guard let notice = viewModel.notice else { return }
+            AccessibilityNotification.Announcement(notice).post()
             try? await Task.sleep(for: .seconds(AppConfig.mapNoticeSeconds))
             guard !Task.isCancelled else { return }
-            withAnimation(reduceMotion ? nil : .easeOut) { viewModel.dismissPostEndedNotice() }
+            withAnimation(reduceMotion ? nil : .easeOut) { viewModel.dismissNotice() }
         }
     }
 
@@ -94,8 +94,8 @@ struct MapScreen: View {
             if let message = viewModel.loadErrorMessage {
                 solidBanner(Banner(style: .error, message: message))
             }
-            if viewModel.showsPostEndedNotice {
-                solidBanner(Banner(style: .info, message: "That food post has ended."))
+            if let notice = viewModel.notice {
+                solidBanner(Banner(style: .info, message: notice))
                     .transition(.opacity)
             }
             if let banner = viewModel.locationBanner {
