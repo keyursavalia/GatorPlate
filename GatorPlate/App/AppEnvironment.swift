@@ -8,19 +8,20 @@ struct AppEnvironment {
     var location: any LocationProviding
     var images: any ImageStore
     var camera: any CameraCapturing
+    var routing: any RoutingService
 
     static var live: AppEnvironment {
         let images = FirebaseStorageImageStore()
         return AppEnvironment(auth: FirebaseAuthService(), posts: FirestorePostService(images: images),
                               analyzer: GeminiFoodAnalyzer(), location: CoreLocationProvider(),
-                              images: images, camera: CameraService())
+                              images: images, camera: CameraService(), routing: MapKitRoutingService())
     }
 
     static var mock: AppEnvironment {
         let images = MockImageStore()
         return AppEnvironment(auth: MockAuthService(), posts: MockPostService(images: images),
                               analyzer: MockFoodAnalyzer(), location: MockLocationProvider(),
-                              images: images, camera: MockCameraService())
+                              images: images, camera: MockCameraService(), routing: MockRoutingService())
     }
 }
 
