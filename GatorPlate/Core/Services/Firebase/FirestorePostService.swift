@@ -18,7 +18,7 @@ final class FirestorePostService: PostService {
     // MARK: PostService
 
     /// Posts not yet expired as of subscription time, filtered client-side for `isActive`.
-    func observeActivePosts() -> AsyncThrowingStream<[FoodPost], Error> {
+    func observeActivePosts() -> AsyncThrowingStream<PostsSnapshot, Error> {
         let query = posts
             .whereField(FoodPostDocument.Key.expiresAt, isGreaterThan: Timestamp(date: .now))
             .order(by: FoodPostDocument.Key.expiresAt)
@@ -32,7 +32,7 @@ final class FirestorePostService: PostService {
                 let posts = (snapshot?.documents ?? [])
                     .compactMap { FoodPostDocument.post(id: $0.documentID, data: $0.data()) }
                     .filter { $0.isActive(now: now) }
-                continuation.yield(posts)
+                continuation.yield(PostsSnapshot(posts: posts, isFromCache: snapshot?.metadata.isFromCache ?? false))
             }
             let listener = ListenerHandle(registration)
             continuation.onTermination = { _ in listener.remove() }
@@ -83,11 +83,18 @@ final class FirestorePostService: PostService {
     }
 
     func markGone(postId: String) async throws {
+        let document = posts.document(postId)
         do {
-            try await posts.document(postId).updateData([
-                FoodPostDocument.Key.status: PostStatus.gone.rawValue,
-                FoodPostDocument.Key.updatedAt: FieldValue.serverTimestamp(),
-            ])
+            // Completion handler with a deadline: the async overload waits for the server indefinitely offline.
+            try await awaitCompletion(deadlineSeconds: AppConfig.postMarkGoneTimeoutSeconds) { completion in
+                document.updateData([
+                    FoodPostDocument.Key.status: PostStatus.gone.rawValue,
+                    FoodPostDocument.Key.updatedAt: FieldValue.serverTimestamp(),
+                ]) { error in completion(error) }
+            }
+        } catch is DeadlineExceeded {
+            Logger.services.error("Mark as gone not confirmed before the deadline")
+            throw AppError.network
         } catch {
             throw FirebaseErrorMapper.map(error)
         }
