@@ -2,8 +2,9 @@ import Foundation
 
 @MainActor
 protocol PostService {
-    /// Emits the current set of posts on every change. Cancel the consuming task to unsubscribe.
-    func observeActivePosts() -> AsyncThrowingStream<[FoodPost], Error>
+    /// Emits the current set of posts on every change, cache first, then server. Cancel the consuming task
+    /// to unsubscribe.
+    func observeActivePosts() -> AsyncThrowingStream<PostsSnapshot, Error>
     /// A new post ID. Create it once per draft and reuse it when retrying, so a retry never duplicates a post.
     func makePostId() -> String
     /// Uploads the photo (if any), then writes the post. A failed photo upload never blocks publishing:
