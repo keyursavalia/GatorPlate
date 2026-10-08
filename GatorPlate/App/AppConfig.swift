@@ -75,6 +75,31 @@ nonisolated enum AppConfig {
     /// Hard cap, also enforced by `storage.rules`.
     static let postImageMaxBytes = 300_000
 
+    /// Deadline for "Mark as gone" to be confirmed by the server.
+    static let postMarkGoneTimeoutSeconds = 10
+
+    // Live posts (map + feed)
+    /// Expiry re-check without a server: expired posts drop off within this interval.
+    static let postsExpiryTickSeconds = 15
+    /// An empty cache snapshot waits this long for the server before the empty state shows.
+    static let postsCacheGraceSeconds = 3
+    /// Back in the foreground after this long, the listener restarts so its `expiresAt` bound is fresh.
+    static let postsResubscribeAfterBackgroundSeconds = 300
+    /// Listener retry backoff: 2, 4, 8, ... seconds, capped here.
+    static let postsRetryMaxDelaySeconds = 30
+    /// A post opened by ID (deep link, "View on map") waits this long to arrive before it counts as ended.
+    static let postSelectionPendingSeconds = 5
+    /// Photos kept in memory for the map card and the feed.
+    static let postImageCacheLimit = 60
+    /// Info notices on the map (e.g. "That food post has ended.") hide after this long.
+    static let mapNoticeSeconds = 4
+
+    // Directions
+    /// Total deadline for an `MKDirections` walking route.
+    static let routeTimeoutSeconds = 15
+    /// How long Directions waits for a first location fix.
+    static let routeLocationWaitSeconds = 5
+
     // Campus
     /// Dropped pins may sit this far outside the campus outline (sidewalks, entrances).
     static let campusPinEdgeToleranceMeters = 25.0

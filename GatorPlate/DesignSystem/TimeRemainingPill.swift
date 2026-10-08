@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// "24 min left". Orange under 10 minutes, red "Ending soon" under 5. Refreshes every minute.
+/// "24 min left". Orange under 10 minutes, red "Ending soon" under 5. Refreshes each time the minute count drops.
 struct TimeRemainingPill: View {
     let expiresAt: Date
 
     var body: some View {
-        TimelineView(.everyMinute) { context in
+        TimelineView(CountdownSchedule(expiresAt: expiresAt)) { context in
             let state = Urgency(minutesLeft: Self.minutesLeft(until: expiresAt, now: context.date))
             Label(state.text, systemImage: state.icon)
                 .font(.subheadline.weight(.semibold))

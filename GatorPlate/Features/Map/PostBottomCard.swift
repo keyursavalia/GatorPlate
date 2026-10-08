@@ -1,28 +1,40 @@
 import SwiftUI
 
-/// Sheet content for a selected pin. The small detent shows title, time and Directions; medium adds details.
+/// Sheet content for a selected pin. The small detent shows title, time and directions; medium adds the photo,
+/// details and poster/report actions.
 struct PostBottomCard: View {
     let post: FoodPost
-    let distanceText: String?
+    let viewModel: MapViewModel
     let isExpanded: Bool
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                if isExpanded, post.hasPhoto {
+                    PostPhotoView(postId: post.id, hasPhoto: post.hasPhoto, images: viewModel.images)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 170)
+                }
+
                 Text(post.title)
                     .font(.headline)
                     .accessibilityAddTraits(.isHeader)
 
                 wrapping {
                     TimeRemainingPill(expiresAt: post.expiresAt)
-                    DietaryBadge(dietary: post.overallDietary)
+                    DietaryBadge(dietary: post.overallDietary, isEstimate: post.aiGenerated)
                 }
 
                 if isExpanded {
                     details
                 }
 
-                directionsButtons
+                PostRouteSection(post: post, viewModel: viewModel)
+
+                if isExpanded {
+                    Divider()
+                    PostActionsSection(post: post, viewModel: viewModel)
+                }
             }
             .padding(Theme.Spacing.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -35,8 +47,11 @@ struct PostBottomCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             Label(post.orgName ?? post.authorName, systemImage: "person.2")
             Label(locationLine, systemImage: "mappin.and.ellipse")
-            if let distanceText {
+            if let distanceText = viewModel.distanceText(to: post) {
                 Label(distanceText, systemImage: "figure.walk")
+            }
+            if let servings = post.estimatedServings {
+                Label("About \(servings) servings", systemImage: "takeoutbag.and.cup.and.straw")
             }
         }
         .font(.subheadline)
@@ -46,8 +61,33 @@ struct PostBottomCard: View {
             Text(post.description).font(.body)
         }
 
-        if !post.allergenWarnings.isEmpty {
+        allergens
+
+        if let calorieLine {
+            Label(calorieLine, systemImage: "flame")
+                .font(.subheadline)
+        }
+
+        if !post.cautions.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                Text("Cautions")
+                    .font(.subheadline.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(post.cautions, id: \.self) { caution in
+                    Label(caution, systemImage: "exclamationmark.shield")
+                        .font(.subheadline)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var allergens: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            if post.allergenWarnings.isEmpty {
+                Label("No allergens listed (unverified)", systemImage: "questionmark.circle")
+                    .font(.subheadline)
+            } else {
                 Text("May contain")
                     .font(.subheadline.weight(.semibold))
                     .accessibilityHidden(true)
@@ -55,35 +95,7 @@ struct PostBottomCard: View {
                     ForEach(post.allergenWarnings, id: \.self) { AllergenChip(allergen: $0) }
                 }
             }
-        }
-
-        if let calorieLine {
-            Label(calorieLine, systemImage: "flame")
-                .font(.subheadline)
-        }
-    }
-
-    private var directionsButtons: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            wrapping {
-                Button {} label: {
-                    Label("Directions", systemImage: "figure.walk")
-                        .frame(minHeight: Theme.Size.minTapTarget)
-                }
-                .buttonStyle(.borderedProminent)
-
-                if isExpanded {
-                    Button {} label: {
-                        Label("Open in Maps", systemImage: "map")
-                            .frame(minHeight: Theme.Size.minTapTarget)
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
-            .disabled(true)
-            .accessibilityHint("Available soon")
-
-            Text("Walking directions are coming soon.")
+            Text("Confirm allergens and ingredients with the host.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -111,10 +123,10 @@ struct PostBottomCard: View {
 }
 
 #Preview("Medium") {
-    PostBottomCard(post: .sample, distanceText: "350 ft away", isExpanded: true)
+    PostBottomCard(post: .sample, viewModel: .preview, isExpanded: true)
 }
 
 #Preview("Small, AX5") {
-    PostBottomCard(post: .sample, distanceText: nil, isExpanded: false)
+    PostBottomCard(post: .sample, viewModel: .preview, isExpanded: false)
         .dynamicTypeSize(.accessibility5)
 }

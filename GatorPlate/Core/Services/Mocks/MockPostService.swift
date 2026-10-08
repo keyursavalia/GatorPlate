@@ -4,6 +4,7 @@ import Foundation
 final class MockPostService: PostService {
     private(set) var posts: [FoodPost]
     private let images: any ImageStore
+    private var continuations: [UUID: AsyncThrowingStream<PostsSnapshot, Error>.Continuation] = [:]
     /// Set to make `publish` fail, for previews of the error state.
     var publishError: AppError?
 
@@ -12,9 +13,33 @@ final class MockPostService: PostService {
         self.images = images
     }
 
-    func observeActivePosts() -> AsyncThrowingStream<[FoodPost], Error> {
-        let snapshot = posts
-        return AsyncThrowingStream { $0.yield(snapshot) }
+    /// Number of open listeners, for tests.
+    var listenerCount: Int { continuations.count }
+
+    func observeActivePosts() -> AsyncThrowingStream<PostsSnapshot, Error> {
+        let (stream, continuation) = AsyncThrowingStream<PostsSnapshot, Error>.makeStream()
+        let id = UUID()
+        continuations[id] = continuation
+        continuation.onTermination = { [weak self] _ in
+            Task { @MainActor in self?.continuations[id] = nil }
+        }
+        continuation.yield(PostsSnapshot(posts: posts, isFromCache: false))
+        return stream
+    }
+
+    /// Pushes a snapshot to every listener, like a Firestore change.
+    func send(_ snapshot: PostsSnapshot) {
+        for continuation in continuations.values { continuation.yield(snapshot) }
+    }
+
+    /// Ends every listener with an error, like a rules or auth failure.
+    func fail(_ error: AppError) {
+        for continuation in continuations.values { continuation.finish(throwing: error) }
+        continuations.removeAll()
+    }
+
+    private func broadcast() {
+        send(PostsSnapshot(posts: posts, isFromCache: false))
     }
 
     func makePostId() -> String { Self.randomPostId() }
@@ -31,6 +56,7 @@ final class MockPostService: PostService {
                             expiresAt: now.addingTimeInterval(Double(submission.durationMinutes) * 60))
         posts.removeAll { $0.id == post.id }
         posts.append(post)
+        broadcast()
         return post
     }
 
@@ -38,6 +64,7 @@ final class MockPostService: PostService {
         guard let index = posts.firstIndex(where: { $0.id == postId }) else { throw AppError.validation("Post not found") }
         posts[index].status = .gone
         posts[index].updatedAt = .now
+        broadcast()
     }
 
     func report(postId: String, reason: String) async throws {}

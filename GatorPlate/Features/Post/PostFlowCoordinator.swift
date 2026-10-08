@@ -5,12 +5,13 @@ import SwiftUI
 struct PostFlowCoordinator: View {
     @State private var model: PostFlowModel
     @State private var isConfirmingClose = false
-    let onViewMap: () -> Void
+    /// Receives the published post's ID.
+    let onViewMap: (String) -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(camera: any CameraCapturing, analyzer: any FoodAnalyzing, posts: any PostService,
-         location: any LocationProviding, author: PostAuthor, onViewMap: @escaping () -> Void) {
+         location: any LocationProviding, author: PostAuthor, onViewMap: @escaping (String) -> Void) {
         _model = State(initialValue: PostFlowModel(camera: camera, analyzer: analyzer, posts: posts,
                                                    location: location, author: author))
         self.onViewMap = onViewMap
@@ -116,7 +117,7 @@ struct PostFlowCoordinator: View {
     }
 
     private func viewMap() {
-        onViewMap()
+        if let post = model.publishedPost { onViewMap(post.id) }
         close()
     }
 }
@@ -125,5 +126,5 @@ struct PostFlowCoordinator: View {
     PostFlowCoordinator(camera: MockCameraService(), analyzer: MockFoodAnalyzer(), posts: MockPostService(),
                         location: MockLocationProvider(),
                         author: PostAuthor(uid: "mock-uid", displayName: "Mock Student", orgName: nil),
-                        onViewMap: {})
+                        onViewMap: { _ in })
 }

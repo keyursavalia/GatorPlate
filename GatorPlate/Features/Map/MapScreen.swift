@@ -1,7 +1,7 @@
 import MapKit
 import SwiftUI
 
-/// Campus map locked to SFSU with rotation, post pins and a non-modal bottom card.
+/// Campus map locked to SFSU with rotation, live post pins, a walking route and a non-modal bottom card.
 struct MapScreen: View {
     @Bindable var viewModel: MapViewModel
     let onPostFood: () -> Void
@@ -24,6 +24,13 @@ struct MapScreen: View {
             selection: $viewModel.selectedPostId,
             scope: mapScope) {
             UserAnnotation()
+
+            if let route = viewModel.route.route {
+                MapPolyline(coordinates: route.coordinates.map(\.clLocationCoordinate))
+                    .stroke(Theme.Palette.brandPurple,
+                            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+                    .mapOverlayLevel(level: .aboveRoads)
+            }
 
             ForEach(viewModel.posts) { post in
                 Annotation(post.title, coordinate: post.coordinate.clLocationCoordinate) {
@@ -51,15 +58,34 @@ struct MapScreen: View {
         .sheet(isPresented: isSheetPresented) { bottomCard }
         .onChange(of: viewModel.selectedPostId) { _, new in
             if new != nil { detent = Self.smallDetent }
+            viewModel.selectionDidChange()
+        }
+        .onChange(of: viewModel.route.state) { _, new in
+            routeDidChange(new)
         }
         .onAppear { viewModel.onAppear() }
         .onDisappear { viewModel.onDisappear() }
-        .task {
-            // Drop expired posts while the map is open.
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(30))
-                viewModel.refreshClock()
-            }
+        .task(id: viewModel.showsPostEndedNotice) {
+            guard viewModel.showsPostEndedNotice else { return }
+            AccessibilityNotification.Announcement("That food post has ended.").post()
+            try? await Task.sleep(for: .seconds(AppConfig.mapNoticeSeconds))
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? nil : .easeOut) { viewModel.dismissPostEndedNotice() }
+        }
+    }
+
+    private func routeDidChange(_ state: RouteController.State) {
+        switch state {
+        case .active(_, let route):
+            // Smaller sheet so the route stays visible.
+            detent = Self.smallDetent
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.6)) { viewModel.fitRouteIfActive() }
+            AccessibilityNotification.Announcement(
+                "Route ready, \(DistanceText.walkMinutes(seconds: route.expectedTravelTime)) minute walk").post()
+        case .failed(_, let failure):
+            AccessibilityNotification.Announcement(failure.userMessage).post()
+        case .idle, .calculating:
+            break
         }
     }
 
@@ -67,6 +93,10 @@ struct MapScreen: View {
         VStack(alignment: .trailing, spacing: Theme.Spacing.sm) {
             if let message = viewModel.loadErrorMessage {
                 solidBanner(Banner(style: .error, message: message))
+            }
+            if viewModel.showsPostEndedNotice {
+                solidBanner(Banner(style: .info, message: "That food post has ended."))
+                    .transition(.opacity)
             }
             if let banner = viewModel.locationBanner {
                 locationBanner(banner)
@@ -121,9 +151,7 @@ struct MapScreen: View {
     @ViewBuilder
     private var bottomCard: some View {
         if let post = viewModel.selectedPost {
-            PostBottomCard(post: post,
-                           distanceText: viewModel.distanceText(to: post),
-                           isExpanded: detent == .medium)
+            PostBottomCard(post: post, viewModel: viewModel, isExpanded: detent == .medium)
                 .presentationDetents([Self.smallDetent, .medium], selection: $detent)
                 .presentationBackgroundInteraction(.enabled(upThrough: .medium))
                 .presentationDragIndicator(.visible)
@@ -147,21 +175,5 @@ struct MapScreen: View {
 }
 
 #Preview("On campus") {
-    MapScreen(viewModel: MapViewModel(posts: MockPostService(posts: FoodPost.mockCampus),
-                                      location: MockLocationProvider()), onPostFood: {})
-}
-
-#Preview("Not asked yet") {
-    MapScreen(viewModel: MapViewModel(posts: MockPostService(posts: FoodPost.mockCampus),
-                                      location: MockLocationProvider(authorization: .notDetermined)), onPostFood: {})
-}
-
-#Preview("Approximate location") {
-    MapScreen(viewModel: MapViewModel(posts: MockPostService(posts: FoodPost.mockCampus),
-                                      location: MockLocationProvider(authorization: .authorized(precise: false))), onPostFood: {})
-}
-
-#Preview("Denied") {
-    MapScreen(viewModel: MapViewModel(posts: MockPostService(posts: FoodPost.mockCampus),
-                                      location: MockLocationProvider(authorization: .denied)), onPostFood: {})
+    MapScreen(viewModel: .preview, onPostFood: {})
 }
