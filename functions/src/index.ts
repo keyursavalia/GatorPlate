@@ -10,6 +10,8 @@ import {
   type Subscriber,
   alertBody,
   chunk,
+  errorCode,
+  isAlreadyExists,
   recipientIds,
 } from "./recipients.js";
 
@@ -42,9 +44,15 @@ export const onPostCreated = onDocumentCreated(
         sentAt: FieldValue.serverTimestamp(),
         deleteAt: Timestamp.fromMillis(Date.now() + ALERT_MARKER_RETENTION_MS),
       });
-    } catch {
-      logger.info("Alert already sent for this post", { postId });
-      return;
+    } catch (error) {
+      if (isAlreadyExists(error)) {
+        logger.info("Alert already sent for this post", { postId });
+        return;
+      }
+      // Anything else (e.g. PERMISSION_DENIED = 7 when the runtime service account lacks Firestore access)
+      // is a real failure: log the code and fail the run so it shows up as an error.
+      logger.error("Couldn't create the alert marker", { postId, code: errorCode(error) });
+      throw error;
     }
 
     const [subscribersSnapshot, authorSnapshot] = await Promise.all([
