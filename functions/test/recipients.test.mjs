@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { alertBody, chunk, isQuietHours, recipientIds } from "../lib/recipients.js";
+import { alertBody, chunk, errorCode, isAlreadyExists, isQuietHours, recipientIds } from "../lib/recipients.js";
 
 const id = (n) => `installation-id-${n}`;
 // 2026-10-08 12:00 PDT and 23:30 PDT / 06:59 PDT / 07:00 PDT.
@@ -63,4 +63,13 @@ test("chunks into FCM-sized batches", () => {
   assert.deepEqual(chunk([1, 2, 3, 4, 5], 2), [[1, 2], [3, 4], [5]]);
   assert.equal(chunk(Array.from({ length: 1001 }, (_, i) => i), 500).length, 3);
   assert.deepEqual(chunk([], 500), []);
+});
+
+test("only ALREADY_EXISTS counts as an already-sent alert", () => {
+  assert.equal(isAlreadyExists({ code: 6 }), true);
+  assert.equal(isAlreadyExists({ code: 7 }), false); // PERMISSION_DENIED
+  assert.equal(isAlreadyExists(new Error("boom")), false);
+  assert.equal(isAlreadyExists(undefined), false);
+  assert.equal(errorCode({ code: "messaging/invalid-argument" }), "messaging/invalid-argument");
+  assert.equal(errorCode("nope"), undefined);
 });
