@@ -71,6 +71,8 @@ export const onPostCreated = onDocumentCreated(
 
     let sent = 0;
     const staleIds = new Set<string>();
+    /** FCM error code -> count, so failures are diagnosable without logging IDs. */
+    const errorCodes: Record<string, number> = {};
     for (const batch of chunk(ids, MAX_IDS_PER_SEND)) {
       const response = await getMessaging().sendEachForMulticast({
         fids: batch,
@@ -81,7 +83,9 @@ export const onPostCreated = onDocumentCreated(
       sent += response.successCount;
       response.responses.forEach((result, index) => {
         const code = result.error?.code;
-        if (code && STALE_ID_ERROR_CODES.has(code)) staleIds.add(batch[index]);
+        if (!code) return;
+        errorCodes[code] = (errorCodes[code] ?? 0) + 1;
+        if (STALE_ID_ERROR_CODES.has(code)) staleIds.add(batch[index]);
       });
     }
 
@@ -96,6 +100,7 @@ export const onPostCreated = onDocumentCreated(
       sent,
       failed: ids.length - sent,
       staleRemoved: staleOwners.length,
+      errorCodes,
     });
   },
 );
