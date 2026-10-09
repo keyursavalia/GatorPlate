@@ -13,11 +13,13 @@ struct AppEnvironment {
 
     static var live: AppEnvironment {
         let images = FirebaseStorageImageStore()
+        let notifications = FirebaseNotificationService(
+            registerForRemoteNotifications: AppDelegate.registerForRemoteNotifications)
+        AppDelegate.deviceTokenHandler = { notifications.apnsTokenDidArrive($0) }
         return AppEnvironment(auth: FirebaseAuthService(), posts: FirestorePostService(images: images),
                               analyzer: GeminiFoodAnalyzer(), location: CoreLocationProvider(),
                               images: images, camera: CameraService(), routing: MapKitRoutingService(),
-                              notifications: FirebaseNotificationService(
-                                  registerForRemoteNotifications: AppDelegate.registerForRemoteNotifications))
+                              notifications: notifications)
     }
 
     static var mock: AppEnvironment {
