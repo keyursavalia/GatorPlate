@@ -91,3 +91,18 @@ export const STALE_ID_ERROR_CODES = new Set([
   "messaging/registration-token-not-registered",
   "messaging/invalid-recipient",
 ]);
+
+/** gRPC status codes the Admin SDK puts on Firestore errors. */
+const GRPC_ALREADY_EXISTS = 6;
+
+/** True only when a `create()` failed because the document exists (a repeated event delivery). */
+export function isAlreadyExists(error: unknown): boolean {
+  return errorCode(error) === GRPC_ALREADY_EXISTS;
+}
+
+/** The error's `code` (number for Firestore, string like "messaging/..." for FCM), for logs. */
+export function errorCode(error: unknown): number | string | undefined {
+  if (typeof error !== "object" || error === null || !("code" in error)) return undefined;
+  const code = (error as { code: unknown }).code;
+  return typeof code === "number" || typeof code === "string" ? code : undefined;
+}
