@@ -1,4 +1,5 @@
 import FirebaseAILogic
+import FirebaseAppCheck
 import Foundation
 import ImageIO
 import OSLog
@@ -19,11 +20,20 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
         /// Safety filters: treated as "not food" (AI spec section 6).
         case blocked
         case retryable(category: String)
+        /// The backend rejected the request's credentials (401). Usually a stale or placeholder App Check
+        /// token after a failed refresh; a forced refresh and one retry fixes it.
+        case unauthenticated(category: String)
         case fatal(AppError, category: String)
         case cancelled
     }
 
     private struct AnalysisTimeout: Error {}
+
+    func prepare() {
+        // Fire and forget: if the token is fresh this returns at once, otherwise it refreshes now,
+        // seconds before the request needs it (a token expired overnight is the common case).
+        Task { _ = await Self.refreshAppCheckToken(forcingRefresh: false) }
+    }
 
     func analyze(jpegData: Data) async throws(AppError) -> FoodAnalysisOutcome {
         guard !isAnalyzing else { throw .aiBusy }
@@ -55,6 +65,14 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
             case .fatal(let error, let category):
                 finish(start: start, attempts: attempt, category: category)
                 throw error
+            case .unauthenticated(let category):
+                guard attempt < Self.maxAttempts else {
+                    finish(start: start, attempts: attempt, category: category)
+                    throw .aiUnavailable
+                }
+                Logger.services.notice("AI attempt \(attempt, privacy: .public) failed: \(category, privacy: .public); refreshing App Check and retrying")
+                let refreshed = await Self.refreshAppCheckToken(forcingRefresh: true)
+                Logger.services.notice("App Check refresh before retry: \(refreshed ? "ok" : "failed", privacy: .public)")
             case .retryable(let category):
                 guard attempt < Self.maxAttempts else {
                     finish(start: start, attempts: attempt, category: category)
@@ -173,9 +191,26 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
         }
         switch nsError.code {
         case 429: return .fatal(.aiBusy, category: "rate_limited")
-        case 401, 403: return .fatal(.aiUnavailable, category: "forbidden_\(nsError.code)")
+        case 401: return .unauthenticated(category: "forbidden_401")
+        case 403: return .fatal(.aiUnavailable, category: "forbidden_403")
         case 500...599: return .retryable(category: "server_\(nsError.code)")
         default: return .fatal(.aiUnavailable, category: "http_\(nsError.code)")
+        }
+    }
+
+    // MARK: App Check
+
+    /// True when App Check produced a real token. On failure the AI SDK would send a placeholder (rejected
+    /// with 401 while App Check is enforced). Logs the error type only.
+    private static func refreshAppCheckToken(forcingRefresh: Bool) async -> Bool {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            AppCheck.appCheck().token(forcingRefresh: forcingRefresh) { token, error in
+                if let error {
+                    let nsError = error as NSError
+                    Logger.services.error("App Check token refresh failed: \(nsError.domain, privacy: .public) \(nsError.code, privacy: .public)")
+                }
+                continuation.resume(returning: token != nil && error == nil)
+            }
         }
     }
 
