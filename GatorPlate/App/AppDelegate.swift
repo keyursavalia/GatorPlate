@@ -1,18 +1,20 @@
-import FirebaseMessaging
 import OSLog
 import UIKit
 
-/// UIKit entry points that push needs: remote-notification registration and the APNs token for FCM.
+/// UIKit entry points that push needs: remote-notification registration and the APNs device token.
 /// The only UIKit in `App/`; everything else about alerts lives behind `NotificationService`.
 final class AppDelegate: NSObject, UIApplicationDelegate {
+    /// Set by `AppEnvironment.live` to the notification service, which passes the token on to FCM.
+    static var deviceTokenHandler: ((Data) -> Void)?
+
     static func registerForRemoteNotifications() {
         UIApplication.shared.registerForRemoteNotifications()
     }
 
     func application(_ application: UIApplication,
                      didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        Messaging.messaging().apnsToken = deviceToken
         Logger.app.info("Registered for remote notifications")
+        Self.deviceTokenHandler?(deviceToken)
     }
 
     func application(_ application: UIApplication,
