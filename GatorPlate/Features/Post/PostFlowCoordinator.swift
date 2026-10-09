@@ -48,6 +48,7 @@ struct PostFlowCoordinator: View {
             }
         }
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : .snappy, value: model.step)
+        .task { model.prepareAnalysis() }
         .confirmationDialog("Discard this post?", isPresented: $isConfirmingClose, titleVisibility: .visible) {
             Button("Discard", role: .destructive, action: close)
             Button("Keep editing", role: .cancel) {}
