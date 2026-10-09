@@ -166,6 +166,11 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
         guard nsError.domain.hasSuffix("BackendError") else {
             return .fatal(.aiUnavailable, category: "unexpected_error")
         }
+        if (400...499).contains(nsError.code) {
+            // The backend's explanation (e.g. App Check or API key problems); never contains the photo or prompt.
+            let reason = String(nsError.localizedDescription.prefix(300))
+            Logger.services.error("AI backend \(nsError.code, privacy: .public): \(reason, privacy: .public)")
+        }
         switch nsError.code {
         case 429: return .fatal(.aiBusy, category: "rate_limited")
         case 401, 403: return .fatal(.aiUnavailable, category: "forbidden_\(nsError.code)")
