@@ -18,6 +18,8 @@ final class FirebaseNotificationService: NSObject, NotificationService {
     @ObservationIgnored private var alertsEnabled = false
     /// Latest ID from `messaging(_:didReceiveRegistration:)`.
     @ObservationIgnored private var installationId: String?
+    /// FCM declines to register until it has the APNs device token, so registration waits for it.
+    @ObservationIgnored private var hasAPNSToken = false
     @ObservationIgnored private var savedInstallationId: String?
 
     /// Field names; `functions/src/index.ts` reads the same ones.
@@ -75,32 +77,40 @@ final class FirebaseNotificationService: NSObject, NotificationService {
         Task {
             await refreshAuthorization()
             guard authorization.isAuthorized, activeUid == uid else { return }
+            // iOS delivers the APNs token on every launch; `apnsTokenDidArrive` then registers with FCM.
             registerForRemoteNotifications()
-            // The delegate delivers the installation ID, which is then saved.
-            await registerWithFCM()
-            if let installationId { await saveInstallationId(installationId, uid: uid) }
+            if hasAPNSToken { await registerAndSave(uid: uid) }
         }
     }
 
     func setAlertsEnabled(_ enabled: Bool, uid: String) async throws {
         activeUid = uid
         if enabled {
+            // Set first, so an APNs token arriving while this runs registers and saves the ID.
+            alertsEnabled = true
             registerForRemoteNotifications()
-            await registerWithFCM()
-            var fields: [String: Any] = [Key.notificationsEnabled: true]
-            // Without an ID yet (e.g. APNs not ready) the opt-in still saves; the delegate stores it later.
-            if let installationId {
-                fields[Key.fcmInstallationId] = installationId
-                fields[Key.fcmInstallationIdUpdatedAt] = FieldValue.serverTimestamp()
+            do {
+                try await write([Key.notificationsEnabled: true], uid: uid)
+            } catch {
+                alertsEnabled = false
+                throw error
             }
-            try await write(fields, uid: uid)
-            savedInstallationId = installationId
+            if hasAPNSToken { await registerAndSave(uid: uid) }
         } else {
+            alertsEnabled = false
             try await write([Key.notificationsEnabled: false, Key.fcmInstallationId: FieldValue.delete()], uid: uid)
             savedInstallationId = nil
         }
-        alertsEnabled = enabled
         Logger.services.info("Alerts enabled: \(enabled, privacy: .public)")
+    }
+
+    /// From the app delegate: hands the APNs token to FCM, then registers this device if alerts are on.
+    func apnsTokenDidArrive(_ deviceToken: Data) {
+        Messaging.messaging().apnsToken = deviceToken
+        hasAPNSToken = true
+        Logger.services.info("APNs token received")
+        guard let activeUid, alertsEnabled else { return }
+        Task { await registerAndSave(uid: activeUid) }
     }
 
     func setQuietHours(_ enabled: Bool, uid: String) async throws {
@@ -132,6 +142,13 @@ final class FirebaseNotificationService: NSObject, NotificationService {
             // Expected until APNs registration finishes (and always without the Push Notifications capability).
             Logger.services.error("FCM registration failed: \(String(describing: type(of: error)), privacy: .public)")
         }
+    }
+
+    /// Registers with FCM (the delegate delivers the ID) and saves the ID for the signed-in user.
+    private func registerAndSave(uid: String) async {
+        await registerWithFCM()
+        guard let installationId, activeUid == uid, alertsEnabled else { return }
+        await saveInstallationId(installationId, uid: uid)
     }
 
     private func saveInstallationId(_ id: String, uid: String) async {
