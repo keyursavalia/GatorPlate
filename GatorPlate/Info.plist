@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>FirebaseMessagingInstallationIdEnabled</key>
+	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>GatorPlate uses the camera so you can photograph leftover food for a post.</string>
 	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
@@ -9,5 +11,9 @@
 		<key>FoodNearby</key>
 		<string>Precise location helps you find the exact building and room with free food.</string>
 	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

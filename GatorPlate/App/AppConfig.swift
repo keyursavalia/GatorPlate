@@ -100,6 +100,18 @@ nonisolated enum AppConfig {
     /// How long Directions waits for a first location fix.
     static let routeLocationWaitSeconds = 5
 
+    // Notifications (FCM per-device installation IDs; the `onPostCreated` Cloud Function sends the alerts)
+    /// Data payload key for the post to open. The function writes the same key.
+    static let notificationPostIdKey = "postId"
+    /// Deadline for `Messaging.register`.
+    static let notificationRegisterTimeoutSeconds = 10
+    static let notificationWriteTimeoutSeconds = 10
+    /// Sign-out waits at most this long to remove the installation ID.
+    static let notificationSignOutTimeoutSeconds = 5
+    /// Quiet hours, campus time (America/Los_Angeles). `functions/src/recipients.ts` mirrors these.
+    static let quietHoursStartHour = 23
+    static let quietHoursEndHour = 7
+
     // Campus
     /// Dropped pins may sit this far outside the campus outline (sidewalks, entrances).
     static let campusPinEdgeToleranceMeters = 25.0

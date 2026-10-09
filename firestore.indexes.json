@@ -6,6 +6,12 @@
       "fieldPath": "deleteAt",
       "ttl": true,
       "indexes": []
+    },
+    {
+      "collectionGroup": "postAlerts",
+      "fieldPath": "deleteAt",
+      "ttl": true,
+      "indexes": []
     }
   ]
 }

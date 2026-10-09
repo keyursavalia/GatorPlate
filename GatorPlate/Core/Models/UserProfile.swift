@@ -10,5 +10,7 @@ nonisolated struct UserProfile: Codable, Sendable {
     var acceptedTermsVersion: String?
     var acceptedTermsAt: Date?
     var notificationsEnabled: Bool
+    /// Mutes alerts 11 PM - 7 AM campus time (checked by the Cloud Function). Nil until set.
+    var quietHoursEnabled: Bool?
     var createdAt: Date
 }

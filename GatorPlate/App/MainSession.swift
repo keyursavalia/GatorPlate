@@ -1,7 +1,8 @@
 import Foundation
 
-/// Everything the signed-in UI shares for one session: the live posts listener, navigation, photo cache and
-/// the Map/Feed view models. Created when the main UI appears; `stop()` runs before sign-out.
+/// Everything the signed-in UI shares for one session: the live posts listener, navigation, photo cache,
+/// alerts settings and the Map/Feed view models. Created when the main UI appears; `prepareSignOut()` runs
+/// before sign-out.
 @MainActor
 final class MainSession {
     let repository: PostsRepository
@@ -9,8 +10,9 @@ final class MainSession {
     let images: PostImageCache
     let map: MapViewModel
     let feed: FeedViewModel
+    let settings: SettingsViewModel
 
-    init(environment: AppEnvironment, currentUid: String?) {
+    init(environment: AppEnvironment, profile: UserProfile) {
         let repository = PostsRepository(service: environment.posts)
         let navigation = AppNavigation(posts: repository)
         let images = PostImageCache(store: environment.images)
@@ -19,13 +21,21 @@ final class MainSession {
         self.images = images
         self.map = MapViewModel(repository: repository, navigation: navigation, postService: environment.posts,
                                 routing: environment.routing, location: environment.location, images: images,
-                                currentUid: currentUid)
+                                currentUid: profile.uid)
         self.feed = FeedViewModel(repository: repository, navigation: navigation, location: environment.location,
                                   images: images)
+        self.settings = SettingsViewModel(notifications: environment.notifications, profile: profile)
     }
 
     func start() {
         repository.start()
+        settings.activate()
+    }
+
+    /// Stops the listener and removes this device's alert registration while the user can still write.
+    func prepareSignOut() async {
+        stop()
+        await settings.deactivate()
     }
 
     /// Removes the listener and ends any route. Call before signing out.
@@ -41,7 +51,10 @@ extension MainSession {
     static var preview: MainSession {
         var environment = AppEnvironment.mock
         environment.posts = MockPostService(posts: FoodPost.mockCampus)
-        let session = MainSession(environment: environment, currentUid: "mock-uid")
+        let profile = UserProfile(uid: "mock-uid", displayName: "Mock Student", email: "mock@gmail.com",
+                                  accountType: .student, orgName: nil, acceptedTermsVersion: nil,
+                                  acceptedTermsAt: nil, notificationsEnabled: false, createdAt: .now)
+        let session = MainSession(environment: environment, profile: profile)
         session.start()
         return session
     }

@@ -3,14 +3,24 @@ import SwiftUI
 /// Active posts, newest first. Realtime, so no pull-to-refresh. Tapping a post opens it on the map.
 struct FeedScreen: View {
     let viewModel: FeedViewModel
+    /// Offers free food alerts once, with the explanation shown before the system prompt.
+    let alerts: SettingsViewModel
     let onPostFood: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("feed.hasDismissedAlertsOffer") private var hasDismissedAlertsOffer = false
 
     var body: some View {
         NavigationStack {
-            content
-                .navigationTitle("Free food")
+            VStack(spacing: 0) {
+                if alerts.shouldOfferAlerts, !hasDismissedAlertsOffer {
+                    alertsOffer
+                        .padding(.horizontal, Theme.Spacing.lg)
+                        .padding(.bottom, Theme.Spacing.sm)
+                }
+                content
+            }
+            .navigationTitle("Free food")
                 .overlay(alignment: .bottomTrailing) {
                     PostFAB(action: onPostFood)
                         .padding(Theme.Spacing.lg)
@@ -33,6 +43,15 @@ struct FeedScreen: View {
         case .posts:
             list
         }
+    }
+
+    private var alertsOffer: some View {
+        Banner(style: .info,
+               message: "Get an alert when someone posts free food on campus. Everyone who opts in gets the same alert, and nothing tracks what you pick up.",
+               actions: [
+                   Banner.Action(title: "Turn on alerts") { Task { await alerts.confirmAlerts() } },
+                   Banner.Action(title: "Not now", isPrimary: false) { hasDismissedAlertsOffer = true },
+               ])
     }
 
     private var list: some View {
@@ -62,5 +81,6 @@ struct FeedScreen: View {
 }
 
 #Preview {
-    FeedScreen(viewModel: MainSession.preview.feed, onPostFood: {})
+    let session = MainSession.preview
+    FeedScreen(viewModel: session.feed, alerts: session.settings, onPostFood: {})
 }

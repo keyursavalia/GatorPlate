@@ -17,6 +17,9 @@ service cloud.firestore {
       allow read, write: if signedIn() && request.auth.uid == uid;
     }
 
+    // postAlerts/{postId}: "alert already sent" markers written only by the onPostCreated Cloud Function
+    // (Admin SDK bypasses rules). No match here, so clients are denied by default.
+
     match /posts/{postId} {
       function profile() {
         return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;

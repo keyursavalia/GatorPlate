@@ -67,7 +67,8 @@ final class MapViewModel {
         repository.hasError ? "Couldn't load free food right now. Retrying..." : nil
     }
 
-    var showsPostEndedNotice: Bool { navigation.showsPostEndedNotice }
+    /// "That food post has ended." and similar, shown briefly over the map.
+    var notice: String? { navigation.notice }
 
     var locationBanner: LocationBanner? {
         let banner: LocationBanner? = switch location.authorization {
@@ -109,8 +110,8 @@ final class MapViewModel {
         reportStatus = .idle
     }
 
-    func dismissPostEndedNotice() {
-        navigation.dismissPostEndedNotice()
+    func dismissNotice() {
+        navigation.dismissNotice()
     }
 
     // MARK: Camera
