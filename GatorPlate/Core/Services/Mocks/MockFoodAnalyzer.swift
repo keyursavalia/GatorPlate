@@ -12,6 +12,8 @@ final class MockFoodAnalyzer: FoodAnalyzing {
         self.delay = delay
     }
 
+    func prepare() {}
+
     func analyze(jpegData: Data) async throws(AppError) -> FoodAnalysisOutcome {
         do {
             try await Task.sleep(for: delay)
