@@ -40,6 +40,11 @@ final class PostFlowModel {
         self.author = author
     }
 
+    /// When the flow opens: the analyzer readies its credentials while the user frames the photo.
+    func prepareAnalysis() {
+        analyzer.prepare()
+    }
+
     func didTake(_ photo: CapturedPhoto) {
         step = .preview(photo)
     }
