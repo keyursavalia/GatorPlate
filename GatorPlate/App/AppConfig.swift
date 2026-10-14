@@ -16,9 +16,9 @@ nonisolated enum AppConfig {
     static let contactEmail = ""
 
     // AI (Firebase AI Logic)
-    /// Verified 2026-10-07 in the Firebase AI Logic models page: stable, image input + JSON schema,
-    /// retirement no earlier than 2027-05-19. Never hardcode the model name elsewhere.
-    static let geminiModelName = "gemini-3.5-flash"
+    /// 2026-10-14: switched from gemini-3.5-flash, which Google deprecated; 3.6 Flash is active.
+    /// Never hardcode the model name elsewhere.
+    static let geminiModelName = "gemini-3.6-flash"
     /// `true` uses thinking level `.minimal` (faster; not supported on 3.7/3.8 Flash), `false` the default `.low`.
     static let aiThinkingMinimal = false
     static let aiTemperature: Float = 0.2
