@@ -19,6 +19,10 @@ protocol NotificationService: AnyObject {
     /// Opt in or out for this user. Opting out removes the installation ID.
     func setAlertsEnabled(_ enabled: Bool, uid: String) async throws
     func setQuietHours(_ enabled: Bool, uid: String) async throws
+    /// "What to alert me about" at `users/{uid}.alertFilters` (the function applies them).
+    func setAlertFilters(_ filters: AlertFilters, uid: String) async throws
+    /// Account deletion: forget this user locally. No Firestore write (the server deletes the profile).
+    func resetForDeletedAccount()
     /// Before sign-out: removes this device's installation ID so a signed-out phone gets no alerts. Never throws.
     func deactivate(uid: String) async
 }
