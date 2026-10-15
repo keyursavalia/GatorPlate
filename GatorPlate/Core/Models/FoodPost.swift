@@ -22,7 +22,8 @@ nonisolated struct FoodPost: Codable, Equatable, Identifiable, Sendable {
     var latitude: Double
     var longitude: Double
 
-    var hasPhoto: Bool
+    /// Uploaded photo slots, ascending (0 is the cover). See `PostPhotoSlots`.
+    var photoSlots: [Int]
     var aiGenerated: Bool
     var editedAfterAI: Bool
 
@@ -35,6 +36,11 @@ nonisolated struct FoodPost: Codable, Equatable, Identifiable, Sendable {
     func isActive(now: Date = .now) -> Bool {
         status == .active && expiresAt > now
     }
+
+    var hasPhoto: Bool { !photoSlots.isEmpty }
+
+    /// The first uploaded slot: 0 unless the cover failed to upload.
+    var coverSlot: Int? { photoSlots.first }
 
     var coordinate: Coordinate {
         Coordinate(latitude: latitude, longitude: longitude)
