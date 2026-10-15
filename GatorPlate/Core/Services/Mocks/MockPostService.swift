@@ -44,20 +44,23 @@ final class MockPostService: PostService {
 
     func makePostId() -> String { Self.randomPostId() }
 
-    func publish(_ submission: PostSubmission, imageJPEG: Data?) async throws -> FoodPost {
+    func publish(_ submission: PostSubmission, photos: [Data?]) async throws -> PublishResult {
         try await Task.sleep(for: .milliseconds(600))
         if let publishError { throw publishError }
-        var hasPhoto = false
-        if let imageJPEG {
-            hasPhoto = (try? await images.save(jpeg: imageJPEG, forPostId: submission.postId)) != nil
+        var slots: [Int] = []
+        for (slot, jpeg) in photos.enumerated() {
+            guard let jpeg else { continue }
+            if (try? await images.save(jpeg: jpeg, forPostId: submission.postId, slot: slot)) != nil {
+                slots.append(slot)
+            }
         }
         let now = Date.now
-        let post = FoodPost(submission: submission, photoSlots: hasPhoto ? [0] : [], createdAt: now,
+        let post = FoodPost(submission: submission, photoSlots: slots, createdAt: now,
                             expiresAt: now.addingTimeInterval(Double(submission.durationMinutes) * 60))
         posts.removeAll { $0.id == post.id }
         posts.append(post)
         broadcast()
-        return post
+        return PublishResult(post: post, requestedPhotos: photos.count)
     }
 
     func markGone(postId: String) async throws {
