@@ -11,6 +11,7 @@ final class MockNotificationService: NotificationService {
     var setError: AppError?
     private(set) var alertsEnabled = false
     private(set) var quietHours = false
+    private(set) var alertFilters: AlertFilters?
     private(set) var activeUid: String?
 
     init(authorization: NotificationAuthorization = .notDetermined) {
@@ -45,6 +46,16 @@ final class MockNotificationService: NotificationService {
     }
 
     func deactivate(uid: String) async {
+        activeUid = nil
+        alertsEnabled = false
+    }
+
+    func setAlertFilters(_ filters: AlertFilters, uid: String) async throws {
+        if let setError { throw setError }
+        alertFilters = filters
+    }
+
+    func resetForDeletedAccount() {
         activeUid = nil
         alertsEnabled = false
     }
