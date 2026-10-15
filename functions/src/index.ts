@@ -14,6 +14,9 @@ import {
   isAlreadyExists,
   recipientIds,
 } from "./recipients.js";
+import { alertSubtitle } from "./filters.js";
+
+export { deleteAccount } from "./deleteAccount.js";
 
 initializeApp();
 
@@ -21,7 +24,8 @@ initializeApp();
 const ALERT_MARKER_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 /**
- * New post -> one alert per opted-in device, except the author's. Payload: title, post title, `postId` only.
+ * New post -> one alert per opted-in device whose owner's filters match, except the author's. Payload: title,
+ * a subtitle of post facts (the same for everyone), the post title, and `postId` only.
  * Runs in us-central1 to match the Firestore location (nam5). Logs counts only, never IDs or content.
  */
 export const onPostCreated = onDocumentCreated(
@@ -58,16 +62,18 @@ export const onPostCreated = onDocumentCreated(
     const [subscribersSnapshot, authorSnapshot] = await Promise.all([
       db.collection("users")
         .where("notificationsEnabled", "==", true)
-        .select("notificationsEnabled", "fcmInstallationId", "quietHoursEnabled")
+        .select("notificationsEnabled", "fcmInstallationId", "quietHoursEnabled", "alertFilters")
         .get(),
       authorUid ? db.collection("users").doc(authorUid).get() : Promise.resolve(null),
     ]);
     const subscribers: Subscriber[] = subscribersSnapshot.docs.map((doc) => ({ uid: doc.id, ...doc.data() }));
-    const ids = recipientIds(subscribers, authorUid, authorSnapshot?.get("fcmInstallationId"), new Date());
+    const { ids, filteredOut } = recipientIds(subscribers, post, authorUid,
+      authorSnapshot?.get("fcmInstallationId"), new Date());
     if (ids.length === 0) {
-      logger.info("No alert recipients", { postId, subscribers: subscribers.length });
+      logger.info("No alert recipients", { postId, subscribers: subscribers.length, filteredOut });
       return;
     }
+    const subtitle = alertSubtitle(post);
 
     let sent = 0;
     const staleIds = new Set<string>();
@@ -80,7 +86,15 @@ export const onPostCreated = onDocumentCreated(
         fids: batch,
         notification: { title: ALERT_TITLE, body },
         data: { postId },
-        apns: { payload: { aps: { sound: "default" } } },
+        // The full APNs alert, so the subtitle never depends on how FCM merges it with `notification`.
+        apns: {
+          payload: {
+            aps: {
+              alert: { title: ALERT_TITLE, body, ...(subtitle ? { subtitle } : {}) },
+              sound: "default",
+            },
+          },
+        },
       });
       sent += response.successCount;
       response.responses.forEach((result, index) => {
@@ -100,6 +114,7 @@ export const onPostCreated = onDocumentCreated(
     logger.info("Free food alert sent", {
       postId,
       recipients: ids.length,
+      filteredOut,
       sent,
       failed: ids.length - sent,
       staleRemoved: staleOwners.length,
