@@ -13,6 +13,10 @@ final class AuthViewModel {
     /// Failure from the last submit/accept/verify action. Shown inline; does not change `state`.
     private(set) var formError: String?
     private(set) var infoMessage: String?
+    /// "Your account was deleted." on the Welcome screen until the next sign-in or sign-up.
+    private(set) var showsAccountDeleted = false
+    /// "Forgot password?" result; the same text whether or not the account exists.
+    private(set) var resetMessage: String?
 
     // MARK: Form
     var mode: Mode = .logIn
@@ -24,10 +28,12 @@ final class AuthViewModel {
     private var hasAttemptedSubmit = false
 
     @ObservationIgnored private let auth: any AuthService
+    @ObservationIgnored private let account: any AccountService
     @ObservationIgnored private var listenTask: Task<Void, Never>?
 
-    init(auth: any AuthService) {
+    init(auth: any AuthService, account: any AccountService) {
         self.auth = auth
+        self.account = account
     }
 
     // MARK: Session
@@ -80,6 +86,7 @@ final class AuthViewModel {
     func submit() async {
         hasAttemptedSubmit = true
         formError = nil
+        showsAccountDeleted = false
         guard isFormValid else { return }
         isSubmitting = true
         defer { isSubmitting = false }
@@ -142,6 +149,35 @@ final class AuthViewModel {
         } catch {
             state = .error(message(for: error))
         }
+    }
+
+    /// Sends a reset link. Always shows the same message so nobody can learn whether an email has an account.
+    func sendPasswordReset(email rawEmail: String) async {
+        resetMessage = nil
+        let email = Validation.normalizedEmail(rawEmail)
+        guard Validation.emailIssue(email) == nil else {
+            resetMessage = "Enter the email you signed up with."
+            return
+        }
+        do {
+            try await account.sendPasswordReset(email: email)
+        } catch AppError.network {
+            resetMessage = AppError.network.userMessage
+            return
+        } catch {
+            Logger.ui.error("Password reset request failed")
+        }
+        resetMessage = AccountMessages.resetSent
+    }
+
+    func clearResetMessage() {
+        resetMessage = nil
+    }
+
+    /// The server already deleted the account and the app signed out; the Welcome screen says so.
+    func accountWasDeleted() {
+        showsAccountDeleted = true
+        signOut()
     }
 
     func signOut() {
