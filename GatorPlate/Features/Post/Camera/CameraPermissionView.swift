@@ -1,12 +1,14 @@
 import PhotosUI
 import SwiftUI
 
-/// Every camera state without a live preview: explanation, denied, restricted, unavailable, failed.
-/// The photo library is offered in all of them.
+/// Every camera state without a live preview: not asked yet (the backdrop for the system prompt), denied,
+/// restricted, unavailable, failed. The photo library and manual entry are offered in all of them.
 struct CameraPermissionView: View {
     let state: CameraViewModel.State
     @Binding var pickerItem: PhotosPickerItem?
     var isProcessing = false
+    /// The system prompt is up: the "Allow camera" button hides so it never looks like a second ask.
+    var isRequestingAccess = false
     /// Manual entry with no photo; hidden when nil.
     var onFillManually: (() -> Void)?
     let onAllow: () -> Void
@@ -73,8 +75,10 @@ struct CameraPermissionView: View {
     private var primaryAction: some View {
         switch state {
         case .needsExplanation:
-            PrimaryButton(title: "Allow camera", action: onAllow)
-                .accessibilityHint("Shows the system permission prompt")
+            if !isRequestingAccess {
+                PrimaryButton(title: "Allow camera", action: onAllow)
+                    .accessibilityHint("Shows the system permission prompt")
+            }
         case .denied:
             PrimaryButton(title: "Open Settings") {
                 if let url = AppSettingsURL.url { openURL(url) }
