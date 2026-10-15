@@ -1,21 +1,5 @@
 import SwiftUI
 
-extension Allergen {
-    var displayName: String {
-        switch self {
-        case .milk: "Milk"
-        case .eggs: "Eggs"
-        case .fish: "Fish"
-        case .shellfish: "Shellfish"
-        case .treeNuts: "Tree nuts"
-        case .peanuts: "Peanuts"
-        case .wheat: "Wheat"
-        case .soy: "Soy"
-        case .sesame: "Sesame"
-        }
-    }
-}
-
 /// Orange capsule with a warning icon. Read as "May contain <allergen>".
 struct AllergenChip: View {
     let allergen: Allergen
