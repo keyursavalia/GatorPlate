@@ -10,11 +10,18 @@ final class AppNavigation {
         case map, feed, settings
     }
 
+    /// Screens pushed inside the Settings tab.
+    enum SettingsRoute: Hashable {
+        case alertFilters, account
+    }
+
     static let postEndedNotice = "That food post has ended."
     static let alertPostUnavailableNotice = "That food is no longer available."
 
     var selectedTab = TabID.map
     var selectedPostId: String?
+    /// The Settings tab's navigation path.
+    var settingsPath: [SettingsRoute] = []
     /// Shown on the map when an opened or selected post is no longer active.
     private(set) var notice: String?
 
@@ -73,6 +80,13 @@ final class AppNavigation {
 
     func dismissNotice() {
         notice = nil
+    }
+
+    /// Settings > Alerts > What to alert me about (the "Customize" toast action).
+    func openAlertFilters() {
+        selectedPostId = nil
+        selectedTab = .settings
+        settingsPath = [.alertFilters]
     }
 
     /// The wait starts only once posts have loaded, so a cold launch from an alert isn't mistaken for "ended".
