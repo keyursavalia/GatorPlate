@@ -19,9 +19,9 @@ final class MapViewModel {
     static let homeCamera = MapCamera(centerCoordinate: SFSUCampus.homeCoordinate.clLocationCoordinate,
                                       distance: SFSUCampus.homeCameraDistance)
 
-    static let cameraBounds = MapCameraBounds(centerCoordinateBounds: SFSUCampus.cameraCenterRegion,
-                                              minimumDistance: SFSUCampus.minCameraDistance,
-                                              maximumDistance: SFSUCampus.maxCameraDistance)
+    static let staticCameraBounds = MapCameraBounds(centerCoordinateBounds: SFSUCampus.cameraCenterRegion,
+                                                    minimumDistance: SFSUCampus.minCameraDistance,
+                                                    maximumDistance: SFSUCampus.maxCameraDistance)
 
     let location: any LocationProviding
     let route: RouteController
@@ -29,6 +29,12 @@ final class MapViewModel {
     var cameraPosition: MapCameraPosition = .camera(MapViewModel.homeCamera)
     /// The Map tab is on screen (drives the first-run permission prompts).
     private(set) var isVisible = false
+    /// Center limit for MapKit; its north edge follows the zoom (see `MapViewModel+Viewport`).
+    var cameraBounds = MapViewModel.staticCameraBounds
+    /// Last measured camera at rest, for the DEBUG bounds overlay.
+    var viewport: ViewportReadout?
+    @ObservationIgnored var boundsNorthLatitude = SFSUCampus.cameraCenterNorthLatitude
+    @ObservationIgnored var boundsMaxDistance = SFSUCampus.maxCameraDistance
     private(set) var markGoneStatus = ActionStatus.idle
     private(set) var reportStatus = ActionStatus.idle
     /// Posts reported in this session: Report turns into "Thanks, we'll review it."
@@ -136,7 +142,8 @@ final class MapViewModel {
             : .camera(Self.homeCamera)
     }
 
-    /// Fits the active route above the sheet. `cameraBounds` still clamps it, so the campus lock holds.
+    /// Fits the active route above the sheet. `cameraBounds` still clamps it and the north-edge check may nudge
+    /// it south, so the campus lock holds.
     func fitRouteIfActive() {
         guard let route = route.route else { return }
         cameraPosition = .rect(RouteFraming.rect(for: route.coordinates))
