@@ -28,6 +28,7 @@ final class FirebaseNotificationService: NSObject, NotificationService {
         static let fcmInstallationId = "fcmInstallationId"
         static let fcmInstallationIdUpdatedAt = "fcmInstallationIdUpdatedAt"
         static let quietHoursEnabled = "quietHoursEnabled"
+        static let alertFilters = "alertFilters"
     }
 
     /// Create during app launch: the delegate must be set before launch finishes so cold-start taps arrive.
@@ -115,6 +116,29 @@ final class FirebaseNotificationService: NSObject, NotificationService {
 
     func setQuietHours(_ enabled: Bool, uid: String) async throws {
         try await write([Key.quietHoursEnabled: enabled], uid: uid)
+    }
+
+    func setAlertFilters(_ filters: AlertFilters, uid: String) async throws {
+        // Field names and limits match `firestore.rules` and `functions/src/filters.ts`.
+        let fields: [String: Any] = [
+            "mode": filters.mode.rawValue,
+            "diets": filters.diets.map(\.rawValue),
+            "includeUnknownDiet": filters.includeUnknownDiet,
+            "places": Array(filters.places.prefix(AppConfig.alertFilterMaxPlaces)),
+            "avoidAllergens": filters.avoidAllergens.map(\.rawValue),
+            "skipUnverifiedAllergens": filters.skipUnverifiedAllergens,
+            "foods": Array(filters.foods.prefix(AppConfig.alertFilterMaxFoods)),
+            "updatedAt": FieldValue.serverTimestamp(),
+        ]
+        try await write([Key.alertFilters: fields], uid: uid)
+        Logger.services.info("Alert filters saved")
+    }
+
+    func resetForDeletedAccount() {
+        activeUid = nil
+        alertsEnabled = false
+        savedInstallationId = nil
+        pendingOpenPostId = nil
     }
 
     func deactivate(uid: String) async {
