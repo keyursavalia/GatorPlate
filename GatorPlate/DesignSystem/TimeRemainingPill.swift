@@ -3,6 +3,8 @@ import SwiftUI
 /// "24 min left". Orange under 10 minutes, red "Ending soon" under 5. Refreshes each time the minute count drops.
 struct TimeRemainingPill: View {
     let expiresAt: Date
+    /// Over a photo: an opaque backing (glass and tints never go over photos).
+    var isSolid = false
 
     var body: some View {
         TimelineView(CountdownSchedule(expiresAt: expiresAt)) { context in
@@ -12,7 +14,8 @@ struct TimeRemainingPill: View {
                 .foregroundStyle(state.tint)
                 .padding(.horizontal, Theme.Spacing.md)
                 .padding(.vertical, Theme.Spacing.xs)
-                .background(state.tint.opacity(0.12), in: .capsule)
+                .background(state.tint.opacity(isSolid ? 0 : 0.12), in: .capsule)
+                .background(isSolid ? AnyShapeStyle(.background) : AnyShapeStyle(.clear), in: .capsule)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(state.spokenText)
         }
