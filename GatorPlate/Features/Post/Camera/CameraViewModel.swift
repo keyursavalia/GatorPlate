@@ -5,6 +5,7 @@ import PhotosUI
 import SwiftUI
 
 /// Camera screen state: permission state machine, session lifetime, flash, capture and library import.
+/// Photos go to the flow's `PhotoTrayModel`; the preview stays live for the next shot.
 @MainActor
 @Observable
 final class CameraViewModel {
@@ -209,23 +210,30 @@ final class CameraViewModel {
         }
     }
 
-    func importPhoto(_ item: PhotosPickerItem) async -> CapturedPhoto? {
-        guard !isProcessing else { return nil }
+    /// Library picks in the user's pick order. Unreadable photos are skipped with one message.
+    func importPhotos(_ items: [PhotosPickerItem]) async -> [CapturedPhoto] {
+        guard !isProcessing, !items.isEmpty else { return [] }
         isProcessing = true
         defer { isProcessing = false }
-        do {
-            guard let data = try await item.loadTransferable(type: Data.self) else {
-                errorMessage = ImagePreprocessor.unreadable.userMessage
-                return nil
+        var photos: [CapturedPhoto] = []
+        var failed = 0
+        for item in items {
+            do {
+                guard let data = try await item.loadTransferable(type: Data.self) else {
+                    failed += 1
+                    continue
+                }
+                photos.append(try await preprocessor.process(data, source: .library))
+            } catch {
+                Logger.ui.error("Library import failed: \(String(describing: type(of: error)), privacy: .public)")
+                failed += 1
             }
-            return try await preprocessor.process(data, source: .library)
-        } catch let error as AppError {
-            errorMessage = error.userMessage
-        } catch {
-            Logger.ui.error("Library import failed: \(error.localizedDescription, privacy: .public)")
-            errorMessage = "Couldn't load that photo. Check your connection and try again."
         }
-        return nil
+        if failed > 0 {
+            errorMessage = failed == 1 ? "Couldn't load 1 photo. Try another one."
+                                       : "Couldn't load \(failed) photos. Try other ones."
+        }
+        return photos
     }
 }
 
