@@ -52,7 +52,7 @@ final class MockPostService: PostService {
             hasPhoto = (try? await images.save(jpeg: imageJPEG, forPostId: submission.postId)) != nil
         }
         let now = Date.now
-        let post = FoodPost(submission: submission, hasPhoto: hasPhoto, createdAt: now,
+        let post = FoodPost(submission: submission, photoSlots: hasPhoto ? [0] : [], createdAt: now,
                             expiresAt: now.addingTimeInterval(Double(submission.durationMinutes) * 60))
         posts.removeAll { $0.id == post.id }
         posts.append(post)
@@ -123,7 +123,7 @@ extension FoodPost {
             buildingId: buildingId, locationName: building?.name ?? buildingId, locationDetail: room,
             latitude: building?.coordinate.latitude ?? SFSUCampus.homeCoordinate.latitude,
             longitude: building?.coordinate.longitude ?? SFSUCampus.homeCoordinate.longitude,
-            hasPhoto: false, aiGenerated: false, editedAfterAI: false,
+            photoSlots: [], aiGenerated: false, editedAfterAI: false,
             status: .active, createdAt: now.addingTimeInterval(-10 * 60),
             expiresAt: now.addingTimeInterval(Double(minutesLeft) * 60), updatedAt: now)
     }
