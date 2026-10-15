@@ -22,7 +22,8 @@ struct RootView: View {
                                 onAccept: { Task { await viewModel.acceptTerms() } },
                                 onDismiss: { viewModel.signOut() })
             case .signedIn(let profile):
-                MainTabView(profile: profile, onSignOut: { viewModel.signOut() })
+                MainTabView(profile: profile, onSignOut: { viewModel.signOut() },
+                            onAccountDeleted: { viewModel.accountWasDeleted() })
             case .error(let message):
                 AuthErrorView(message: message,
                               onRetry: { Task { await viewModel.retry() } },
@@ -34,5 +35,5 @@ struct RootView: View {
 }
 
 #Preview("Signed out") {
-    RootView(viewModel: AuthViewModel(auth: MockAuthService()))
+    RootView(viewModel: AuthViewModel(auth: MockAuthService(), account: MockAccountService()))
 }
