@@ -1,40 +1,63 @@
 import SwiftUI
 
-/// Post flow step 3 (design system screen 4): the editable post, pre-filled by AI or empty for manual entry.
+/// Post flow step 3 (design system screen 4): the composer. Visual order: photos -> what -> is it safe ->
+/// where and when -> attestation, with a sticky Publish bar. Pre-filled by AI or empty for manual entry.
 struct ReviewView: View {
     @Bindable var viewModel: ReviewViewModel
-    let onRetake: () -> Void
-    let onPublished: (FoodPost) -> Void
+    let onClose: () -> Void
+    let onEditPhotos: () -> Void
+    let onPublished: (PublishResult) -> Void
 
+    @FocusState private var focus: ReviewFocus?
     @State private var isPickingLocation = false
-    @State private var isConfirmingRetake = false
+    @State private var isPreviewing = false
+    @State private var showsAIStrip = true
+    @State private var highlighted: PostDraftValidator.Field?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     static let attestationText = "I confirm this food has been kept safe (hot food hot, cold food cold) and was not served from open serving for more than 2 hours."
 
     var body: some View {
-        Form {
-            header
-            titleSection
-            descriptionSection
-            ReviewItemsSection(viewModel: viewModel)
-            allergensSection
-            cautionsSection
-            servingsSection
-            locationSection
-            durationSection
-            attestationSection
+        VStack(spacing: 0) {
+            topBar
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                        hero
+                        notices
+                        ReviewWhatSection(viewModel: viewModel, focus: $focus, highlighted: highlighted)
+                        ReviewSafetySection(viewModel: viewModel)
+                        ReviewWhereSection(viewModel: viewModel, focus: $focus, highlighted: highlighted) {
+                            isPickingLocation = true
+                        }
+                        attestation.id(PostDraftValidator.Field.attestation)
+                    }
+                    .padding(Theme.Spacing.lg)
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .safeAreaInset(edge: .bottom) {
+                    ReviewPublishBar(viewModel: viewModel, onShowIssue: { showFirstIssue(proxy) }, onPublish: publish)
+                }
+            }
         }
-        .scrollDismissesKeyboard(.interactively)
-        .safeAreaInset(edge: .bottom) { publishBar }
+        .background(.background)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                if focus != .room {
+                    Button("Next") { moveFocus() }
+                }
+                Button("Done") { focus = nil }
+            }
+        }
+        .onSubmit(moveFocus)
         .sheet(isPresented: $isPickingLocation) {
             LocationPickerSheet(selected: viewModel.draft.location,
                                 userCoordinate: viewModel.userCoordinate) { viewModel.draft.location = $0 }
         }
-        .confirmationDialog("Retake the photo?", isPresented: $isConfirmingRetake, titleVisibility: .visible) {
-            Button("Retake and discard this post", role: .destructive, action: onRetake)
-            Button("Keep editing", role: .cancel) {}
-        } message: {
-            Text("Your edits will be lost.")
+        .sheet(isPresented: $isPreviewing) {
+            ReviewPreviewSheet(post: viewModel.previewPost,
+                               photoSources: viewModel.photos.map(PostPhotoSource.captured))
         }
         .sensoryFeedback(.warning, trigger: viewModel.publishState) { _, new in
             if case .failed = new { return true }
@@ -43,303 +66,154 @@ struct ReviewView: View {
         }
     }
 
-    // MARK: Sections
+    // MARK: Header
 
-    @ViewBuilder
-    private var header: some View {
-        Section {
-            if let photo = viewModel.photo {
-                Image(uiImage: photo.previewImage)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity, maxHeight: 200)
-                    .clipShape(.rect(cornerRadius: Theme.Radius.photo))
-                    .accessibilityLabel("Your food photo")
-                Button("Retake photo") { isConfirmingRetake = true }
-            }
-            if viewModel.aiBaseline != nil {
-                Banner(style: .info, message: "AI drafted this post. Check every field before you publish.")
-                    .listRowInsets(EdgeInsets())
-            } else {
-                Text("Fill in what's there, where it is and how long it lasts.")
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var titleSection: some View {
-        Section {
-            TextField("FREE: food - place - until time", text: $viewModel.title, axis: .vertical)
-                .lineLimit(1...3)
-                .accessibilityLabel("Title")
-            if viewModel.draft.titleIsCustom {
-                Button("Use suggested title") { viewModel.useSuggestedTitle() }
-                    .accessibilityHint("Replaces your title with \(viewModel.suggestedTitle)")
-            }
-        } header: {
-            ReviewSectionHeader(title: "Title", isAIValue: viewModel.isAIValue(.title))
-        } footer: {
-            if let issue = viewModel.warning(for: .title) {
-                ReviewIssueText(issue: issue)
-            } else if !viewModel.draft.titleIsCustom {
-                Text("Updates as you pick the place and time. Type to write your own.")
-            }
-        }
-    }
-
-    private var descriptionSection: some View {
-        Section {
-            TextField("What it is, how much, anything to know", text: $viewModel.description, axis: .vertical)
-                .lineLimit(3...6)
-                .accessibilityLabel("Description")
-        } header: {
-            ReviewSectionHeader(title: "Description", isAIValue: viewModel.isAIValue(.description))
-        } footer: {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                Text("\(viewModel.draft.description.count)/\(AppConfig.postDescriptionMaxLength)")
-                    .monospacedDigit()
-                    .foregroundStyle(viewModel.warning(for: .description) == nil ? Color.secondary : Theme.Palette.warning)
-                    .accessibilityLabel("\(viewModel.draft.description.count) of \(AppConfig.postDescriptionMaxLength) characters")
-                if let issue = viewModel.warning(for: .description) { ReviewIssueText(issue: issue) }
-            }
-        }
-    }
-
-    private var allergensSection: some View {
-        Section {
-            AllergenToggleGrid(selected: viewModel.draft.allergens, onToggle: viewModel.toggleAllergen)
-            if viewModel.draft.allergens.isEmpty {
-                Banner(style: .warning, message: "Allergen info unverified, ask the host.")
-                    .listRowInsets(EdgeInsets())
-            }
-        } header: {
-            ReviewSectionHeader(title: "May contain", isAIValue: viewModel.allergensMatchAI)
-        } footer: {
-            Text("Tap to add or remove. Allergens are never guaranteed; students should always confirm with the host.")
-        }
-    }
-
-    private var cautionsSection: some View {
-        Section {
-            ForEach(viewModel.draft.cautions) { caution in
-                HStack {
-                    TextField("e.g. Contains raw onion", text: cautionBinding(for: caution.id), axis: .vertical)
-                        .accessibilityLabel("Caution note")
-                    Button {
-                        viewModel.removeCaution(caution.id)
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .foregroundStyle(Theme.Palette.danger)
-                            .frame(minWidth: Theme.Size.minTapTarget, minHeight: Theme.Size.minTapTarget)
-                    }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel("Remove caution")
-                }
-            }
-            if viewModel.draft.cautions.count < AppConfig.postMaxCautions {
-                Button {
-                    viewModel.addCaution()
-                } label: {
-                    Label("Add caution", systemImage: "plus.circle.fill")
-                }
-            }
-        } header: {
-            ReviewSectionHeader(title: "Cautions",
-                                isAIValue: viewModel.isAIValue(.cautions) && !viewModel.draft.cautions.isEmpty)
-        }
-    }
-
-    private var servingsSection: some View {
-        Section {
-            if let servings = viewModel.draft.estimatedServings {
-                Stepper(value: servingsBinding(default: servings), in: AppConfig.postServingsRange) {
-                    Text("About \(servings) servings")
-                }
-                Button("Not sure", role: .destructive) { viewModel.draft.estimatedServings = nil }
-            } else {
-                Button {
-                    viewModel.draft.estimatedServings = 10
-                } label: {
-                    Label("Add a servings estimate", systemImage: "plus.circle.fill")
-                }
-            }
-        } header: {
-            ReviewSectionHeader(title: "Servings",
-                                isAIValue: viewModel.isAIValue(.servings) && viewModel.draft.estimatedServings != nil)
-        }
-    }
-
-    private var locationSection: some View {
-        Section {
-            Button {
-                isPickingLocation = true
-            } label: {
-                HStack {
-                    Label(viewModel.draft.location?.displayName ?? "Choose a building or spot",
-                          systemImage: "mappin.circle.fill")
-                        .foregroundStyle(viewModel.draft.location == nil ? Theme.Palette.brandPurple : Color.primary)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                        .accessibilityHidden(true)
-                }
-            }
-            .accessibilityLabel("Location: \(viewModel.draft.location?.displayName ?? "not chosen")")
-            .accessibilityHint("Opens the building list")
-            TextField("Room / floor / entrance (required)", text: $viewModel.locationDetail)
-                .accessibilityLabel("Room, floor or entrance")
-        } header: {
-            Text("Location")
-        } footer: {
-            Text("Add a room, floor or entrance, e.g. \"Room 201\" or \"step-free entrance on the east side\".")
-        }
-    }
-
-    private var durationSection: some View {
-        Section {
-            Picker("Available for", selection: $viewModel.draft.durationMinutes) {
-                ForEach(AppConfig.postDurationOptionsMinutes, id: \.self) { minutes in
-                    Text("\(minutes) min").tag(minutes)
-                }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityLabel("Available for")
-            TimelineView(.everyMinute) { context in
-                Label("Available until \(viewModel.availableUntil(now: context.date).formatted(date: .omitted, time: .shortened))",
-                      systemImage: "clock")
-            }
-        } header: {
-            Text("How long")
-        } footer: {
-            Text("Posts end automatically. Food shouldn't sit out longer than this.")
-        }
-    }
-
-    private var attestationSection: some View {
-        Section {
-            Toggle(isOn: $viewModel.draft.safetyAttested) {
-                Text(Self.attestationText)
-                    .font(.subheadline)
-            }
-        } header: {
-            Text("Food safety")
-        }
-    }
-
-    // MARK: Publish
-
-    private var publishBar: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            switch viewModel.publishState {
-            case .failed(let message):
-                Banner(style: .error, message: message,
-                       actions: [Banner.Action(title: "Try again") { publish() },
-                                 Banner.Action(title: "OK", isPrimary: false) { viewModel.dismissPublishMessage() }])
-            case .cooldown(let seconds):
-                Banner(style: .warning, message: "You just posted. You can post again in \(seconds) s.",
-                       actions: [Banner.Action(title: "OK", isPrimary: false) { viewModel.dismissPublishMessage() }])
-            case .idle, .publishing:
-                if !viewModel.blockingIssues.isEmpty {
-                    missingList
-                }
-            }
-            PrimaryButton(title: "Publish", isLoading: viewModel.publishState == .publishing) { publish() }
-                .disabled(!viewModel.canPublish)
-                .opacity(viewModel.canPublish ? 1 : 0.5)
-                .accessibilityHint(viewModel.canPublish ? "Posts your food for everyone on campus" : "Complete the items listed above first")
+    private var topBar: some View {
+        HStack {
+            GlassIconButton(systemImage: "xmark", accessibilityLabel: "Close", accessibilityHint: "Cancels the post",
+                            action: onClose)
+            Spacer()
+            Text("Review post")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+            Spacer()
+            Button("Preview") { isPreviewing = true }
+                .buttonStyle(.glass)
+                .frame(minHeight: Theme.Size.minTapTarget)
+                .accessibilityHint("Shows the post as students will see it")
         }
         .padding(.horizontal, Theme.Spacing.lg)
-        .padding(.vertical, Theme.Spacing.md)
-        .background(.bar)
+        .padding(.vertical, Theme.Spacing.sm)
     }
 
-    private var missingList: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            Text("To publish:")
-                .font(.footnote.weight(.semibold))
-            ForEach(viewModel.blockingIssues, id: \.self) { issue in
-                Label(issue.message, systemImage: "circle")
-                    .font(.footnote)
+    @ViewBuilder
+    private var hero: some View {
+        if viewModel.photos.isEmpty {
+            Button(action: onEditPhotos) {
+                Label("Add photos", systemImage: "camera.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 88)
+                    .background(Theme.Palette.brandPurple.opacity(0.12), in: .rect(cornerRadius: Theme.Radius.photo))
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens the camera to add up to \(AppConfig.postMaxPhotos) photos")
+        } else {
+            VStack(alignment: .trailing, spacing: Theme.Spacing.sm) {
+                PhotoCarousel(sources: viewModel.photos.map(PostPhotoSource.captured), images: nil)
+                Button("Edit photos", systemImage: "photo.stack", action: onEditPhotos)
+                    .font(.subheadline.weight(.semibold))
+                    .frame(minHeight: Theme.Size.minTapTarget)
+                    .accessibilityHint("Add, remove or reorder photos")
             }
         }
-        .foregroundStyle(.secondary)
-        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var notices: some View {
+        if let notice = viewModel.removedPhotosNotice {
+            dismissibleStrip(notice, systemImage: "person.crop.square.badge.camera") {
+                viewModel.removedPhotosNotice = nil
+            }
+        }
+        if viewModel.aiBaseline != nil, showsAIStrip {
+            dismissibleStrip("AI drafted this post. Check each section.", systemImage: "sparkles") {
+                showsAIStrip = false
+            }
+        } else if viewModel.aiBaseline == nil {
+            Text("Fill in what's there, where it is and how long it lasts.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func dismissibleStrip(_ text: String, systemImage: String, onDismiss: @escaping () -> Void) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.md) {
+            Image(systemName: systemImage)
+                .foregroundStyle(Theme.Palette.brandPurple)
+                .accessibilityHidden(true)
+            Text(text).font(.subheadline)
+            Spacer(minLength: 0)
+            Button("Dismiss", systemImage: "xmark", action: onDismiss)
+                .labelStyle(.iconOnly)
+                .foregroundStyle(.secondary)
+                .frame(minWidth: Theme.Size.minTapTarget, minHeight: Theme.Size.minTapTarget)
+        }
+        .padding(.horizontal, Theme.Spacing.md)
+        .background(Theme.Palette.brandPurple.opacity(0.1), in: .rect(cornerRadius: Theme.Radius.field))
+    }
+
+    // MARK: Attestation
+
+    private var attestation: some View {
+        Button {
+            viewModel.draft.safetyAttested.toggle()
+        } label: {
+            HStack(alignment: .top, spacing: Theme.Spacing.md) {
+                Image(systemName: viewModel.draft.safetyAttested ? "checkmark.square.fill" : "square")
+                    .font(.title2)
+                    .foregroundStyle(viewModel.draft.safetyAttested ? Theme.Palette.brandPurple : Color.secondary)
+                    .accessibilityHidden(true)
+                Text(Self.attestationText)
+                    .font(.subheadline)
+                    .multilineTextAlignment(.leading)
+                    .foregroundStyle(.primary)
+            }
+            .padding(Theme.Spacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .reviewHighlight(highlighted == .attestation)
+        .accessibilityLabel(Self.attestationText)
+        .accessibilityAddTraits(viewModel.draft.safetyAttested ? [.isButton, .isSelected] : .isButton)
+        .accessibilityValue(viewModel.draft.safetyAttested ? "Checked" : "Not checked")
+    }
+
+    // MARK: Actions
+
+    private func moveFocus() {
+        focus = switch focus {
+        case .title: .description
+        case .description: .room
+        case .room, nil: nil
+        }
+    }
+
+    private func showFirstIssue(_ proxy: ScrollViewProxy) {
+        guard let field = viewModel.firstBlockingField else { return }
+        withAnimation(reduceMotion ? nil : .easeInOut) {
+            proxy.scrollTo(field, anchor: .top)
+            highlighted = field
+        }
+        if let issue = viewModel.blockingIssues.first {
+            AccessibilityNotification.Announcement(issue.message).post()
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            withAnimation(reduceMotion ? nil : .easeOut) { highlighted = nil }
+        }
     }
 
     private func publish() {
+        focus = nil
         Task {
-            if let post = await viewModel.publish() { onPublished(post) }
+            if let result = await viewModel.publish() { onPublished(result) }
         }
-    }
-
-    // MARK: Bindings
-
-    private func cautionBinding(for id: UUID) -> Binding<String> {
-        Binding(
-            get: { viewModel.draft.cautions.first { $0.id == id }?.text ?? "" },
-            set: { viewModel.setCautionText($0, for: id) })
-    }
-
-    private func servingsBinding(default value: Int) -> Binding<Int> {
-        Binding(
-            get: { viewModel.draft.estimatedServings ?? value },
-            set: { viewModel.draft.estimatedServings = $0 })
-    }
-}
-
-/// All nine allergens as toggle chips. Selected chips read "May contain <allergen>".
-private struct AllergenToggleGrid: View {
-    let selected: Set<Allergen>
-    let onToggle: (Allergen) -> Void
-
-    @ScaledMetric(relativeTo: .subheadline) private var minChipWidth: CGFloat = 104
-
-    var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: minChipWidth), spacing: Theme.Spacing.sm, alignment: .leading)],
-                  alignment: .leading, spacing: Theme.Spacing.sm) {
-            ForEach(Allergen.allCases, id: \.self) { allergen in
-                chip(allergen)
-            }
-        }
-        .padding(.vertical, Theme.Spacing.xs)
-    }
-
-    private func chip(_ allergen: Allergen) -> some View {
-        let isOn = selected.contains(allergen)
-        return Button {
-            onToggle(allergen)
-        } label: {
-            HStack(spacing: Theme.Spacing.xs) {
-                Image(systemName: isOn ? "exclamationmark.triangle.fill" : "plus")
-                    .foregroundStyle(isOn ? Theme.Palette.warning : Color.secondary)
-                Text(allergen.displayName)
-                    .foregroundStyle(.primary)
-            }
-            .font(.subheadline)
-            .padding(.horizontal, Theme.Spacing.md)
-            .frame(minHeight: Theme.Size.minTapTarget)
-            .background(isOn ? Theme.Palette.warning.opacity(0.15) : Color.clear, in: .capsule)
-            .overlay(Capsule().stroke(isOn ? Color.clear : Color.secondary.opacity(0.4)))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(allergen.displayName)
-        .accessibilityValue(isOn ? "May contain" : "Not listed")
-        .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
     }
 }
 
 #Preview("AI draft") {
-    ReviewView(viewModel: ReviewViewModel(photo: nil, analysis: .sample,
+    ReviewView(viewModel: ReviewViewModel(photos: [], analysis: .sample,
                                           author: PostAuthor(uid: "mock-uid", displayName: "Mock Student", orgName: nil),
                                           posts: MockPostService(), location: MockLocationProvider()),
-               onRetake: {}, onPublished: { _ in })
+               onClose: {}, onEditPhotos: {}, onPublished: { _ in })
 }
 
-#Preview("Manual, large text") {
-    ReviewView(viewModel: ReviewViewModel(photo: nil, analysis: nil,
+#Preview("Manual, AX5") {
+    ReviewView(viewModel: ReviewViewModel(photos: [], analysis: nil,
                                           author: PostAuthor(uid: "mock-uid", displayName: "Mock Student", orgName: nil),
                                           posts: MockPostService(), location: MockLocationProvider()),
-               onRetake: {}, onPublished: { _ in })
-        .dynamicTypeSize(.accessibility3)
+               onClose: {}, onEditPhotos: {}, onPublished: { _ in })
+        .dynamicTypeSize(.accessibility5)
 }
