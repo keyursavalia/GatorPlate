@@ -13,6 +13,8 @@ struct CameraScreen: View {
     @State private var pickerItem: PhotosPickerItem?
     @State private var focusPoint: CGPoint?
     @State private var showsPeopleHint = false
+    /// "Starting camera" only appears when the session is slow to start.
+    @State private var showsStartingSpinner = false
     @AppStorage("camera.hasSeenPeopleHint") private var hasSeenPeopleHint = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -21,23 +23,38 @@ struct CameraScreen: View {
     private static let focusRingSize: CGFloat = 72
 
     var body: some View {
-        Group {
+        ZStack {
             if viewModel.state.showsPreview {
                 cameraLayer
+                    .transition(.opacity)
             } else if viewModel.state == .checking {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Plain backdrop, no spinner: the check takes a moment and must not flash.
+                Color.clear
             } else {
                 CameraPermissionView(state: viewModel.state, pickerItem: $pickerItem,
-                                     isProcessing: viewModel.isProcessing, onFillManually: onFillManually) {
+                                     isProcessing: viewModel.isProcessing,
+                                     isRequestingAccess: viewModel.isRequestingAccess,
+                                     onFillManually: onFillManually) {
                     Task { await viewModel.allowCamera() }
                 }
                 .overlay(alignment: .topLeading) {
                     closeButton.padding(Theme.Spacing.lg)
                 }
+                .transition(.opacity)
             }
         }
-        .task { await viewModel.refresh() }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: viewModel.state.showsPreview)
+        .task {
+            await viewModel.refresh()
+            await viewModel.autoRequestIfNeeded()
+        }
+        .task(id: viewModel.state) {
+            showsStartingSpinner = false
+            guard viewModel.state == .starting else { return }
+            try? await Task.sleep(for: .seconds(AppConfig.cameraSpinnerDelaySeconds))
+            if !Task.isCancelled { showsStartingSpinner = true }
+        }
+        .sensoryFeedback(.warning, trigger: viewModel.declineCount)
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await viewModel.refresh() } }
         }
@@ -72,7 +89,7 @@ struct CameraScreen: View {
 
             shutterFlash
 
-            if viewModel.state == .starting {
+            if viewModel.state == .starting, showsStartingSpinner {
                 ProgressView()
                     .tint(.white)
                     .accessibilityLabel("Starting camera")
