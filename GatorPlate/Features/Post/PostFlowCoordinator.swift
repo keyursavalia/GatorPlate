@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Full-screen post flow launched by `PostFAB`: Camera -> Preview -> Analysis -> Review -> Success,
-/// or straight to an empty Review via "Fill it in myself".
+/// Full-screen post flow launched by `PostFAB`: Capture (1-4 photos) -> Analysis -> Review -> Success,
+/// or straight to Review via "Fill it in myself".
 struct PostFlowCoordinator: View {
     @State private var model: PostFlowModel
     @State private var isConfirmingClose = false
@@ -18,14 +18,12 @@ struct PostFlowCoordinator: View {
     }
 
     var body: some View {
+        @Bindable var model = model
         ZStack {
             switch model.step {
-            case .camera:
-                CameraScreen(viewModel: model.camera, onPhoto: model.didTake, onClose: close,
+            case .capture:
+                CameraScreen(viewModel: model.camera, tray: model.tray, onNext: model.next, onClose: requestClose,
                              onFillManually: model.fillManually)
-                    .transition(transition)
-            case .preview(let photo):
-                PhotoPreviewScreen(photo: photo, onRetake: model.retake, onUse: model.usePhoto, onClose: close)
                     .transition(transition)
             case .analysis:
                 if let analysis = model.analysis {
@@ -34,26 +32,30 @@ struct PostFlowCoordinator: View {
                 }
             case .review:
                 if let review = model.review {
-                    withCloseBar {
-                        ReviewView(viewModel: review, onRetake: model.retake, onPublished: model.didPublish)
-                    }
-                    .transition(transition)
+                    ReviewView(viewModel: review, onClose: requestClose, onEditPhotos: model.editPhotos,
+                               onPublished: model.didPublish)
+                        .transition(transition)
                 }
             case .success:
-                if let post = model.publishedPost {
-                    PublishSuccessView(post: post, photoFailed: model.photoUploadFailed,
-                                       onViewMap: viewMap, onDone: close)
+                if let result = model.publishResult {
+                    PublishSuccessView(result: result, photos: model.tray.photos, onViewMap: viewMap, onDone: close)
                         .transition(.opacity)
                 }
             }
         }
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : .snappy, value: model.step)
         .task { model.prepareAnalysis() }
-        .confirmationDialog("Discard this post?", isPresented: $isConfirmingClose, titleVisibility: .visible) {
+        .confirmationDialog(closeTitle, isPresented: $isConfirmingClose, titleVisibility: .visible) {
             Button("Discard", role: .destructive, action: close)
             Button("Keep editing", role: .cancel) {}
         } message: {
             Text("Nothing has been published yet.")
+        }
+        .confirmationDialog("Your photos changed", isPresented: isAskingRedraft, titleVisibility: .visible) {
+            Button("Re-draft with AI (replaces your edits)", action: model.redraftWithAI)
+            Button("Keep my edits", action: model.keepEdits)
+        } message: {
+            Text("AI can draft the post again from the new photos.")
         }
     }
 
@@ -85,7 +87,7 @@ struct PostFlowCoordinator: View {
         }
     }
 
-    /// Close sits in its own row so it never covers the photo or scrolling content.
+    /// Close sits in its own row so it never covers the photos or scrolling content.
     private func withCloseBar(@ViewBuilder _ content: () -> some View) -> some View {
         VStack(spacing: 0) {
             HStack {
@@ -104,8 +106,19 @@ struct PostFlowCoordinator: View {
         reduceMotion ? .opacity : .push(from: .trailing)
     }
 
+    private var closeTitle: String {
+        if model.hasUnsavedDraft { return "Discard this post?" }
+        let count = model.tray.photos.count
+        return count == 1 ? "Discard 1 photo?" : "Discard \(count) photos?"
+    }
+
+    private var isAskingRedraft: Binding<Bool> {
+        Binding(get: { model.redraftChoice == .asking },
+                set: { if !$0, model.redraftChoice == .asking { model.keepEdits() } })
+    }
+
     private func requestClose() {
-        if model.hasUnsavedDraft {
+        if model.hasUnsavedDraft || (!model.tray.isEmpty && model.step != .success) {
             isConfirmingClose = true
         } else {
             close()
@@ -118,7 +131,7 @@ struct PostFlowCoordinator: View {
     }
 
     private func viewMap() {
-        if let post = model.publishedPost { onViewMap(post.id) }
+        if let post = model.publishResult?.post { onViewMap(post.id) }
         close()
     }
 }
