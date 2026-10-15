@@ -55,10 +55,10 @@ struct MainTabView: View {
         @Bindable var navigation = session.navigation
         return TabView(selection: $navigation.selectedTab) {
             Tab("Map", systemImage: "map", value: AppNavigation.TabID.map) {
-                MapScreen(viewModel: session.map) { isPostFlowPresented = true }
+                MapScreen(viewModel: session.map, permissions: session.permissions) { isPostFlowPresented = true }
             }
             Tab("Feed", systemImage: "list.bullet", value: AppNavigation.TabID.feed) {
-                FeedScreen(viewModel: session.feed, alerts: session.settings) { isPostFlowPresented = true }
+                FeedScreen(viewModel: session.feed) { isPostFlowPresented = true }
             }
             Tab("Settings", systemImage: "gearshape", value: AppNavigation.TabID.settings) {
                 SettingsView(viewModel: session.settings, profile: profile, isSigningOut: isSigningOut,
@@ -71,6 +71,18 @@ struct MainTabView: View {
         .onChange(of: session.repository.phase) {
             session.navigation.postsDidChange()
         }
+        .onChange(of: permissionConditions(session), initial: true) { _, conditions in
+            session.permissions.update(conditions)
+        }
+    }
+
+    /// The first-run prompts wait for the Map on screen, the app active, nothing covering it and no tapped alert.
+    private func permissionConditions(_ session: MainSession) -> FirstRunPermissions.Conditions {
+        FirstRunPermissions.Conditions(
+            mapVisible: session.map.isVisible && session.navigation.selectedTab == .map,
+            sceneActive: scenePhase == .active,
+            coverOrSheetOpen: isPostFlowPresented || session.map.selectedPost != nil,
+            alertPending: environment.notifications.pendingOpenPostId != nil)
     }
 
     /// Opens the post from a tapped alert. Waits while the post flow is open so a draft is never discarded.
