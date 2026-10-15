@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// Poster: Mark as gone (with confirmation). Everyone else: Report. No pickup or claim tracking (R6).
+/// Poster: Mark as gone (with confirmation). Everyone else reports from the ⋯ menu; after reporting this shows
+/// "Reported". No pickup or claim tracking (R6).
 struct PostActionsSection: View {
     let post: FoodPost
     let viewModel: MapViewModel
 
     @State private var isConfirmingGone = false
-    @State private var isReporting = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
@@ -56,19 +56,6 @@ struct PostActionsSection: View {
             Label("Reported. Thanks, we'll review it.", systemImage: "checkmark.seal")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-        } else {
-            Button {
-                isReporting = true
-            } label: {
-                Label("Report", systemImage: "flag")
-                    .frame(minHeight: Theme.Size.minTapTarget)
-            }
-            .buttonStyle(.borderless)
-            .tint(.secondary)
-            .accessibilityHint("Tell us if this post is not food, unsafe or spam")
-            .sheet(isPresented: $isReporting) {
-                ReportReasonSheet(post: post, viewModel: viewModel)
-            }
         }
     }
 }
