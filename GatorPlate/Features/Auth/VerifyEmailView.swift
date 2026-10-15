@@ -44,7 +44,7 @@ struct VerifyEmailView: View {
 }
 
 #Preview {
-    VerifyEmailView(viewModel: AuthViewModel(auth: MockAuthService()),
+    VerifyEmailView(viewModel: AuthViewModel(auth: MockAuthService(), account: MockAccountService()),
                     profile: UserProfile(uid: "u", displayName: "Gator", email: "gator@gmail.com",
                                          accountType: .student, orgName: nil, acceptedTermsVersion: nil,
                                          acceptedTermsAt: nil, notificationsEnabled: false, createdAt: .now))
