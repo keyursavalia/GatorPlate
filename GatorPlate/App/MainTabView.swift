@@ -4,6 +4,8 @@ import SwiftUI
 struct MainTabView: View {
     let profile: UserProfile
     let onSignOut: () -> Void
+    /// After the account is deleted (already signed out locally).
+    let onAccountDeleted: () -> Void
 
     @Environment(\.appEnvironment) private var environment
     @Environment(\.scenePhase) private var scenePhase
@@ -61,8 +63,8 @@ struct MainTabView: View {
                 FeedScreen(viewModel: session.feed) { isPostFlowPresented = true }
             }
             Tab("Settings", systemImage: "gearshape", value: AppNavigation.TabID.settings) {
-                SettingsView(viewModel: session.settings, profile: profile, isSigningOut: isSigningOut,
-                             onSignOut: signOut)
+                SettingsView(session: session, profile: profile, isSigningOut: isSigningOut,
+                             onSignOut: signOut, onDeleteAccount: deleteAccount)
             }
         }
         .onChange(of: session.repository.activePosts) {
@@ -98,6 +100,21 @@ struct MainTabView: View {
             session?.navigation.selectPost(id: postId)
         }
         openTappedAlert()
+    }
+
+    /// Reauthenticates, stops the session, deletes everything on the server, then signs out locally.
+    /// On failure the user stays signed in and the session restarts.
+    private func deleteAccount(password: String) async throws {
+        do {
+            try await environment.account.deleteAccount(password: password) {
+                session?.stopForDeletion()
+            }
+        } catch {
+            session?.start()
+            throw error
+        }
+        AccountCleanup.clearPerUserDefaults()
+        onAccountDeleted()
     }
 
     /// Stops the listener and removes the alert registration first: rules deny both once signed out.
