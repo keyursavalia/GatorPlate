@@ -24,7 +24,7 @@ extension PostService {
 
 nonisolated extension FoodPost {
     /// The post as written for a submission. Server timestamps replace the dates in Firestore.
-    init(submission: PostSubmission, hasPhoto: Bool, createdAt: Date, expiresAt: Date) {
+    init(submission: PostSubmission, photoSlots: [Int], createdAt: Date, expiresAt: Date) {
         self.init(
             id: submission.postId,
             authorUid: submission.author.uid, authorName: submission.author.displayName,
@@ -36,7 +36,7 @@ nonisolated extension FoodPost {
             buildingId: submission.location.building.id, locationName: submission.location.displayName,
             locationDetail: submission.locationDetail,
             latitude: submission.location.coordinate.latitude, longitude: submission.location.coordinate.longitude,
-            hasPhoto: hasPhoto, aiGenerated: submission.aiGenerated, editedAfterAI: submission.editedAfterAI,
+            photoSlots: photoSlots, aiGenerated: submission.aiGenerated, editedAfterAI: submission.editedAfterAI,
             status: .active, createdAt: createdAt, expiresAt: expiresAt, updatedAt: createdAt)
     }
 }
