@@ -5,7 +5,9 @@ import SwiftUI
 /// restricted, unavailable, failed. The photo library and manual entry are offered in all of them.
 struct CameraPermissionView: View {
     let state: CameraViewModel.State
-    @Binding var pickerItem: PhotosPickerItem?
+    @Binding var pickerItems: [PhotosPickerItem]
+    /// Photos left in the tray; the library picks up to this many.
+    var remaining = AppConfig.postMaxPhotos
     var isProcessing = false
     /// The system prompt is up: the "Allow camera" button hides so it never looks like a second ask.
     var isRequestingAccess = false
@@ -59,7 +61,8 @@ struct CameraPermissionView: View {
     private var libraryButton: some View {
         // Local copy: the picker's label closure is Sendable.
         let height = Theme.Size.primaryButtonHeight
-        return PhotosPicker(selection: $pickerItem, matching: .images) {
+        return PhotosPicker(selection: $pickerItems, maxSelectionCount: max(remaining, 1),
+                            selectionBehavior: .ordered, matching: .images) {
             Label("Choose from library", systemImage: "photo.on.rectangle")
                 .font(.headline)
                 .frame(maxWidth: .infinity, minHeight: height)
@@ -67,8 +70,8 @@ struct CameraPermissionView: View {
         .buttonStyle(.bordered)
         .buttonBorderShape(.capsule)
         .tint(Theme.Palette.brandPurple)
-        .disabled(isProcessing)
-        .accessibilityHint("Pick a photo of the food instead of taking one")
+        .disabled(isProcessing || remaining == 0)
+        .accessibilityHint("Pick up to \(remaining) photos of the food")
     }
 
     @ViewBuilder
@@ -112,13 +115,13 @@ struct CameraPermissionView: View {
 }
 
 #Preview("Explanation") {
-    CameraPermissionView(state: .needsExplanation, pickerItem: .constant(nil)) {}
+    CameraPermissionView(state: .needsExplanation, pickerItems: .constant([])) {}
 }
 
 #Preview("Denied") {
-    CameraPermissionView(state: .denied, pickerItem: .constant(nil)) {}
+    CameraPermissionView(state: .denied, pickerItems: .constant([])) {}
 }
 
 #Preview("Unavailable") {
-    CameraPermissionView(state: .unavailable, pickerItem: .constant(nil)) {}
+    CameraPermissionView(state: .unavailable, pickerItems: .constant([])) {}
 }
