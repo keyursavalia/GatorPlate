@@ -5,7 +5,7 @@ import ImageIO
 import OSLog
 
 /// Live food analysis: Gemini through Firebase AI Logic (Gemini Developer API backend, App Check enforced).
-/// The request carries only the stripped JPEG and fixed instruction text, never user identity.
+/// The request carries only the stripped JPEGs (each labeled "Photo N:") and fixed instruction text, never user identity.
 @MainActor
 final class GeminiFoodAnalyzer: FoodAnalyzing {
     private(set) var lastDiagnostics: FoodAnalysisDiagnostics?
@@ -35,25 +35,29 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
         Task { _ = await Self.refreshAppCheckToken(forcingRefresh: false) }
     }
 
-    func analyze(jpegData: Data) async throws(AppError) -> FoodAnalysisOutcome {
+    func analyze(photos: [Data]) async throws(AppError) -> FoodAnalysisOutcome {
+        guard !photos.isEmpty else { throw .validation("Add a photo first.") }
         guard !isAnalyzing else { throw .aiBusy }
         isAnalyzing = true
         defer { isAnalyzing = false }
 
         #if DEBUG
-        Logger.services.debug("AI request image metadata clean: \(Self.isMetadataClean(jpegData), privacy: .public)")
+        let clean = photos.allSatisfy(Self.isMetadataClean)
+        Logger.services.debug("AI request images metadata clean: \(clean, privacy: .public), count: \(photos.count, privacy: .public)")
         #endif
 
         let start = ContinuousClock.now
         var attempt = 0
         while true {
             attempt += 1
-            let result = await runAttempt(jpegData)
+            let result = await runAttempt(photos)
             switch result {
             case .decoded(let raw):
-                let outcome = FoodAnalysisSanitizer.sanitize(raw, promptVersion: FoodAnalysisPrompt.promptVersion,
+                let outcome = FoodAnalysisSanitizer.sanitize(raw, photoCount: photos.count,
+                                                             promptVersion: FoodAnalysisPrompt.promptVersion,
                                                              modelName: AppConfig.geminiModelName)
-                finish(start: start, attempts: attempt, category: Self.category(for: outcome), raw: raw)
+                finish(start: start, attempts: attempt, category: Self.category(for: outcome), raw: raw,
+                       photoCount: photos.count)
                 logDietaryOverride(outcome: outcome, raw: raw)
                 return outcome
             case .blocked:
@@ -91,13 +95,19 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
 
     // MARK: Request
 
-    private func runAttempt(_ jpegData: Data) async -> AttemptResult {
+    /// One user turn: "Photo 1:", image, "Photo 2:", image, ..., then the instruction.
+    private func runAttempt(_ photos: [Data]) async -> AttemptResult {
         let model = generativeModel()
         let text: String?
         do {
-            text = try await Self.withTimeout(seconds: AppConfig.aiTimeoutSeconds) {
-                try await model.generateContent(InlineDataPart(data: jpegData, mimeType: "image/jpeg"),
-                                                FoodAnalysisPrompt.userText).text
+            text = try await Self.withTimeout(seconds: FoodAnalysisDeadline.seconds(photoCount: photos.count)) {
+                var parts: [any Part] = []
+                for (offset, jpeg) in photos.enumerated() {
+                    parts.append(TextPart(FoodAnalysisPrompt.photoLabel(offset + 1)))
+                    parts.append(InlineDataPart(data: jpeg, mimeType: "image/jpeg"))
+                }
+                parts.append(TextPart(FoodAnalysisPrompt.userText))
+                return try await model.generateContent([ModelContent(role: "user", parts: parts)]).text
             }
         } catch {
             return Task.isCancelled ? .cancelled : Self.classify(error)
@@ -120,7 +130,7 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
             modelName: AppConfig.geminiModelName,
             generationConfig: config,
             systemInstruction: ModelContent(role: "system", parts: FoodAnalysisPrompt.systemInstruction),
-            requestOptions: RequestOptions(timeout: TimeInterval(AppConfig.aiTimeoutSeconds)))
+            requestOptions: RequestOptions(timeout: TimeInterval(AppConfig.aiMaxTimeoutSeconds)))
         model = newModel
         return newModel
     }
@@ -216,10 +226,12 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
 
     // MARK: Diagnostics (no content ever)
 
-    private func finish(start: ContinuousClock.Instant, attempts: Int, category: String, raw: RawFoodAnalysis? = nil) {
+    private func finish(start: ContinuousClock.Instant, attempts: Int, category: String, raw: RawFoodAnalysis? = nil,
+                        photoCount: Int? = nil) {
         let latencyMs = Int(start.duration(to: .now) / .milliseconds(1))
         lastDiagnostics = FoodAnalysisDiagnostics(latencyMs: latencyMs, attempts: attempts, category: category,
-                                                  modelDietary: raw?.overallDietary, modelConfidence: raw?.confidence)
+                                                  modelDietary: raw?.overallDietary, modelConfidence: raw?.confidence,
+                                                  photoCount: photoCount)
         Logger.services.info("""
             AI analysis: \(category, privacy: .public) latencyMs=\(latencyMs, privacy: .public) \
             attempts=\(attempts, privacy: .public) model=\(AppConfig.geminiModelName, privacy: .public) \
