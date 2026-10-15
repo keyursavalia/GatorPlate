@@ -119,7 +119,6 @@ struct SettingsView: View {
                     Label("What to alert me about", systemImage: "line.3.horizontal.decrease.circle")
                 }
             }
-            .disabled(!viewModel.alertsEnabled)
 
             Toggle(isOn: quietHoursBinding) {
                 Label(SettingsViewModel.quietHoursLabel, systemImage: "moon")
