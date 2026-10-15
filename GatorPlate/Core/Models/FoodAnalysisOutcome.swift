@@ -21,4 +21,6 @@ nonisolated struct FoodAnalysisDiagnostics: Equatable, Sendable {
     /// The model's own overallDietary, kept only to measure how often local logic overrides it.
     var modelDietary: String?
     var modelConfidence: Double?
+    /// Photos sent in the request.
+    var photoCount: Int?
 }
