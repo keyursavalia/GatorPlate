@@ -5,6 +5,7 @@ struct WelcomeView: View {
     @Bindable var viewModel: AuthViewModel
     @FocusState private var focus: AuthFocusField?
     @State private var showsTerms = false
+    @State private var showsPasswordReset = false
 
     private var isSignUp: Bool { viewModel.mode == .signUp }
 
@@ -12,7 +13,15 @@ struct WelcomeView: View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xl) {
                 header
+                if viewModel.showsAccountDeleted {
+                    Banner(style: .info, message: AccountMessages.deleted)
+                }
                 fields
+                if !isSignUp {
+                    Button("Forgot password?") { showsPasswordReset = true }
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity, minHeight: Theme.Size.minTapTarget, alignment: .trailing)
+                }
                 if let formError = viewModel.formError {
                     Banner(style: .error, message: formError)
                 }
@@ -29,6 +38,9 @@ struct WelcomeView: View {
         .scrollDismissesKeyboard(.interactively)
         .sheet(isPresented: $showsTerms) {
             TermsOfUseSheet(onDismiss: { showsTerms = false })
+        }
+        .sheet(isPresented: $showsPasswordReset) {
+            ForgotPasswordSheet(viewModel: viewModel)
         }
     }
 
@@ -108,11 +120,11 @@ struct WelcomeView: View {
 }
 
 #Preview("Log in") {
-    WelcomeView(viewModel: AuthViewModel(auth: MockAuthService()))
+    WelcomeView(viewModel: AuthViewModel(auth: MockAuthService(), account: MockAccountService()))
 }
 
 #Preview("Sign up, AX5") {
-    let viewModel = AuthViewModel(auth: MockAuthService())
+    let viewModel = AuthViewModel(auth: MockAuthService(), account: MockAccountService())
     viewModel.mode = .signUp
     return WelcomeView(viewModel: viewModel).dynamicTypeSize(.accessibility5)
 }
