@@ -21,4 +21,11 @@ nonisolated enum DistanceText {
     static func walkMinutes(seconds: TimeInterval) -> Int {
         max(1, Int((seconds / 60).rounded(.up)))
     }
+
+    /// Straight-line walking estimate at about 80 m a minute, before a route exists ("4 min walk").
+    static func walkMinutes(meters: Double) -> Int {
+        max(1, Int((meters / walkingMetersPerMinute).rounded(.up)))
+    }
+
+    static let walkingMetersPerMinute = 80.0
 }
