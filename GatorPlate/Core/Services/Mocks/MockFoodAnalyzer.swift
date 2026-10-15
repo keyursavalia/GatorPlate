@@ -14,15 +14,20 @@ final class MockFoodAnalyzer: FoodAnalyzing {
 
     func prepare() {}
 
-    func analyze(jpegData: Data) async throws(AppError) -> FoodAnalysisOutcome {
+    func analyze(photos: [Data]) async throws(AppError) -> FoodAnalysisOutcome {
         do {
             try await Task.sleep(for: delay)
         } catch {
             throw .cancelled
         }
         lastDiagnostics = FoodAnalysisDiagnostics(latencyMs: Int(delay / .milliseconds(1)), attempts: 1,
-                                                  category: "mock", modelDietary: nil, modelConfidence: nil)
-        return try result.get()
+                                                  category: "mock", modelDietary: nil, modelConfidence: nil,
+                                                  photoCount: photos.count)
+        let outcome = try result.get()
+        // Every photo kept, so the multi-photo flow can be previewed.
+        guard case .accepted(var accepted) = outcome else { return outcome }
+        accepted.keptPhotoIndices = Array(photos.indices)
+        return .accepted(accepted)
     }
 }
 
