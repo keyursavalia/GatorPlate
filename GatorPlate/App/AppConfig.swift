@@ -38,8 +38,7 @@ nonisolated enum AppConfig {
     static let aiMaxCautions = 4
     static let aiMaxCalories = 3000
     static let aiServingsRange = 1...500
-    /// Analyzing screen: status line rotation and the "Still working..." threshold.
-    static let aiStatusRotationSeconds = 1.5
+    /// Analyzing screen: the "Still working..." threshold.
     static let aiSlowThresholdSeconds = 10
     /// With this many photos or more, each is downscaled to `aiMultiPhotoLongEdge` (fewer image tokens).
     static let aiMultiPhotoDownscaleThreshold = 3
