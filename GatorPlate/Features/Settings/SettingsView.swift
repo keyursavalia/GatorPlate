@@ -10,7 +10,6 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        @Bindable var viewModel = viewModel
         NavigationStack {
             List {
                 Section("Account") {
@@ -32,12 +31,6 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .alert("Get free food alerts?", isPresented: $viewModel.isShowingExplainer) {
-                Button("Continue") { Task { await viewModel.confirmAlerts() } }
-                Button("Not now", role: .cancel) {}
-            } message: {
-                Text("We'll let you know when someone posts free food on campus. Everyone who opts in gets the same alert, and GatorPlate never tracks what you pick up. You can turn this off anytime.")
-            }
         }
     }
 
