@@ -59,7 +59,8 @@ final class FirestorePostService: PostService {
 
         let now = Date.now
         let expiresAt = FoodPostDocument.expiresAt(from: now, durationMinutes: submission.durationMinutes)
-        let fields = FoodPostDocument.fields(for: submission, hasPhoto: hasPhoto, expiresAt: expiresAt)
+        let photoSlots = hasPhoto ? [0] : []
+        let fields = FoodPostDocument.fields(for: submission, photoSlots: photoSlots, expiresAt: expiresAt)
         let document = posts.document(submission.postId)
         let start = ContinuousClock.now
         do {
@@ -79,7 +80,8 @@ final class FirestorePostService: PostService {
             }
         }
         Logger.services.info("Post published in \((ContinuousClock.now - start).formatted(.units(allowed: [.milliseconds])), privacy: .public), photo: \(hasPhoto, privacy: .public)")
-        return FoodPost(submission: submission, hasPhoto: hasPhoto, createdAt: now, expiresAt: expiresAt.dateValue())
+        return FoodPost(submission: submission, photoSlots: photoSlots, createdAt: now,
+                        expiresAt: expiresAt.dateValue())
     }
 
     func markGone(postId: String) async throws {
