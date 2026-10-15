@@ -3,7 +3,7 @@ import Foundation
 
 /// DEBUG-only CSV row for `docs/EVAL-04-REPORT.md` (columns in `header`). Holds categories and numbers only: no image, no text content.
 enum AnalysisEvalLine {
-    static let header = "outcome,latencyMs,attempts,overallDietary,modelDietary,itemCount,allergens,hasCalories,confidence,model,promptVersion"
+    static let header = "outcome,latencyMs,attempts,overallDietary,modelDietary,itemCount,allergens,hasCalories,confidence,model,promptVersion,photoCount"
 
     static func make(state: AnalysisViewModel.State, diagnostics: FoodAnalysisDiagnostics?) -> String? {
         guard let diagnostics else { return nil }
@@ -21,6 +21,7 @@ enum AnalysisEvalLine {
             confidence,
             AppConfig.geminiModelName,
             FoodAnalysisPrompt.promptVersion,
+            diagnostics.photoCount.map(String.init) ?? "",
         ]
         return fields.joined(separator: ",")
     }
