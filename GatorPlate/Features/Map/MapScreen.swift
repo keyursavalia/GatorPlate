@@ -223,8 +223,8 @@ struct MapScreen: View {
     @ViewBuilder
     private var bottomCard: some View {
         if let post = viewModel.selectedPost {
-            PostBottomCard(post: post, viewModel: viewModel, isExpanded: detent == .medium)
-                .presentationDetents([Self.smallDetent, .medium], selection: $detent)
+            PostBottomCard(post: post, viewModel: viewModel, isExpanded: detent != Self.smallDetent)
+                .presentationDetents([Self.smallDetent, .medium, .large], selection: $detent)
                 .presentationBackgroundInteraction(.enabled(upThrough: .medium))
                 .presentationDragIndicator(.visible)
                 // Solid, not glass: the card is content (design system: glass on controls only).
