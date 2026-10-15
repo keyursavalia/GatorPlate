@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Searchable list of campus buildings, plus "Drop a pin on the map". The list is the accessible path;
-/// the map is optional.
+/// Searchable campus buildings: "Nearby" (closest first, when the user's location is known), "All buildings"
+/// (A-Z), and "Drop a pin on the map". The list is the accessible path; the map is optional.
 struct LocationPickerSheet: View {
     let selected: PostLocation?
     /// The user's last fix, only to sort buildings by distance. Never stored.
@@ -25,20 +25,17 @@ struct LocationPickerSheet: View {
                     }
                     .accessibilityHint("Pick an exact spot on campus")
                 }
-                Section("Buildings") {
-                    if buildings.isEmpty {
+                if !nearby.isEmpty {
+                    Section("Nearby") {
+                        ForEach(nearby) { building in buildingButton(building) }
+                    }
+                }
+                Section("All buildings") {
+                    if matches.isEmpty {
                         Text("No building matches \"\(query)\".")
                             .foregroundStyle(.secondary)
                     }
-                    ForEach(buildings) { building in
-                        Button {
-                            onSelect(.building(building))
-                            dismiss()
-                        } label: {
-                            row(for: building)
-                        }
-                        .foregroundStyle(.primary)
-                    }
+                    ForEach(matches.sorted { $0.name < $1.name }) { building in buildingButton(building) }
                 }
             }
             .searchable(text: $query, prompt: "Search buildings")
@@ -50,6 +47,16 @@ struct LocationPickerSheet: View {
                 }
             }
         }
+    }
+
+    private func buildingButton(_ building: CampusBuilding) -> some View {
+        Button {
+            onSelect(.building(building))
+            dismiss()
+        } label: {
+            row(for: building)
+        }
+        .foregroundStyle(.primary)
     }
 
     private func row(for building: CampusBuilding) -> some View {
@@ -77,14 +84,22 @@ struct LocationPickerSheet: View {
         return false
     }
 
-    /// Nearest first when the user's location is known, otherwise alphabetical.
-    private var buildings: [CampusBuilding] {
+    private static let nearbyCount = 3
+
+    private var matches: [CampusBuilding] {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
-        let matches = trimmed.isEmpty ? CampusBuilding.all : CampusBuilding.all.filter {
+        return trimmed.isEmpty ? CampusBuilding.all : CampusBuilding.all.filter {
             $0.name.localizedStandardContains(trimmed) || $0.shortName.localizedStandardContains(trimmed)
         }
-        guard let userCoordinate else { return matches.sorted { $0.name < $1.name } }
-        return matches.sorted { $0.coordinate.distance(to: userCoordinate) < $1.coordinate.distance(to: userCoordinate) }
+    }
+
+    /// The closest few, only when the user's location is known.
+    private var nearby: [CampusBuilding] {
+        guard let userCoordinate else { return [] }
+        let sorted = matches.sorted {
+            $0.coordinate.distance(to: userCoordinate) < $1.coordinate.distance(to: userCoordinate)
+        }
+        return Array(sorted.prefix(Self.nearbyCount))
     }
 
     private func distanceText(to building: CampusBuilding) -> String? {
