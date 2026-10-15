@@ -10,7 +10,7 @@ import SwiftUI
 final class CameraViewModel {
     enum State: Equatable {
         case checking
-        /// In-app explanation before the system prompt.
+        /// Not asked yet: the "Snap the food" page shows while the system prompt fires on its own.
         case needsExplanation
         case denied
         case restricted
@@ -37,6 +37,11 @@ final class CameraViewModel {
     private(set) var isProcessing = false
     /// Incremented at the real shutter moment; triggers the haptic and flash animation.
     private(set) var shutterCount = 0
+    /// The system camera prompt is up; the page hides its "Allow camera" button.
+    private(set) var isRequestingAccess = false
+    /// Incremented when the user declines the prompt; triggers a warning haptic.
+    private(set) var declineCount = 0
+    @ObservationIgnored private var hasAutoRequested = false
 
     let camera: any CameraCapturing
     private let preprocessor = ImagePreprocessor()
@@ -69,11 +74,26 @@ final class CameraViewModel {
         }
     }
 
+    /// The first time the post flow opens undecided, the system prompt fires by itself once the cover has
+    /// finished presenting, over the "Snap the food" page.
+    func autoRequestIfNeeded() async {
+        guard state == .needsExplanation, !hasAutoRequested else { return }
+        hasAutoRequested = true
+        try? await Task.sleep(for: .seconds(AppConfig.cameraPromptDelaySeconds))
+        guard !Task.isCancelled, state == .needsExplanation else { return }
+        await allowCamera()
+    }
+
     func allowCamera() async {
+        guard !isRequestingAccess else { return }
+        isRequestingAccess = true
+        defer { isRequestingAccess = false }
         switch await camera.requestAccess() {
         case .authorized: state = .starting
         case .restricted: state = .restricted
-        case .denied, .notDetermined: state = .denied
+        case .denied, .notDetermined:
+            state = .denied
+            declineCount += 1
         }
     }
 
