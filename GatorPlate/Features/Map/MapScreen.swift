@@ -4,6 +4,8 @@ import SwiftUI
 /// Campus map locked to SFSU with rotation, live post pins, a walking route and a non-modal bottom card.
 struct MapScreen: View {
     @Bindable var viewModel: MapViewModel
+    /// First-run location and notification prompts; owns the "Alerts on" toast.
+    let permissions: FirstRunPermissions
     let onPostFood: () -> Void
 
     @Namespace private var mapScope
@@ -49,8 +51,13 @@ struct MapScreen: View {
         .overlay(alignment: .bottomTrailing) {
             // Hidden while the bottom card is up: the cover can't present over the sheet.
             if viewModel.selectedPost == nil {
-                PostFAB(action: onPostFood)
-                    .padding(Theme.Spacing.lg)
+                VStack(alignment: .trailing, spacing: Theme.Spacing.md) {
+                    if permissions.showsAlertsToast {
+                        alertsToast.transition(.opacity)
+                    }
+                    PostFAB(action: onPostFood)
+                }
+                .padding(Theme.Spacing.lg)
             }
         }
         .mapScope(mapScope)
@@ -63,6 +70,12 @@ struct MapScreen: View {
         .onChange(of: viewModel.route.state) { _, new in
             routeDidChange(new)
         }
+        .onChange(of: permissions.announcement) { _, announcement in
+            guard let announcement else { return }
+            AccessibilityNotification.Announcement(announcement).post()
+            permissions.clearAnnouncement()
+        }
+        .animation(reduceMotion ? nil : .easeInOut, value: permissions.showsAlertsToast)
         .onAppear { viewModel.onAppear() }
         .onDisappear { viewModel.onDisappear() }
         .task(id: viewModel.notice) {
@@ -120,11 +133,6 @@ struct MapScreen: View {
     private func locationBanner(_ banner: MapViewModel.LocationBanner) -> some View {
         let notNow = Banner.Action(title: "Not now", isPrimary: false) { viewModel.dismissBanner(banner) }
         switch banner {
-        case .prePrompt:
-            solidBanner(Banner(
-                style: .info,
-                message: "See how far free food is from you. GatorPlate uses your location only while the map is open.",
-                actions: [Banner.Action(title: "Enable location") { viewModel.enableLocation() }, notNow]))
         case .denied:
             solidBanner(Banner(
                 style: .warning,
@@ -141,6 +149,12 @@ struct MapScreen: View {
                 message: "Precise location is off, directions may be less accurate.",
                 actions: [Banner.Action(title: "Use precise location") { viewModel.requestPreciseLocation() }, notNow]))
         }
+    }
+
+    private var alertsToast: some View {
+        Toast(message: "Alerts on for all free food.", systemImage: "bell.badge.fill",
+              action: Toast.Action(title: "Customize") { viewModel.openAlertFilters() },
+              onDismiss: { permissions.dismissAlertsToast() })
     }
 
     /// Opaque backing so banner text stays readable over the map (glass is for controls only).
@@ -175,5 +189,6 @@ struct MapScreen: View {
 }
 
 #Preview("On campus") {
-    MapScreen(viewModel: .preview, onPostFood: {})
+    let session = MainSession.preview
+    MapScreen(viewModel: session.map, permissions: session.permissions, onPostFood: {})
 }
