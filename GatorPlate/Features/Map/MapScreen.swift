@@ -10,6 +10,11 @@ struct MapScreen: View {
 
     @Namespace private var mapScope
     @State private var detent: PresentationDetent = Self.smallDetent
+    /// The map's full drawn area in its own coordinates, safe areas included (the map draws under the bars).
+    @State private var drawnRect = CGRect.zero
+    #if DEBUG
+    @AppStorage("debug.mapBoundsOverlay") private var showsBoundsOverlay = false
+    #endif
     @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -20,33 +25,20 @@ struct MapScreen: View {
     ]
 
     var body: some View {
-        Map(position: $viewModel.cameraPosition,
-            bounds: MapViewModel.cameraBounds,
-            interactionModes: [.pan, .zoom, .rotate],
-            selection: $viewModel.selectedPostId,
-            scope: mapScope) {
-            UserAnnotation()
-
-            if let route = viewModel.route.route {
-                MapPolyline(coordinates: route.coordinates.map(\.clLocationCoordinate))
-                    .stroke(Theme.Palette.brandPurple,
-                            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
-                    .mapOverlayLevel(level: .aboveRoads)
-            }
-
-            ForEach(viewModel.posts) { post in
-                Annotation(post.title, coordinate: post.coordinate.clLocationCoordinate) {
-                    PostPin(dietary: post.overallDietary, isSelected: post.id == viewModel.selectedPostId)
-                        .accessibilityLabel(viewModel.accessibilityLabel(for: post))
-                        .accessibilityHint("Shows details")
-                        .accessibilityAddTraits(.isButton)
+        MapReader { proxy in
+            map
+                .onMapCameraChange(frequency: .onEnd) { context in
+                    cameraDidEnd(context.camera, proxy: proxy)
                 }
-                .tag(post.id)
-            }
-            .annotationTitles(.hidden)
         }
-        .mapStyle(.standard(emphasis: .muted, pointsOfInterest: .including(Self.pointsOfInterest)))
-        .mapControls {}
+        .onGeometryChange(for: CGRect.self) { geometry in
+            let insets = geometry.safeAreaInsets
+            return CGRect(x: -insets.leading, y: -insets.top,
+                          width: geometry.size.width + insets.leading + insets.trailing,
+                          height: geometry.size.height + insets.top + insets.bottom)
+        } action: { rect in
+            drawnRect = rect
+        }
         .overlay(alignment: .top) { topOverlay }
         .overlay(alignment: .bottomTrailing) {
             // Hidden while the bottom card is up: the cover can't present over the sheet.
@@ -87,6 +79,66 @@ struct MapScreen: View {
         }
     }
 
+    private var map: some View {
+        Map(position: $viewModel.cameraPosition,
+            bounds: viewModel.cameraBounds,
+            interactionModes: [.pan, .zoom, .rotate],
+            selection: $viewModel.selectedPostId,
+            scope: mapScope) {
+            UserAnnotation()
+
+            if let route = viewModel.route.route {
+                MapPolyline(coordinates: route.coordinates.map(\.clLocationCoordinate))
+                    .stroke(Theme.Palette.brandPurple,
+                            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+                    .mapOverlayLevel(level: .aboveRoads)
+            }
+
+            ForEach(viewModel.posts) { post in
+                Annotation(post.title, coordinate: post.coordinate.clLocationCoordinate) {
+                    PostPin(dietary: post.overallDietary, isSelected: post.id == viewModel.selectedPostId)
+                        .accessibilityLabel(viewModel.accessibilityLabel(for: post))
+                        .accessibilityHint("Shows details")
+                        .accessibilityAddTraits(.isButton)
+                }
+                .tag(post.id)
+            }
+            .annotationTitles(.hidden)
+        }
+        .mapStyle(.standard(emphasis: .muted, pointsOfInterest: .including(Self.pointsOfInterest)))
+        .mapControls {}
+    }
+
+    /// Reads the real visible north edge from the 4 drawn corners (exact for any heading, device or orientation)
+    /// and moves the camera south when it overshoots. Only at rest (`.onEnd`), never while the finger is down.
+    private func cameraDidEnd(_ camera: MapCamera, proxy: MapProxy) {
+        let rect = drawnRect
+        guard rect.width > 0, rect.height > 0 else { return }
+        let corners = [CGPoint(x: rect.minX, y: rect.minY), CGPoint(x: rect.maxX, y: rect.minY),
+                       CGPoint(x: rect.minX, y: rect.maxY), CGPoint(x: rect.maxX, y: rect.maxY)]
+        let latitudes = corners.compactMap { proxy.convert($0, from: .local)?.latitude }
+        guard latitudes.count == corners.count else { return }
+        let correction = viewModel.cameraDidEnd(
+            cornerLatitudes: latitudes, center: Coordinate(camera.centerCoordinate), distance: camera.distance,
+            heading: camera.heading, metersPerPointPerMeter: metersPerPointPerMeter(proxy: proxy, camera: camera),
+            viewSize: rect.size)
+        guard let correction else { return }
+        withAnimation(reduceMotion ? nil : .smooth(duration: 0.35)) {
+            viewModel.cameraPosition = .camera(correction)
+        }
+    }
+
+    /// Meters per screen point at the center, measured 100 pt up, divided by the camera distance.
+    private func metersPerPointPerMeter(proxy: MapProxy, camera: MapCamera) -> Double? {
+        let mid = CGPoint(x: drawnRect.midX, y: drawnRect.midY)
+        guard camera.distance > 0,
+              let center = proxy.convert(mid, from: .local),
+              let above = proxy.convert(CGPoint(x: mid.x, y: mid.y - 100), from: .local) else { return nil }
+        let meters = CLLocation(latitude: center.latitude, longitude: center.longitude)
+            .distance(from: CLLocation(latitude: above.latitude, longitude: above.longitude))
+        return meters / 100 / camera.distance
+    }
+
     private func routeDidChange(_ state: RouteController.State) {
         switch state {
         case .active(_, let route):
@@ -104,6 +156,12 @@ struct MapScreen: View {
 
     private var topOverlay: some View {
         VStack(alignment: .trailing, spacing: Theme.Spacing.sm) {
+            #if DEBUG
+            if showsBoundsOverlay, let viewport = viewModel.viewport {
+                MapBoundsHUD(viewport: viewport)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            #endif
             if let message = viewModel.loadErrorMessage {
                 solidBanner(Banner(style: .error, message: message))
             }
