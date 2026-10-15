@@ -1,69 +1,79 @@
 import SwiftUI
 
-/// Items editor: rename, diet picker, remove, add. Calories are AI estimates and read-only.
+/// Items editor inside "What's there": name, a diet Menu pill and a ⋯ menu to remove; Add item; the overall diet.
+/// Calories are AI estimates, shown in "Allergens & safety".
 struct ReviewItemsSection: View {
     @Bindable var viewModel: ReviewViewModel
 
     var body: some View {
-        Section {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            HStack(spacing: Theme.Spacing.sm) {
+                Text("Items").font(.subheadline.weight(.semibold))
+                if viewModel.isAIValue(.items) { AIBadge() }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+
             ForEach(viewModel.draft.items) { item in
                 itemRow(item)
             }
-            .onDelete { offsets in
-                for id in offsets.map({ viewModel.draft.items[$0].id }) { viewModel.removeItem(id) }
-            }
             if viewModel.draft.items.count < AppConfig.postMaxItems {
-                Button {
-                    viewModel.addItem()
-                } label: {
-                    Label("Add item", systemImage: "plus.circle.fill")
-                }
+                Button("Add item", systemImage: "plus.circle.fill") { viewModel.addItem() }
+                    .font(.subheadline)
+                    .frame(minHeight: Theme.Size.minTapTarget)
             }
             HStack(spacing: Theme.Spacing.sm) {
-                Text("Overall").font(.subheadline.weight(.semibold))
+                Text("Overall").font(.subheadline).foregroundStyle(.secondary)
                 DietaryBadge(dietary: viewModel.draft.overallDietary, isEstimate: viewModel.aiBaseline != nil)
             }
             .accessibilityElement(children: .combine)
-            Toggle("Show calorie estimates", isOn: $viewModel.showCalories)
-        } header: {
-            ReviewSectionHeader(title: "Items", isAIValue: viewModel.isAIValue(.items))
-        } footer: {
             if let issue = viewModel.warning(for: .items) { ReviewIssueText(issue: issue) }
         }
     }
 
     private func itemRow(_ item: PostDraft.Item) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline) {
-                TextField("Food item, e.g. Veggie pizza", text: nameBinding(for: item.id))
-                    .textInputAutocapitalization(.sentences)
-                    .accessibilityLabel("Food item name")
-                if viewModel.draft.items.count > 1 {
-                    Button {
-                        viewModel.removeItem(item.id)
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .foregroundStyle(Theme.Palette.danger)
-                            .frame(minWidth: Theme.Size.minTapTarget, minHeight: Theme.Size.minTapTarget)
-                    }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel("Remove \(item.name.isEmpty ? "item" : item.name)")
-                }
-            }
-            Picker("Diet", selection: dietaryBinding(for: item.id)) {
-                ForEach(DietaryClass.itemChoices, id: \.self) { dietary in
-                    Label(dietary.label, systemImage: dietary.icon).tag(dietary)
-                }
-            }
-            .pickerStyle(.menu)
-            if viewModel.showCalories, let calories = item.calories {
-                Label("\(calories.low)–\(calories.high) cal · estimate", systemImage: "flame")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("\(calories.low) to \(calories.high) calories per serving, estimate")
-            }
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Spacing.sm) { itemContent(item) }
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) { itemContent(item) }
         }
         .padding(.vertical, Theme.Spacing.xs)
+    }
+
+    @ViewBuilder
+    private func itemContent(_ item: PostDraft.Item) -> some View {
+        TextField("Food item, e.g. Veggie pizza", text: nameBinding(for: item.id))
+            .textInputAutocapitalization(.sentences)
+            .padding(Theme.Spacing.md)
+            .background(.background, in: .rect(cornerRadius: Theme.Radius.field))
+            .accessibilityLabel("Food item name")
+        HStack(spacing: Theme.Spacing.xs) {
+            Menu {
+                Picker("Diet", selection: dietaryBinding(for: item.id)) {
+                    ForEach(DietaryClass.itemChoices, id: \.self) { dietary in
+                        Label(dietary.label, systemImage: dietary.icon).tag(dietary)
+                    }
+                }
+            } label: {
+                HStack(spacing: Theme.Spacing.xs) {
+                    Label(item.dietary.label, systemImage: item.dietary.icon)
+                    Image(systemName: "chevron.up.chevron.down").font(.caption2)
+                }
+                .font(.subheadline)
+                .padding(.horizontal, Theme.Spacing.md)
+                .frame(minHeight: Theme.Size.minTapTarget)
+                .background(Theme.Palette.brandPurple.opacity(0.12), in: .capsule)
+            }
+            .accessibilityLabel("Diet for \(item.name.isEmpty ? "item" : item.name): \(item.dietary.label)")
+            if viewModel.draft.items.count > 1 {
+                Menu {
+                    Button("Remove item", systemImage: "trash", role: .destructive) { viewModel.removeItem(item.id) }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .frame(minWidth: Theme.Size.minTapTarget, minHeight: Theme.Size.minTapTarget)
+                }
+                .accessibilityLabel("More for \(item.name.isEmpty ? "item" : item.name)")
+            }
+        }
     }
 
     private func nameBinding(for id: UUID) -> Binding<String> {
@@ -85,21 +95,6 @@ struct ReviewItemsSection: View {
 extension DietaryClass {
     /// Per-item choices; "mixed" only applies to a whole post.
     static let itemChoices: [DietaryClass] = [.vegan, .vegetarian, .nonVegetarian, .unknown]
-}
-
-/// Section title with the AI badge while the value is still the AI's.
-struct ReviewSectionHeader: View {
-    let title: String
-    var isAIValue = false
-
-    var body: some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            Text(title)
-            if isAIValue { AIBadge() }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
-    }
 }
 
 /// Inline validation message: blocking issues in red, warnings in orange, always with an icon.
