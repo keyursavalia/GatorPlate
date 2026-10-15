@@ -1,26 +1,27 @@
 import PhotosUI
 import SwiftUI
 
-/// Post flow step 1: full-bleed camera with shutter, flash, library, "Fill it in myself" and close.
-/// Falls back to `CameraPermissionView` whenever there is no live preview.
+/// Post flow step 1: full-bleed camera. The shutter adds to a tray (up to 4 photos, camera and library mixed) and
+/// the preview stays live; "Next" carries the tray on. Falls back to `CameraPermissionView` whenever there is no
+/// live preview, with the same tray and Next after a library pick.
 struct CameraScreen: View {
     @Bindable var viewModel: CameraViewModel
-    let onPhoto: (CapturedPhoto) -> Void
+    let tray: PhotoTrayModel
+    let onNext: () -> Void
     let onClose: () -> Void
-    /// Manual entry: the Review form, empty, with no photo.
+    /// Manual entry: Review with the tray's photos and no AI.
     var onFillManually: (() -> Void)?
 
-    @State private var pickerItem: PhotosPickerItem?
+    @State private var pickerItems: [PhotosPickerItem] = []
     @State private var focusPoint: CGPoint?
     @State private var showsPeopleHint = false
     /// "Starting camera" only appears when the session is slow to start.
     @State private var showsStartingSpinner = false
+    @State private var viewerIndex = 0
+    @State private var isViewingPhotos = false
     @AppStorage("camera.hasSeenPeopleHint") private var hasSeenPeopleHint = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private static let shutterSize: CGFloat = 72
-    private static let focusRingSize: CGFloat = 72
 
     var body: some View {
         ZStack {
@@ -31,7 +32,7 @@ struct CameraScreen: View {
                 // Plain backdrop, no spinner: the check takes a moment and must not flash.
                 Color.clear
             } else {
-                CameraPermissionView(state: viewModel.state, pickerItem: $pickerItem,
+                CameraPermissionView(state: viewModel.state, pickerItems: $pickerItems, remaining: tray.remaining,
                                      isProcessing: viewModel.isProcessing,
                                      isRequestingAccess: viewModel.isRequestingAccess,
                                      onFillManually: onFillManually) {
@@ -39,6 +40,16 @@ struct CameraScreen: View {
                 }
                 .overlay(alignment: .topLeading) {
                     closeButton.padding(Theme.Spacing.lg)
+                }
+                .safeAreaInset(edge: .bottom) {
+                    if !tray.isEmpty {
+                        HStack {
+                            trayStrip
+                            NextButton(count: tray.photos.count, action: onNext)
+                        }
+                        .padding(Theme.Spacing.lg)
+                        .background(.bar)
+                    }
                 }
                 .transition(.opacity)
             }
@@ -54,23 +65,37 @@ struct CameraScreen: View {
             try? await Task.sleep(for: .seconds(AppConfig.cameraSpinnerDelaySeconds))
             if !Task.isCancelled { showsStartingSpinner = true }
         }
-        .sensoryFeedback(.warning, trigger: viewModel.declineCount)
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await viewModel.refresh() } }
         }
-        .onChange(of: pickerItem) { _, item in
-            guard let item else { return }
+        .onChange(of: pickerItems) { _, items in
+            guard !items.isEmpty else { return }
             Task {
-                if let photo = await viewModel.importPhoto(item) { onPhoto(photo) }
-                pickerItem = nil
+                let photos = await viewModel.importPhotos(items)
+                withAnimation(reduceMotion ? nil : .snappy) { _ = tray.add(contentsOf: photos) }
+                pickerItems = []
             }
+        }
+        .fullScreenCover(isPresented: $isViewingPhotos) {
+            PhotoViewer(sources: tray.photos.map(PostPhotoSource.captured), images: nil, selection: $viewerIndex,
+                        editActions: PhotoViewer.EditActions(
+                            onRemove: { source in
+                                if case .captured(let photo) = source { tray.remove(id: photo.id) }
+                                viewerIndex = min(viewerIndex, max(tray.photos.count - 1, 0))
+                            },
+                            onMakeCover: { source in
+                                if case .captured(let photo) = source { tray.makeCover(id: photo.id) }
+                                viewerIndex = 0
+                            }))
         }
         .alert("Photo not ready", isPresented: isShowingError) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
+        .sensoryFeedback(.warning, trigger: viewModel.declineCount)
         .sensoryFeedback(.impact(weight: .medium), trigger: viewModel.shutterCount)
+        .sensoryFeedback(.impact(weight: .light), trigger: tray.photos.count) { old, new in new > old }
         .sensoryFeedback(.warning, trigger: viewModel.errorMessage) { _, new in new != nil }
     }
 
@@ -82,12 +107,12 @@ struct CameraScreen: View {
                 viewModel.focus(at: devicePoint)
                 focusPoint = viewPoint
             }
-            .overlay { focusRing }
+            .overlay { CameraFocusRing(point: $focusPoint) }
             .ignoresSafeArea()
             .onAppear { viewModel.startSession() }
             .onDisappear { viewModel.stopSession() }
 
-            shutterFlash
+            CameraShutterFlash(trigger: viewModel.shutterCount)
 
             if viewModel.state == .starting, showsStartingSpinner {
                 ProgressView()
@@ -99,12 +124,18 @@ struct CameraScreen: View {
                 topBar
                 Spacer()
                 if let pauseMessage = viewModel.pauseMessage {
-                    overlayText(pauseMessage)
+                    CameraOverlayText(text: pauseMessage)
+                } else if tray.isFull {
+                    CameraOverlayText(text: "\(AppConfig.postMaxPhotos) photos max. Remove one to add another.")
                 } else if showsPeopleHint {
-                    overlayText("Photograph the food, not people.")
+                    CameraOverlayText(text: "Photograph the food, not people.")
                         .transition(.opacity)
                 }
-                bottomBar
+                if !tray.isEmpty {
+                    trayStrip
+                }
+                CameraControls(viewModel: viewModel, pickerItems: $pickerItems, photoCount: tray.photos.count,
+                               remaining: tray.remaining, onShutter: shoot, onNext: onNext)
             }
             .padding(Theme.Spacing.lg)
         }
@@ -113,86 +144,49 @@ struct CameraScreen: View {
     }
 
     private var topBar: some View {
-        HStack {
-            closeButton
-            Spacer()
-            if let onFillManually {
-                Button(action: onFillManually) {
-                    Label("Fill it in myself", systemImage: "square.and.pencil")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(minHeight: Theme.Size.minTapTarget)
-                }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.capsule)
-                .accessibilityHint("Write the post without a photo or AI")
+        GlassEffectContainer {
+            HStack {
+                closeButton
                 Spacer()
-            }
-            if !viewModel.supportedFlashModes.isEmpty {
-                GlassIconButton(systemImage: viewModel.flashMode.systemImage,
-                                accessibilityLabel: "Flash \(viewModel.flashMode.title)",
-                                accessibilityHint: "Changes the flash mode") {
-                    viewModel.cycleFlash()
+                if let onFillManually {
+                    Button(action: onFillManually) {
+                        Label("Fill it in myself", systemImage: "square.and.pencil")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(minHeight: Theme.Size.minTapTarget)
+                    }
+                    .buttonStyle(.glass)
+                    .buttonBorderShape(.capsule)
+                    .accessibilityHint(tray.isEmpty ? "Write the post without AI"
+                                                    : "Write the post yourself with these photos, without AI")
+                    Spacer()
+                }
+                if !viewModel.supportedFlashModes.isEmpty {
+                    GlassIconButton(systemImage: viewModel.flashMode.systemImage,
+                                    accessibilityLabel: "Flash \(viewModel.flashMode.title)",
+                                    accessibilityHint: "Changes the flash mode") {
+                        viewModel.cycleFlash()
+                    }
                 }
             }
         }
     }
 
-    private var bottomBar: some View {
-        // Local copy: the picker's label closure is Sendable.
-        let tapTarget = Theme.Size.minTapTarget
-        return HStack {
-            PhotosPicker(selection: $pickerItem, matching: .images) {
-                Image(systemName: "photo.on.rectangle")
-                    .font(.title3)
-                    .frame(width: tapTarget, height: tapTarget)
-            }
-            .buttonStyle(.glass)
-            .buttonBorderShape(.circle)
-            .disabled(viewModel.isProcessing)
-            .accessibilityLabel("Choose from library")
-            .accessibilityHint("Pick a photo of the food instead of taking one")
-
-            Spacer()
-            shutterButton
-            Spacer()
-
-            if viewModel.canSwitchCamera {
-                GlassIconButton(systemImage: "arrow.triangle.2.circlepath.camera",
-                                accessibilityLabel: "Switch camera",
-                                accessibilityHint: "Flips between the back and front camera") {
-                    Task { await viewModel.switchCamera() }
-                }
-            } else {
-                Color.clear
-                    .frame(width: Theme.Size.minTapTarget, height: Theme.Size.minTapTarget)
-                    .accessibilityHidden(true)
+    private var trayStrip: some View {
+        PhotoTray(photos: tray.photos,
+                  onSelect: { index in
+                      viewerIndex = index
+                      isViewingPhotos = true
+                  },
+                  onMove: { id, target in withAnimation(reduceMotion ? nil : .snappy) { tray.move(id: id, to: target) } },
+                  onMoveBy: { id, offset in tray.move(id: id, by: offset) },
+                  onMakeCover: { tray.makeCover(id: $0) },
+                  onRemove: { tray.remove(id: $0) }) {
+            if !tray.isFull {
+                LibraryPickerButton(pickerItems: $pickerItems, remaining: tray.remaining,
+                                    isDisabled: viewModel.isProcessing)
             }
         }
-    }
-
-    private var shutterButton: some View {
-        Button {
-            Task {
-                if let photo = await viewModel.capture() { onPhoto(photo) }
-            }
-        } label: {
-            ZStack {
-                Circle()
-                    .strokeBorder(.white, lineWidth: 4)
-                    .frame(width: Self.shutterSize, height: Self.shutterSize)
-                Circle()
-                    .fill(.white)
-                    .frame(width: Self.shutterSize - 14, height: Self.shutterSize - 14)
-                if viewModel.isProcessing {
-                    ProgressView().tint(.black)
-                }
-            }
-            .contentShape(.circle)
-        }
-        .buttonStyle(.plain)
-        .disabled(viewModel.state != .ready || viewModel.isProcessing || viewModel.pauseMessage != nil)
-        .accessibilityLabel("Take photo")
-        .accessibilityValue(viewModel.isProcessing ? "Processing" : "")
+        .transition(reduceMotion ? .opacity : .scale(scale: 0.3, anchor: .bottom).combined(with: .opacity))
     }
 
     private var closeButton: some View {
@@ -200,49 +194,12 @@ struct CameraScreen: View {
                         action: onClose)
     }
 
-    private func overlayText(_ text: String) -> some View {
-        Text(text)
-            .font(.subheadline.weight(.semibold))
-            .multilineTextAlignment(.center)
-            .foregroundStyle(.white)
-            .padding(.horizontal, Theme.Spacing.lg)
-            .padding(.vertical, Theme.Spacing.sm)
-            // Solid, not glass: text over a live preview needs a steady backing.
-            .background(.black.opacity(0.65), in: .capsule)
-    }
-
-    // MARK: Feedback
-
-    @ViewBuilder
-    private var focusRing: some View {
-        if let focusPoint {
-            Circle()
-                .stroke(Theme.Palette.brandGold, lineWidth: 2)
-                .frame(width: Self.focusRingSize, height: Self.focusRingSize)
-                .position(focusPoint)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-                .task(id: focusPoint) {
-                    try? await Task.sleep(for: .seconds(1))
-                    withAnimation(.easeOut) { self.focusPoint = nil }
-                }
+    private func shoot() {
+        Task {
+            guard let photo = await viewModel.capture() else { return }
+            withAnimation(reduceMotion ? nil : .snappy) { _ = tray.add(photo) }
+            AccessibilityNotification.Announcement("Photo \(tray.photos.count) added").post()
         }
-    }
-
-    /// A quick white blink on capture; with Reduce Motion, a gentle dim instead.
-    private var shutterFlash: some View {
-        let peak = reduceMotion ? 0.25 : 0.6
-        return Rectangle()
-            .fill(reduceMotion ? Color.black : Color.white)
-            .keyframeAnimator(initialValue: 0.0, trigger: viewModel.shutterCount) { content, opacity in
-                content.opacity(opacity)
-            } keyframes: { _ in
-                CubicKeyframe(peak, duration: 0.05)
-                CubicKeyframe(0, duration: reduceMotion ? 0.3 : 0.15)
-            }
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
     }
 
     private func showPeopleHintOnce() async {
@@ -263,10 +220,11 @@ struct CameraScreen: View {
 }
 
 #Preview("Camera") {
-    CameraScreen(viewModel: CameraViewModel(camera: MockCameraService()), onPhoto: { _ in }, onClose: {})
+    CameraScreen(viewModel: CameraViewModel(camera: MockCameraService()), tray: PhotoTrayModel(),
+                 onNext: {}, onClose: {})
 }
 
 #Preview("Not asked yet") {
     CameraScreen(viewModel: CameraViewModel(camera: MockCameraService(authorization: .notDetermined)),
-                 onPhoto: { _ in }, onClose: {})
+                 tray: PhotoTrayModel(), onNext: {}, onClose: {})
 }
