@@ -45,6 +45,13 @@ final class MainSession {
         await settings.deactivate()
     }
 
+    /// Account deletion: like `prepareSignOut` but without the Firestore write (the server deletes the profile).
+    func stopForDeletion() {
+        permissions.cancel()
+        stop()
+        settings.forgetForDeletedAccount()
+    }
+
     /// Removes the listener and ends any route. Call before signing out.
     func stop() {
         map.endRoute()
