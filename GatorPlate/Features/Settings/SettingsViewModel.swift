@@ -8,6 +8,8 @@ import Observation
 final class SettingsViewModel {
     private(set) var alertsEnabled: Bool
     private(set) var quietHoursEnabled: Bool
+    /// Saved "What to alert me about"; nil = all free food.
+    private(set) var alertFilters: AlertFilters?
     private(set) var isUpdating = false
     private(set) var errorMessage: String?
 
@@ -19,6 +21,7 @@ final class SettingsViewModel {
         self.uid = profile.uid
         self.alertsEnabled = profile.notificationsEnabled
         self.quietHoursEnabled = profile.quietHoursEnabled ?? false
+        self.alertFilters = profile.alertFilters
     }
 
     /// True when iOS Settings blocks GatorPlate's notifications.
@@ -76,6 +79,21 @@ final class SettingsViewModel {
         } catch {
             errorMessage = Self.message(for: error)
         }
+    }
+
+    /// Saves the filters (10 s deadline). Throws so the filters screen can show the error inline.
+    func saveAlertFilters(_ filters: AlertFilters) async throws {
+        do {
+            try await notifications.setAlertFilters(filters, uid: uid)
+            alertFilters = filters
+        } catch {
+            throw AppError.validation(Self.message(for: error))
+        }
+    }
+
+    /// Account deletion: stop alerts locally; the server removes the profile and registration.
+    func forgetForDeletedAccount() {
+        notifications.resetForDeletedAccount()
     }
 
     private func apply(_ enabled: Bool) async {
