@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Paged hero of a post's photos with a "1/3" counter. Tapping opens `PhotoViewer` with a zoom transition.
-/// The counter sits on a solid pill: glass never goes over photos.
+/// Paged hero of a post's photos with a "1/3" counter. Each photo is shown whole (fit) over a blurred copy of
+/// itself, never cropped. Tapping opens `PhotoViewer` with a zoom transition. Pills over photos are solid, not glass.
 struct PhotoCarousel: View {
     let sources: [PostPhotoSource]
     let images: PostImageCache?
@@ -18,7 +18,8 @@ struct PhotoCarousel: View {
                     selection = index
                     isViewing = true
                 } label: {
-                    PostPhotoView(source: source, images: images, cornerRadius: Theme.Radius.photo)
+                    PostPhotoView(source: source, images: images, cornerRadius: Theme.Radius.photo, contentMode: .fit,
+                                  showsBackdrop: true)
                 }
                 .buttonStyle(.plain)
                 .matchedTransitionSource(id: source.id, in: zoomNamespace)
