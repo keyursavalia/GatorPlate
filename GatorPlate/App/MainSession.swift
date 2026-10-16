@@ -55,9 +55,8 @@ final class MainSession {
         settings.forgetForDeletedAccount()
     }
 
-    /// Removes the listener and ends any route. Call before signing out.
+    /// Removes the listener. Call before signing out.
     func stop() {
-        map.endRoute()
         navigation.selectedPostId = nil
         repository.stop()
     }
