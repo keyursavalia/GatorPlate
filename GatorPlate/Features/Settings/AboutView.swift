@@ -1,38 +1,81 @@
 import SwiftUI
 
-/// About GatorPlate: not an official SFSU app, a link to SFSU Basic Needs, and the version.
+/// About GatorPlate: what it is, how it works in three steps, that it isn't an official SFSU app, and the version.
+/// Fits one screen; it scrolls only when large text needs it.
 struct AboutView: View {
-    /// SFSU Basic Needs Initiative (food pantry and CalFresh help).
-    private static let basicNeedsURL = URL(string: "https://basicneeds.sfsu.edu")
+    private struct Step: Identifiable {
+        let id: String
+        let icon: String
+        let title: String
+        let detail: String
+    }
+
+    private let steps = [
+        Step(id: "snap", icon: "camera", title: "Snap the leftovers",
+             detail: "Orgs photograph extra food after an event."),
+        Step(id: "draft", icon: "sparkles", title: "AI drafts the post",
+             detail: "Items, diet and allergens, reviewed by the poster."),
+        Step(id: "find", icon: "map", title: "Students find it",
+             detail: "Live on the map, with alerts and walking directions."),
+    ]
 
     var body: some View {
-        List {
-            Section {
-                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                    Label(AppConfig.appName, systemImage: "fork.knife.circle.fill")
-                        .font(.title2.bold())
-                        .foregroundStyle(Theme.Palette.brandPurple)
-                    Text("Students and student organizations share leftover campus food in seconds, so less goes to waste.")
-                        .font(.subheadline)
-                }
-                .padding(.vertical, Theme.Spacing.xs)
-            }
-            Section {
-                Label("GatorPlate is a student project. It is not an official San Francisco State University app.",
-                      systemImage: "info.circle")
-                    .font(.subheadline)
-                if let url = Self.basicNeedsURL {
-                    Link(destination: url) {
-                        Label("SFSU Basic Needs: food pantry and CalFresh help", systemImage: "heart.circle")
+        ScrollView {
+            VStack(spacing: Theme.Spacing.xxl) {
+                header
+                VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                    ForEach(steps) { step in
+                        HStack(alignment: .top, spacing: Theme.Spacing.md) {
+                            Image(systemName: step.icon)
+                                .font(.title3)
+                                .foregroundStyle(Theme.Palette.brandPurple)
+                                .frame(width: 32)
+                                .accessibilityHidden(true)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(step.title).font(.headline)
+                                Text(step.detail).font(.subheadline).foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .accessibilityElement(children: .combine)
                     }
-                    .frame(minHeight: Theme.Size.minTapTarget)
                 }
+                .padding(Theme.Spacing.lg)
+                .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
+
+                Text("A student project, free for everyone on campus. Not an official San Francisco State University app.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
-            Section {
-                LabeledContent("Version", value: Self.versionText)
-            }
+            .padding(.horizontal, Theme.Spacing.xl)
+            .padding(.vertical, Theme.Spacing.lg)
+            .frame(maxWidth: 500)
+            .frame(maxWidth: .infinity)
         }
+        .scrollBounceBehavior(.basedOnSize)
         .navigationTitle("About")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var header: some View {
+        VStack(spacing: Theme.Spacing.sm) {
+            Image(systemName: "fork.knife.circle.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(Theme.Palette.brandPurple)
+                .accessibilityHidden(true)
+            Text(AppConfig.appName)
+                .font(.largeTitle.weight(.heavy).width(.condensed))
+                .textCase(.uppercase)
+                .accessibilityAddTraits(.isHeader)
+            Text("Leftover campus food, shared in seconds, so less goes to waste.")
+                .font(.body)
+                .multilineTextAlignment(.center)
+            Text("Version \(Self.versionText)")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .padding(.top, Theme.Spacing.xs)
+        }
     }
 
     private static var versionText: String {
@@ -45,4 +88,8 @@ struct AboutView: View {
 
 #Preview {
     NavigationStack { AboutView() }
+}
+
+#Preview("AX5") {
+    NavigationStack { AboutView() }.dynamicTypeSize(.accessibility5)
 }
