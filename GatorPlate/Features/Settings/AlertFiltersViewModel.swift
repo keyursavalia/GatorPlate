@@ -1,32 +1,27 @@
 import Foundation
 import Observation
 
-/// "What to alert me about": edits a copy of the saved filters, previews them live against the posts on the map,
-/// and saves automatically shortly after each change. Filters only choose which alerts this student gets; they're
-/// never shown to anyone.
+/// "What to alert me about": edits a copy of the saved filters and saves automatically shortly after each change.
+/// Filters only choose which alerts this student gets; they're never shown to anyone.
 @MainActor
 @Observable
 final class AlertFiltersViewModel {
     var draft: AlertFilters
     private(set) var isSaving = false
     private(set) var errorMessage: String?
-    /// The last change reached the server.
-    private(set) var isSaved = false
     /// Inline message for the "add a food" field.
     private(set) var foodError: String?
 
     static let foodSuggestions = ["Pizza", "Boba", "Coffee", "Dessert", "Snacks", "Fruit"]
 
     @ObservationIgnored private let settings: SettingsViewModel
-    @ObservationIgnored private let repository: PostsRepository
     @ObservationIgnored private var saveTask: Task<Void, Never>?
 
     /// Changes are saved this long after the last tap, so quick taps become one write.
     static let autosaveDelay = Duration.milliseconds(600)
 
-    init(settings: SettingsViewModel, repository: PostsRepository) {
+    init(settings: SettingsViewModel) {
         self.settings = settings
-        self.repository = repository
         self.draft = settings.alertFilters ?? AlertFilters()
     }
 
@@ -37,14 +32,6 @@ final class AlertFiltersViewModel {
     }
 
     var summary: String { AlertFilterSummary.sentence(for: draft) }
-
-    /// "Right now 2 of 5 posts match." Uses the same logic as the alert function.
-    var matchLine: String {
-        let posts = repository.activePosts
-        guard !posts.isEmpty else { return "No posts right now to compare with." }
-        let matching = posts.filter { AlertFilterMatcher.matches($0, filters: draft) }.count
-        return "Right now \(matching) of \(posts.count) \(posts.count == 1 ? "post matches" : "posts match")."
-    }
 
     // MARK: Editing
 
@@ -114,7 +101,6 @@ final class AlertFiltersViewModel {
 
     /// Call after every change: saves once the taps settle.
     func scheduleSave() {
-        isSaved = false
         saveTask?.cancel()
         saveTask = Task { [weak self] in
             try? await Task.sleep(for: Self.autosaveDelay)
@@ -142,7 +128,6 @@ final class AlertFiltersViewModel {
         defer { isSaving = false }
         do {
             try await settings.saveAlertFilters(draft)
-            isSaved = !hasChanges
         } catch {
             errorMessage = (error as? AppError)?.userMessage ?? AppError.unknown.userMessage
         }
