@@ -71,7 +71,7 @@ private struct AccountForm: View {
                 NavigationLink {
                     ChangePasswordView(viewModel: viewModel)
                 } label: {
-                    SettingsRow(title: "Change password", systemImage: "key")
+                    ListRow(title: "Change password", systemImage: "key")
                 }
             }
 
