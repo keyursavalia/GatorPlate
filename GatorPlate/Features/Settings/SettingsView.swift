@@ -31,7 +31,7 @@ struct SettingsView: View {
                         NavigationLink(value: AppNavigation.SettingsRoute.account) { profileCard }
                         if authSession.needsVerification {
                             Button { onRequestAccount(.signIn) } label: {
-                                SettingsRow(title: "Verify your email to post", systemImage: "envelope.badge")
+                                ListRow(title: "Verify your email to post", systemImage: "envelope.badge")
                             }
                         }
                     }
@@ -39,19 +39,19 @@ struct SettingsView: View {
                 alertsSection
                 Section("Display") {
                     Toggle(isOn: $showCalories) {
-                        SettingsRow(title: "Show calorie estimates", systemImage: "flame")
+                        ListRow(title: "Show calorie estimates", systemImage: "flame")
                     }
                 }
                 Section("Privacy & legal") {
                     NavigationLink { PrivacyView() } label: {
-                        SettingsRow(title: "Your privacy", systemImage: "hand.raised")
+                        ListRow(title: "Your privacy", systemImage: "hand.raised")
                     }
                     documentRow(.privacy, systemImage: "lock.doc")
                     documentRow(.terms, systemImage: "doc.text")
                 }
                 Section("About") {
                     NavigationLink { AboutView() } label: {
-                        SettingsRow(title: "About GatorPlate", systemImage: "info.circle")
+                        ListRow(title: "About GatorPlate", systemImage: "info.circle")
                     }
                 }
                 if !authSession.isGuest {
@@ -141,17 +141,17 @@ struct SettingsView: View {
     private var alertsSection: some View {
         Section {
             Toggle(isOn: alertsBinding) {
-                SettingsRow(title: "Free food alerts", systemImage: "bell.badge")
+                ListRow(title: "Free food alerts", systemImage: "bell.badge")
             }
             .disabled(viewModel.isUpdating)
 
             if viewModel.alertsEnabled {
                 NavigationLink(value: AppNavigation.SettingsRoute.alertFilters) {
-                    SettingsRow(title: "What to alert me about", systemImage: "line.3.horizontal.decrease.circle",
+                    ListRow(title: "What to alert me about", systemImage: "line.3.horizontal.decrease.circle",
                                 value: AlertFilterSummary.short(for: viewModel.alertFilters))
                 }
                 Toggle(isOn: quietHoursBinding) {
-                    SettingsRow(title: SettingsViewModel.quietHoursLabel, systemImage: "moon")
+                    ListRow(title: SettingsViewModel.quietHoursLabel, systemImage: "moon")
                 }
                 .disabled(viewModel.isUpdating)
             }
@@ -193,7 +193,7 @@ struct SettingsView: View {
 
     private func documentRow(_ kind: LegalDocument.Kind, systemImage: String) -> some View {
         Button { openDocument = kind } label: {
-            SettingsRow(title: kind.title, systemImage: systemImage, showsDisclosure: true)
+            ListRow(title: kind.title, systemImage: systemImage, showsDisclosure: true)
         }
         .foregroundStyle(.primary)
     }
@@ -201,42 +201,6 @@ struct SettingsView: View {
     private func openSettings() {
         guard let url = AppSettingsURL.url else { return }
         openURL(url)
-    }
-}
-
-/// One Settings row: a fixed-width brand icon, the title, an optional trailing value, all on one baseline, so
-/// every row lines up whatever its control.
-struct SettingsRow: View {
-    let title: String
-    let systemImage: String
-    var value: String?
-    /// For buttons that open a sheet, so they look like the navigation rows.
-    var showsDisclosure = false
-
-    @ScaledMetric(relativeTo: .body) private var iconWidth: CGFloat = 28
-
-    var body: some View {
-        HStack(spacing: Theme.Spacing.md) {
-            Image(systemName: systemImage)
-                .foregroundStyle(Theme.Palette.brandPurple)
-                .frame(width: iconWidth)
-                .accessibilityHidden(true)
-            Text(title)
-                .foregroundStyle(.primary)
-            Spacer(minLength: Theme.Spacing.sm)
-            if let value {
-                Text(value)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            if showsDisclosure {
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-                    .accessibilityHidden(true)
-            }
-        }
-        .accessibilityElement(children: .combine)
     }
 }
 
