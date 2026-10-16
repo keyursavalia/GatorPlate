@@ -11,14 +11,12 @@ struct ReviewPreviewSheet: View {
     var body: some View {
         NavigationStack {
             PostDetailContent(post: post, photoSources: photoSources, images: nil, distanceMeters: nil,
-                              isExpanded: true, showCalories: showCalories) {
+                              showCalories: showCalories) {
                 EmptyView()
-            } route: {
-                Label("Directions and Apple Maps appear here for students.", systemImage: "figure.walk")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
             } actions: {
-                EmptyView()
+                Section {
+                    NoteRow(text: "Students also see walking time and Open in Apple Maps.", systemImage: "figure.walk")
+                }
             }
             .navigationTitle("Preview")
             .navigationBarTitleDisplayMode(.inline)
@@ -28,6 +26,5 @@ struct ReviewPreviewSheet: View {
                 }
             }
         }
-        .presentationBackground(.background)
     }
 }
