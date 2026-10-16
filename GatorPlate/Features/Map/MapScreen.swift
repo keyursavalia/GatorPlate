@@ -12,9 +12,6 @@ struct MapScreen: View {
     @State private var detent: PresentationDetent = Self.smallDetent
     /// The map's full drawn area in its own coordinates, safe areas included (the map draws under the bars).
     @State private var drawnRect = CGRect.zero
-    #if DEBUG
-    @AppStorage("debug.mapBoundsOverlay") private var showsBoundsOverlay = false
-    #endif
     @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -156,12 +153,6 @@ struct MapScreen: View {
 
     private var topOverlay: some View {
         VStack(alignment: .trailing, spacing: Theme.Spacing.sm) {
-            #if DEBUG
-            if showsBoundsOverlay, let viewport = viewModel.viewport {
-                MapBoundsHUD(viewport: viewport)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            #endif
             if let message = viewModel.loadErrorMessage {
                 solidBanner(Banner(style: .error, message: message))
             }
