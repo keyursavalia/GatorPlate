@@ -1,51 +1,45 @@
 import SwiftUI
 
-/// Shown while the signed-in user's email isn't verified.
+/// Account flow step after sign-up while the email isn't verified. Browsing keeps working meanwhile; only
+/// posting waits for it.
 struct VerifyEmailView: View {
     @Bindable var viewModel: AuthViewModel
-    let profile: UserProfile
+    let email: String
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.xl) {
-                Image(systemName: "envelope.badge.fill")
-                    .font(.system(size: 56))
-                    .foregroundStyle(Theme.Palette.brandPurple)
-                    .accessibilityHidden(true)
-                VStack(spacing: Theme.Spacing.sm) {
-                    Text("Check your email")
-                        .font(.title2.bold())
-                        .accessibilityAddTraits(.isHeader)
-                    Text("We sent a verification link to \(profile.email). Tap it, then come back here.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                }
-                .multilineTextAlignment(.center)
+        VStack(spacing: Theme.Spacing.xl) {
+            Image(systemName: "envelope.badge.fill")
+                .font(.system(size: 56))
+                .foregroundStyle(Theme.Palette.brandPurple)
+                .accessibilityHidden(true)
+                .padding(.top, Theme.Spacing.xl)
+            AuthHeader(title: "Check your email",
+                       subtitle: "We sent a verification link to \(email). Tap it, then come back here.")
 
-                if let formError = viewModel.formError {
-                    Banner(style: .error, message: formError)
-                } else if let infoMessage = viewModel.infoMessage {
-                    Banner(style: .info, message: infoMessage)
-                }
+            if let formError = viewModel.formError {
+                Banner(style: .error, message: formError)
+            } else if let infoMessage = viewModel.infoMessage {
+                Banner(style: .info, message: infoMessage)
+            }
 
+            VStack(spacing: Theme.Spacing.md) {
                 PrimaryButton(title: "I've verified my email", isLoading: viewModel.isSubmitting) {
                     Task { await viewModel.refreshVerification() }
                 }
-                Button("Resend email") { Task { await viewModel.sendVerificationEmail() } }
-                    .frame(minHeight: Theme.Size.minTapTarget)
+                .textCase(.uppercase)
+                AuthTextButton(title: "Resend email") { Task { await viewModel.sendVerificationEmail() } }
                 Button("Use a different account", role: .destructive) { viewModel.signOut() }
+                    .font(.subheadline)
                     .frame(minHeight: Theme.Size.minTapTarget)
             }
-            .padding(Theme.Spacing.xl)
-            .frame(maxWidth: 500)
-            .frame(maxWidth: .infinity)
         }
     }
 }
 
 #Preview {
-    VerifyEmailView(viewModel: AuthViewModel(auth: MockAuthService(), account: MockAccountService()),
-                    profile: UserProfile(uid: "u", displayName: "Gator", email: "gator@gmail.com",
-                                         accountType: .student, orgName: nil, acceptedTermsVersion: nil,
-                                         acceptedTermsAt: nil, notificationsEnabled: false, createdAt: .now))
+    ScrollView {
+        VerifyEmailView(viewModel: AuthViewModel(auth: MockAuthService(), account: MockAccountService()),
+                        email: "gator@gmail.com")
+            .padding()
+    }
 }
