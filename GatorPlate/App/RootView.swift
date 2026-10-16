@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Switches on `AuthState`.
+/// Switches on `AuthState`: Terms gate on first launch, then the app for guests and accounts alike.
 struct RootView: View {
     @Bindable var viewModel: AuthViewModel
 
@@ -12,28 +12,21 @@ struct RootView: View {
                     .controlSize(.large)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .accessibilityLabel("Loading")
-            case .signedOut:
-                WelcomeView(viewModel: viewModel)
-            case .needsVerification(let profile):
-                VerifyEmailView(viewModel: viewModel, profile: profile)
             case .needsTerms:
-                TermsOfUseSheet(requiresAcceptance: true, isSubmitting: viewModel.isSubmitting,
-                                errorMessage: viewModel.formError,
-                                onAccept: { Task { await viewModel.acceptTerms() } },
-                                onDismiss: { viewModel.signOut() })
-            case .signedIn(let profile):
-                MainTabView(profile: profile, onSignOut: { viewModel.signOut() },
-                            onAccountDeleted: { viewModel.accountWasDeleted() })
+                WelcomeTermsView { viewModel.acceptTermsGate() }
+            case .ready(let session):
+                MainTabView(authSession: session, auth: viewModel)
             case .error(let message):
                 AuthErrorView(message: message,
                               onRetry: { Task { await viewModel.retry() } },
-                              onSignOut: { viewModel.signOut() })
+                              onSignOut: { viewModel.startOver() })
             }
         }
         .task { viewModel.start() }
     }
 }
 
-#Preview("Signed out") {
-    RootView(viewModel: AuthViewModel(auth: MockAuthService(), account: MockAccountService()))
+#Preview("First launch") {
+    RootView(viewModel: AuthViewModel(auth: MockAuthService(), account: MockAccountService(),
+                                      terms: TermsAcceptance(defaults: UserDefaults(suiteName: "preview") ?? .standard)))
 }
