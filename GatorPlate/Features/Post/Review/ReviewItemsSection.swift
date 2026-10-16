@@ -1,52 +1,44 @@
 import SwiftUI
 
-/// Items editor inside "What's there": name, a diet Menu pill and a ⋯ menu to remove; Add item; the overall diet.
-/// Calories are AI estimates, shown in "Allergens & safety".
+/// Item rows inside "What's there": the diet icon, the name, and a diet menu on the right; swipe to remove.
+/// Then Add item and the overall diet. Calories are AI estimates, shown in their own section.
 struct ReviewItemsSection: View {
     @Bindable var viewModel: ReviewViewModel
+    var highlighted: PostDraftValidator.Field?
+
+    @ScaledMetric(relativeTo: .body) private var iconWidth: CGFloat = 28
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            HStack(spacing: Theme.Spacing.sm) {
-                Text("Items").font(.subheadline.weight(.semibold))
-                if viewModel.isAIValue(.items) { AIBadge() }
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
-
-            ForEach(viewModel.draft.items) { item in
-                itemRow(item)
-            }
-            if viewModel.draft.items.count < AppConfig.postMaxItems {
-                Button("Add item", systemImage: "plus.circle.fill") { viewModel.addItem() }
-                    .font(.subheadline)
-                    .frame(minHeight: Theme.Size.minTapTarget)
-            }
-            HStack(spacing: Theme.Spacing.sm) {
-                Text("Overall").font(.subheadline).foregroundStyle(.secondary)
-                DietaryBadge(dietary: viewModel.draft.overallDietary, isEstimate: viewModel.aiBaseline != nil)
-            }
-            .accessibilityElement(children: .combine)
-            if let issue = viewModel.warning(for: .items) { ReviewIssueText(issue: issue) }
+        ForEach(viewModel.draft.items) { item in
+            itemRow(item)
+                .listRowBackground(rowHighlight(highlighted == .items))
+                .swipeActions {
+                    if viewModel.draft.items.count > 1 {
+                        Button("Remove", systemImage: "trash", role: .destructive) { viewModel.removeItem(item.id) }
+                    }
+                }
         }
+        if viewModel.draft.items.count < AppConfig.postMaxItems {
+            Button("Add item", systemImage: "plus") { viewModel.addItem() }
+                .foregroundStyle(Theme.Palette.brandPurple)
+        }
+        ListRow(title: "Overall", systemImage: viewModel.draft.overallDietary.icon,
+                value: viewModel.aiBaseline != nil ? viewModel.draft.overallDietary.estimateLabel
+                                                   : viewModel.draft.overallDietary.label,
+                iconTint: viewModel.draft.overallDietary.tint)
+            // "N things left" scrolls here for a missing item name.
+            .id(PostDraftValidator.Field.items)
     }
 
     private func itemRow(_ item: PostDraft.Item) -> some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: Theme.Spacing.sm) { itemContent(item) }
-            VStack(alignment: .leading, spacing: Theme.Spacing.sm) { itemContent(item) }
-        }
-        .padding(.vertical, Theme.Spacing.xs)
-    }
-
-    @ViewBuilder
-    private func itemContent(_ item: PostDraft.Item) -> some View {
-        TextField("Food item, e.g. Veggie pizza", text: nameBinding(for: item.id))
-            .textInputAutocapitalization(.sentences)
-            .padding(Theme.Spacing.md)
-            .background(.background, in: .rect(cornerRadius: Theme.Radius.field))
-            .accessibilityLabel("Food item name")
-        HStack(spacing: Theme.Spacing.xs) {
+        HStack(spacing: Theme.Spacing.md) {
+            Image(systemName: item.dietary.icon)
+                .foregroundStyle(item.dietary.tint)
+                .frame(width: iconWidth)
+                .accessibilityHidden(true)
+            TextField("Food item, e.g. Veggie pizza", text: nameBinding(for: item.id))
+                .textInputAutocapitalization(.sentences)
+                .accessibilityLabel("Food item name")
             Menu {
                 Picker("Diet", selection: dietaryBinding(for: item.id)) {
                     ForEach(DietaryClass.itemChoices, id: \.self) { dietary in
@@ -54,25 +46,15 @@ struct ReviewItemsSection: View {
                     }
                 }
             } label: {
-                HStack(spacing: Theme.Spacing.xs) {
-                    Label(item.dietary.label, systemImage: item.dietary.icon)
+                HStack(spacing: 2) {
+                    Text(item.dietary.label)
                     Image(systemName: "chevron.up.chevron.down").font(.caption2)
                 }
                 .font(.subheadline)
-                .padding(.horizontal, Theme.Spacing.md)
-                .frame(minHeight: Theme.Size.minTapTarget)
-                .background(Theme.Palette.brandPurple.opacity(0.12), in: .capsule)
+                .foregroundStyle(Theme.Palette.brandPurple)
+                .fixedSize()
             }
             .accessibilityLabel("Diet for \(item.name.isEmpty ? "item" : item.name): \(item.dietary.label)")
-            if viewModel.draft.items.count > 1 {
-                Menu {
-                    Button("Remove item", systemImage: "trash", role: .destructive) { viewModel.removeItem(item.id) }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .frame(minWidth: Theme.Size.minTapTarget, minHeight: Theme.Size.minTapTarget)
-                }
-                .accessibilityLabel("More for \(item.name.isEmpty ? "item" : item.name)")
-            }
         }
     }
 
@@ -95,16 +77,4 @@ struct ReviewItemsSection: View {
 extension DietaryClass {
     /// Per-item choices; "mixed" only applies to a whole post.
     static let itemChoices: [DietaryClass] = [.vegan, .vegetarian, .nonVegetarian, .unknown]
-}
-
-/// Inline validation message: blocking issues in red, warnings in orange, always with an icon.
-struct ReviewIssueText: View {
-    let issue: PostDraftValidator.Issue
-
-    var body: some View {
-        Label(issue.message, systemImage: issue.isBlocking ? "exclamationmark.circle.fill" : "exclamationmark.triangle.fill")
-            .font(.footnote)
-            .foregroundStyle(issue.isBlocking ? Theme.Palette.danger : Theme.Palette.warning)
-            .accessibilityLabel("\(issue.isBlocking ? "Required" : "Tip"): \(issue.message)")
-    }
 }
