@@ -103,12 +103,6 @@ nonisolated enum AppConfig {
     /// Info notices on the map (e.g. "That food post has ended.") hide after this long.
     static let mapNoticeSeconds = 4
 
-    // Directions
-    /// Total deadline for an `MKDirections` walking route.
-    static let routeTimeoutSeconds = 15
-    /// How long Directions waits for a first location fix.
-    static let routeLocationWaitSeconds = 5
-
     // Notifications (FCM per-device installation IDs; the `onPostCreated` Cloud Function sends the alerts)
     /// Data payload key for the post to open. The function writes the same key.
     static let notificationPostIdKey = "postId"
