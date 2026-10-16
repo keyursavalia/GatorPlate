@@ -1,17 +1,17 @@
 import SwiftUI
 
-/// Terms of Use. As a gate (`requiresAcceptance`) the user must tick the box and tap "I agree";
-/// otherwise it is read-only with a Done button.
-struct TermsOfUseSheet: View {
-    var requiresAcceptance = false
-    var isSubmitting = false
-    var errorMessage: String?
-    var onAccept: () -> Void = {}
-    /// Done (read-only) or "Decline and sign out" (gate).
+/// Read-only Terms of Use or Privacy Policy with a Done button. Acceptance happens on `WelcomeTermsView`.
+struct LegalDocumentSheet: View {
+    let kind: LegalDocument.Kind
     let onDismiss: () -> Void
 
-    @State private var agreed = false
-    @State private var document = TermsDocument.loadBundled()
+    @State private var document: LegalDocument
+
+    init(kind: LegalDocument.Kind, onDismiss: @escaping () -> Void) {
+        self.kind = kind
+        self.onDismiss = onDismiss
+        _document = State(initialValue: LegalDocument.loadBundled(kind))
+    }
 
     var body: some View {
         NavigationStack {
@@ -27,26 +27,22 @@ struct TermsOfUseSheet: View {
                         .background(Theme.Palette.brandGold.opacity(0.18), in: .rect(cornerRadius: Theme.Radius.card))
                     }
                     blocks(document.body)
-                    if requiresAcceptance { agreement }
                 }
                 .padding(Theme.Spacing.xl)
                 .frame(maxWidth: 700)
                 .frame(maxWidth: .infinity)
             }
-            .navigationTitle("Terms of Use")
+            .navigationTitle(kind.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if !requiresAcceptance {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done", action: onDismiss)
-                    }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", action: onDismiss)
                 }
             }
         }
-        .interactiveDismissDisabled(requiresAcceptance)
     }
 
-    private func blocks(_ blocks: [TermsDocument.Block]) -> some View {
+    private func blocks(_ blocks: [LegalDocument.Block]) -> some View {
         ForEach(blocks) { block in
             switch block.kind {
             case .heading:
@@ -68,32 +64,16 @@ struct TermsOfUseSheet: View {
         }
     }
 
-    private var agreement: some View {
-        VStack(spacing: Theme.Spacing.lg) {
-            Divider()
-            Toggle("I have read and agree to the Terms of Use", isOn: $agreed)
-                .font(.body)
-            if let errorMessage {
-                Banner(style: .error, message: errorMessage)
-            }
-            PrimaryButton(title: "I agree", isLoading: isSubmitting, action: onAccept)
-                .disabled(!agreed)
-                .opacity(agreed ? 1 : 0.5)
-            Button("Decline and sign out", role: .destructive, action: onDismiss)
-                .frame(minHeight: Theme.Size.minTapTarget)
-        }
-    }
-
     private func markdown(_ text: String) -> AttributedString {
         let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
         return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
     }
 }
 
-#Preview("Gate") {
-    TermsOfUseSheet(requiresAcceptance: true, onDismiss: {})
+#Preview("Terms") {
+    LegalDocumentSheet(kind: .terms, onDismiss: {})
 }
 
-#Preview("Read-only, AX5") {
-    TermsOfUseSheet(onDismiss: {}).dynamicTypeSize(.accessibility5)
+#Preview("Privacy, AX5") {
+    LegalDocumentSheet(kind: .privacy, onDismiss: {}).dynamicTypeSize(.accessibility5)
 }
