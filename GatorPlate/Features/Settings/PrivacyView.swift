@@ -1,45 +1,106 @@
 import SwiftUI
 
-/// What GatorPlate stores, where, and for how long (RAI data inventory). Plain language, read-only.
+/// What GatorPlate keeps, for how long, and what it never does (RAI data inventory). Short rows to skim, plus the
+/// full Privacy Policy.
 struct PrivacyView: View {
     private struct Entry: Identifiable {
-        let id = UUID()
+        let id: String
         let icon: String
-        let what: String
+        let title: String
         let detail: String
+        let retention: String
     }
 
-    private let entries = [
-        Entry(icon: "person.crop.circle", what: "Your account",
-              detail: "Email, name, account type and organization name. Kept until you delete your account."),
-        Entry(icon: "bell.badge", what: "Alert settings",
-              detail: "Whether alerts are on, quiet hours, this device's alert registration, and your \"What to alert me about\" choices. These can reveal diet or allergies, so only you can read them. They're never shown to others, never logged, never used for ranking. Kept until you change them or delete your account."),
-        Entry(icon: "fork.knife", what: "Your posts and photos",
-              detail: "Text, place and times, and up to 4 food photos. Deleted 24 hours after a post ends, or right away if you delete your account."),
-        Entry(icon: "flag", what: "Reports you send",
-              detail: "The post and your reason. Deleted if you delete your account."),
-        Entry(icon: "location", what: "Your location",
-              detail: "Used only on your phone, only while the app is open, to show distances and routes. Never stored or shared."),
-        Entry(icon: "sparkles", what: "AI drafts",
-              detail: "Food photos go to Google's Gemini through Firebase to draft a post. Photos carry no location or camera details, and requests carry no name or account."),
+    private let kept = [
+        Entry(id: "guest", icon: "person.crop.circle.badge.questionmark", title: "Guest browsing",
+              detail: "An anonymous ID. No name or email.",
+              retention: "Until you create an account or reinstall"),
+        Entry(id: "account", icon: "person.crop.circle", title: "Your account",
+              detail: "Email, name, account type and organization name. Only needed to post.",
+              retention: "Until you delete your account"),
+        Entry(id: "alerts", icon: "bell.badge", title: "Alert settings",
+              detail: "Alerts on or off, quiet hours, this phone's alert ID and what you want alerts about. Only you can read them.",
+              retention: "Until you change them"),
+        Entry(id: "posts", icon: "fork.knife", title: "Your posts and photos",
+              detail: "Text, place, times and up to 4 food photos.",
+              retention: "Deleted 24 hours after a post ends"),
+        Entry(id: "reports", icon: "flag", title: "Reports you send",
+              detail: "The post and your reason.",
+              retention: "Deleted with your account"),
     ]
+
+    private let onDevice = [
+        Entry(id: "location", icon: "location", title: "Your location",
+              detail: "Shows distances and routes while the app is open.",
+              retention: "Never stored or shared"),
+        Entry(id: "ai", icon: "sparkles", title: "AI drafts",
+              detail: "Food photos go to Google's Gemini through Firebase to draft a post. No location, camera details, name or account.",
+              retention: "Not kept by GatorPlate"),
+    ]
+
+    private let never = [
+        ("eye.slash", "Track what food you pick up"),
+        ("scope", "Target alerts by need. Your own filters decide."),
+        ("dollarsign.circle", "Sell or share your data for ads"),
+    ]
+
+    @State private var showsPolicy = false
 
     var body: some View {
         List {
             Section {
-                ForEach(entries) { entry in
-                    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                        Label(entry.what, systemImage: entry.icon).font(.headline)
-                        Text(entry.detail).font(.subheadline).foregroundStyle(.secondary)
+                ForEach(kept) { row($0) }
+            } header: {
+                Text("What we keep")
+            }
+
+            Section {
+                ForEach(onDevice) { row($0) }
+            } header: {
+                Text("Used, not kept")
+            }
+
+            Section("We never") {
+                ForEach(never, id: \.1) { icon, text in
+                    Label {
+                        Text(text)
+                    } icon: {
+                        Image(systemName: icon).foregroundStyle(Theme.Palette.brandPurple)
                     }
-                    .padding(.vertical, Theme.Spacing.xs)
-                    .accessibilityElement(children: .combine)
+                }
+            }
+
+            Section {
+                Button { showsPolicy = true } label: {
+                    SettingsRow(title: LegalDocument.Kind.privacy.title, systemImage: "lock.doc", showsDisclosure: true)
                 }
             } footer: {
-                Text("GatorPlate never tracks what you pick up. Alerts go to everyone whose own filters match; nothing is targeted by need.")
+                Text("Alerts go to everyone whose own filters match; nothing is targeted by need.")
             }
         }
-        .navigationTitle("Privacy")
+        .navigationTitle("Your privacy")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showsPolicy) {
+            LegalDocumentSheet(kind: .privacy) { showsPolicy = false }
+        }
+    }
+
+    private func row(_ entry: Entry) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.md) {
+            Image(systemName: entry.icon)
+                .foregroundStyle(Theme.Palette.brandPurple)
+                .frame(minWidth: 28)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                Text(entry.title).font(.headline)
+                Text(entry.detail).font(.subheadline).foregroundStyle(.secondary)
+                Label(entry.retention, systemImage: "clock")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, Theme.Spacing.xs)
+        .accessibilityElement(children: .combine)
     }
 }
 
