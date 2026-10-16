@@ -9,7 +9,14 @@ final class AccountViewModel {
         case idle, working, done(String), failed(String)
     }
 
-    var name: String
+    var name: String {
+        didSet {
+            // Editing again clears the last "Saved" / error line.
+            if nameStatus != .working, name != oldValue { nameStatus = .idle }
+        }
+    }
+    /// The name as last saved (the profile passed in is a snapshot and doesn't update).
+    private(set) var savedName: String
     private(set) var nameStatus = Status.idle
     private(set) var passwordStatus = Status.idle
     private(set) var deleteStatus = Status.idle
@@ -25,7 +32,9 @@ final class AccountViewModel {
         self.account = account
         self.auth = auth
         self.onDelete = onDelete
-        self.name = profile.accountType == .organization ? (profile.orgName ?? profile.displayName) : profile.displayName
+        let current = profile.accountType == .organization ? (profile.orgName ?? profile.displayName) : profile.displayName
+        self.name = current
+        self.savedName = current
     }
 
     var isOrganization: Bool { profile.accountType == .organization }
@@ -38,12 +47,13 @@ final class AccountViewModel {
         return nil
     }
 
-    var canSaveName: Bool {
-        nameError == nil && Validation.trimmedName(name) != currentName && nameStatus != .working
+    /// The name differs from the saved one (the Save button shows only then).
+    var hasNameChanges: Bool {
+        Validation.trimmedName(name) != savedName
     }
 
-    private var currentName: String {
-        isOrganization ? (profile.orgName ?? profile.displayName) : profile.displayName
+    var canSaveName: Bool {
+        nameError == nil && hasNameChanges && nameStatus != .working
     }
 
     var memberSince: String {
@@ -60,7 +70,9 @@ final class AccountViewModel {
             // Organizations post under their org name, so both fields stay equal (as at sign-up).
             try await account.updateProfile(displayName: trimmed, orgName: isOrganization ? trimmed : nil)
             try? await auth.refreshSession()
-            nameStatus = .done("Saved. Changes apply to new posts.")
+            savedName = trimmed
+            name = trimmed
+            nameStatus = .done("Saved")
         } catch {
             nameStatus = .failed(Self.message(for: error))
         }
