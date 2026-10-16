@@ -19,13 +19,15 @@ enum PostPhotoSource: Hashable, Identifiable {
     }
 }
 
-/// One photo, filling its frame, with a fork-knife placeholder while loading or when there is none.
-/// Decorative for VoiceOver: titles and details carry the meaning.
+/// One photo with a fork-knife placeholder while loading or when there is none. `.fill` crops to the frame (small
+/// thumbnails); `.fit` shows the whole photo, and with `showsBackdrop` the space around it is a blurred copy of the
+/// same photo, so a hero never looks zoomed in or letterboxed. Decorative for VoiceOver: titles carry the meaning.
 struct PostPhotoView: View {
     let source: PostPhotoSource?
     let images: PostImageCache?
     var cornerRadius: CGFloat = Theme.Radius.photo
     var contentMode: ContentMode = .fill
+    var showsBackdrop = false
 
     @State private var image: CGImage?
     @State private var isLoading = false
@@ -35,14 +37,10 @@ struct PostPhotoView: View {
             .overlay {
                 switch source {
                 case .captured(let photo):
-                    Image(uiImage: photo.previewImage)
-                        .resizable()
-                        .aspectRatio(contentMode: contentMode)
+                    framed(Image(uiImage: photo.previewImage))
                 case .stored:
                     if let image {
-                        Image(decorative: image, scale: 1)
-                            .resizable()
-                            .aspectRatio(contentMode: contentMode)
+                        framed(Image(decorative: image, scale: 1))
                             .transition(.opacity)
                     } else {
                         placeholder
@@ -54,6 +52,21 @@ struct PostPhotoView: View {
             .clipShape(.rect(cornerRadius: cornerRadius))
             .accessibilityHidden(true)
             .task(id: source) { await load() }
+    }
+
+    private func framed(_ image: Image) -> some View {
+        ZStack {
+            if contentMode == .fit, showsBackdrop {
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .blur(radius: 28, opaque: true)
+                    .overlay(Color.black.opacity(0.15))
+            }
+            image
+                .resizable()
+                .aspectRatio(contentMode: contentMode)
+        }
     }
 
     private var placeholder: some View {
