@@ -1,7 +1,7 @@
 import MapKit
 import SwiftUI
 
-/// Campus map locked to SFSU with rotation, live post pins, a walking route and a non-modal bottom card.
+/// Campus map locked to SFSU with rotation, live post pins and a non-modal post sheet.
 struct MapScreen: View {
     @Bindable var viewModel: MapViewModel
     /// First-run location and notification prompts; owns the "Alerts on" toast.
@@ -9,13 +9,15 @@ struct MapScreen: View {
     let onPostFood: () -> Void
 
     @Namespace private var mapScope
-    @State private var detent: PresentationDetent = Self.smallDetent
+    @State private var detent: PresentationDetent = Self.peekDetent
     /// The map's full drawn area in its own coordinates, safe areas included (the map draws under the bars).
     @State private var drawnRect = CGRect.zero
     @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private static let smallDetent = PresentationDetent.fraction(0.3)
+    /// Opens here: photo, title, the three facts and Open in Apple Maps. Pull up (or scroll) for the rest; the
+    /// layout is the same at both heights.
+    private static let peekDetent = PresentationDetent.fraction(0.62)
     private static let pointsOfInterest: [MKPointOfInterestCategory] = [
         .university, .library, .cafe, .restaurant, .bakery, .foodMarket,
         .park, .stadium, .restroom, .publicTransport,
@@ -53,11 +55,8 @@ struct MapScreen: View {
         .sensoryFeedback(.impact(weight: .light), trigger: viewModel.selectedPostId) { _, new in new != nil }
         .sheet(isPresented: isSheetPresented) { bottomCard }
         .onChange(of: viewModel.selectedPostId) { _, new in
-            if new != nil { detent = Self.smallDetent }
+            if new != nil { detent = Self.peekDetent }
             viewModel.selectionDidChange()
-        }
-        .onChange(of: viewModel.route.state) { _, new in
-            routeDidChange(new)
         }
         .onChange(of: permissions.announcement) { _, announcement in
             guard let announcement else { return }
@@ -83,13 +82,6 @@ struct MapScreen: View {
             selection: $viewModel.selectedPostId,
             scope: mapScope) {
             UserAnnotation()
-
-            if let route = viewModel.route.route {
-                MapPolyline(coordinates: route.coordinates.map(\.clLocationCoordinate))
-                    .stroke(Theme.Palette.brandPurple,
-                            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
-                    .mapOverlayLevel(level: .aboveRoads)
-            }
 
             ForEach(viewModel.posts) { post in
                 Annotation(post.title, coordinate: post.coordinate.clLocationCoordinate) {
@@ -134,21 +126,6 @@ struct MapScreen: View {
         let meters = CLLocation(latitude: center.latitude, longitude: center.longitude)
             .distance(from: CLLocation(latitude: above.latitude, longitude: above.longitude))
         return meters / 100 / camera.distance
-    }
-
-    private func routeDidChange(_ state: RouteController.State) {
-        switch state {
-        case .active(_, let route):
-            // Smaller sheet so the route stays visible.
-            detent = Self.smallDetent
-            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.6)) { viewModel.fitRouteIfActive() }
-            AccessibilityNotification.Announcement(
-                "Route ready, \(DistanceText.walkMinutes(seconds: route.expectedTravelTime)) minute walk").post()
-        case .failed(_, let failure):
-            AccessibilityNotification.Announcement(failure.userMessage).post()
-        case .idle, .calculating:
-            break
-        }
     }
 
     private var topOverlay: some View {
@@ -214,12 +191,11 @@ struct MapScreen: View {
     @ViewBuilder
     private var bottomCard: some View {
         if let post = viewModel.selectedPost {
-            PostBottomCard(post: post, viewModel: viewModel, isExpanded: detent != Self.smallDetent)
-                .presentationDetents([Self.smallDetent, .medium, .large], selection: $detent)
-                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+            PostBottomCard(post: post, viewModel: viewModel)
+                .presentationDetents([Self.peekDetent, .large], selection: $detent)
+                .presentationBackgroundInteraction(.enabled(upThrough: Self.peekDetent))
                 .presentationDragIndicator(.visible)
-                // Solid, not glass: the card is content (design system: glass on controls only).
-                .presentationBackground(.background)
+                .presentationContentInteraction(.scrolls)
         }
     }
 
