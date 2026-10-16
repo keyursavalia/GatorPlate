@@ -2,18 +2,6 @@ import CoreGraphics
 import MapKit
 import SwiftUI
 
-/// The camera at rest: its real visible north edge (from the 4 view corners), distance and heading.
-struct ViewportReadout: Equatable {
-    var northEdge: Double
-    var distance: Double
-    var heading: Double
-
-    var isWithinLimit: Bool {
-        CampusViewport.northExcess(cornerLatitudes: [northEdge], limit: SFSUCampus.northVisibleLimit)
-            <= AppConfig.mapNorthToleranceMeters
-    }
-}
-
 /// North edge at Stonestown: adaptive center bounds (layer 2) and the rubber band (layer 3).
 extension MapViewModel {
     /// Call when a camera change ends (gesture or programmatic). Returns a camera to animate to when the visible
@@ -21,8 +9,7 @@ extension MapViewModel {
     /// it never loops.
     func cameraDidEnd(cornerLatitudes: [Double], center: Coordinate, distance: Double, heading: Double,
                       metersPerPointPerMeter: Double?, viewSize: CGSize) -> MapCamera? {
-        guard let northEdge = cornerLatitudes.max() else { return nil }
-        viewport = ViewportReadout(northEdge: northEdge, distance: distance, heading: heading)
+        guard !cornerLatitudes.isEmpty else { return nil }
         if AppConfig.mapAdaptiveCenterBounds, let metersPerPointPerMeter, viewSize.width > 0 {
             updateBounds(distance: distance, metersPerPointPerMeter: metersPerPointPerMeter, viewSize: viewSize)
         }
