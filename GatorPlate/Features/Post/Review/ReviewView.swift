@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Post flow step 3 (design system screen 4): the composer. Visual order: photos -> what -> is it safe ->
-/// where and when -> attestation, with a sticky Publish bar. Pre-filled by AI or empty for manual entry.
+/// Post flow step 3: the composer, a grouped list like Settings. Photos (whole, never cropped) -> title ->
+/// what's there -> description -> may contain -> heads up -> where & when -> the safety confirmation, with a
+/// sticky Publish bar. Pre-filled by AI (so most posts are a quick check and Publish) or empty for manual entry.
 struct ReviewView: View {
     @Bindable var viewModel: ReviewViewModel
     let onClose: () -> Void
@@ -11,43 +12,49 @@ struct ReviewView: View {
     @FocusState private var focus: ReviewFocus?
     @State private var isPickingLocation = false
     @State private var isPreviewing = false
-    @State private var showsAIStrip = true
     @State private var highlighted: PostDraftValidator.Field?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     static let attestationText = "I confirm this food has been kept safe (hot food hot, cold food cold) and was not served from open serving for more than 2 hours."
 
     var body: some View {
-        VStack(spacing: 0) {
-            topBar
+        NavigationStack {
             ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                        hero
-                        notices
-                        ReviewWhatSection(viewModel: viewModel, focus: $focus, highlighted: highlighted)
-                        ReviewSafetySection(viewModel: viewModel)
-                        ReviewWhereSection(viewModel: viewModel, focus: $focus, highlighted: highlighted) {
-                            isPickingLocation = true
-                        }
-                        attestation.id(PostDraftValidator.Field.attestation)
+                List {
+                    photosSection
+                    notesSection
+                    ReviewWhatSection(viewModel: viewModel, focus: $focus, highlighted: highlighted)
+                    ReviewSafetySection(viewModel: viewModel, highlighted: highlighted)
+                    ReviewWhereSection(viewModel: viewModel, focus: $focus, highlighted: highlighted) {
+                        isPickingLocation = true
                     }
-                    .padding(Theme.Spacing.lg)
+                    attestation
                 }
+                .listSectionSpacing(.compact)
+                .environment(\.defaultMinListRowHeight, 48)
                 .scrollDismissesKeyboard(.interactively)
                 .safeAreaInset(edge: .bottom) {
                     ReviewPublishBar(viewModel: viewModel, onShowIssue: { showFirstIssue(proxy) }, onPublish: publish)
                 }
             }
-        }
-        .background(.background)
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                if focus != .room {
-                    Button("Next") { moveFocus() }
+            .navigationTitle("New post")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close", systemImage: "xmark", action: onClose)
+                        .accessibilityHint("Cancels the post")
                 }
-                Button("Done") { focus = nil }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Preview") { isPreviewing = true }
+                        .accessibilityHint("Shows the post as students will see it")
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    if focus != .room {
+                        Button("Next") { moveFocus() }
+                    }
+                    Button("Done") { focus = nil }
+                }
             }
         }
         .onSubmit(moveFocus)
@@ -66,108 +73,70 @@ struct ReviewView: View {
         }
     }
 
-    // MARK: Header
-
-    private var topBar: some View {
-        HStack {
-            GlassIconButton(systemImage: "xmark", accessibilityLabel: "Close", accessibilityHint: "Cancels the post",
-                            action: onClose)
-            Spacer()
-            Text("Review post")
-                .font(.headline)
-                .accessibilityAddTraits(.isHeader)
-            Spacer()
-            Button("Preview") { isPreviewing = true }
-                .buttonStyle(.glass)
-                .frame(minHeight: Theme.Size.minTapTarget)
-                .accessibilityHint("Shows the post as students will see it")
-        }
-        .padding(.horizontal, Theme.Spacing.lg)
-        .padding(.vertical, Theme.Spacing.sm)
-    }
+    // MARK: Photos and notes
 
     @ViewBuilder
-    private var hero: some View {
+    private var photosSection: some View {
         if viewModel.photos.isEmpty {
-            Button(action: onEditPhotos) {
-                Label("Add photos", systemImage: "camera.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: 88)
-                    .background(Theme.Palette.brandPurple.opacity(0.12), in: .rect(cornerRadius: Theme.Radius.photo))
+            Section {
+                Button(action: onEditPhotos) {
+                    ListRow(title: "Add photos", systemImage: "camera", showsDisclosure: true)
+                }
+                .accessibilityHint("Opens the camera to add up to \(AppConfig.postMaxPhotos) photos")
             }
-            .buttonStyle(.plain)
-            .accessibilityHint("Opens the camera to add up to \(AppConfig.postMaxPhotos) photos")
         } else {
-            VStack(alignment: .trailing, spacing: Theme.Spacing.sm) {
+            Section {
                 PhotoCarousel(sources: viewModel.photos.map(PostPhotoSource.captured), images: nil)
-                Button("Edit photos", systemImage: "photo.stack", action: onEditPhotos)
-                    .font(.subheadline.weight(.semibold))
-                    .frame(minHeight: Theme.Size.minTapTarget)
-                    .accessibilityHint("Add, remove or reorder photos")
+                    .overlay(alignment: .bottomLeading) {
+                        Button(action: onEditPhotos) {
+                            Label("Edit", systemImage: "photo.stack")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, Theme.Spacing.md)
+                                .frame(minHeight: 32)
+                                // Solid: pills over photos never use glass.
+                                .background(.black.opacity(0.65), in: .capsule)
+                                .padding(Theme.Spacing.sm)
+                                .contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Edit photos")
+                        .accessibilityHint("Add, remove or reorder photos")
+                    }
             }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
         }
     }
 
     @ViewBuilder
-    private var notices: some View {
-        if let notice = viewModel.removedPhotosNotice {
-            dismissibleStrip(notice, systemImage: "person.crop.square.badge.camera") {
-                viewModel.removedPhotosNotice = nil
+    private var notesSection: some View {
+        if viewModel.aiBaseline != nil || viewModel.removedPhotosNotice != nil {
+            Section {
+                if viewModel.aiBaseline != nil {
+                    NoteRow(text: "AI drafted this post. Give it a quick check, then publish.", systemImage: "sparkles")
+                }
+                if let notice = viewModel.removedPhotosNotice {
+                    NoteRow(text: notice, systemImage: "person.crop.square.badge.camera")
+                }
             }
         }
-        if viewModel.aiBaseline != nil, showsAIStrip {
-            dismissibleStrip("AI drafted this post. Check each section.", systemImage: "sparkles") {
-                showsAIStrip = false
-            }
-        } else if viewModel.aiBaseline == nil {
-            Text("Fill in what's there, where it is and how long it lasts.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private func dismissibleStrip(_ text: String, systemImage: String, onDismiss: @escaping () -> Void) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.md) {
-            Image(systemName: systemImage)
-                .foregroundStyle(Theme.Palette.brandPurple)
-                .accessibilityHidden(true)
-            Text(text).font(.subheadline)
-            Spacer(minLength: 0)
-            Button("Dismiss", systemImage: "xmark", action: onDismiss)
-                .labelStyle(.iconOnly)
-                .foregroundStyle(.secondary)
-                .frame(minWidth: Theme.Size.minTapTarget, minHeight: Theme.Size.minTapTarget)
-        }
-        .padding(.horizontal, Theme.Spacing.md)
-        .background(Theme.Palette.brandPurple.opacity(0.1), in: .rect(cornerRadius: Theme.Radius.field))
     }
 
     // MARK: Attestation
 
     private var attestation: some View {
-        Button {
-            viewModel.draft.safetyAttested.toggle()
-        } label: {
-            HStack(alignment: .top, spacing: Theme.Spacing.md) {
-                Image(systemName: viewModel.draft.safetyAttested ? "checkmark.square.fill" : "square")
-                    .font(.title2)
-                    .foregroundStyle(viewModel.draft.safetyAttested ? Theme.Palette.brandPurple : Color.secondary)
-                    .accessibilityHidden(true)
+        Section {
+            Toggle(isOn: $viewModel.draft.safetyAttested) {
                 Text(Self.attestationText)
                     .font(.subheadline)
-                    .multilineTextAlignment(.leading)
-                    .foregroundStyle(.primary)
             }
-            .padding(Theme.Spacing.lg)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
-            .contentShape(.rect)
+            .tint(Theme.Palette.brandPurple)
+            .listRowBackground(rowHighlight(highlighted == .attestation))
+            .id(PostDraftValidator.Field.attestation)
+        } footer: {
+            Text("Required to publish.")
         }
-        .buttonStyle(.plain)
-        .reviewHighlight(highlighted == .attestation)
-        .accessibilityLabel(Self.attestationText)
-        .accessibilityAddTraits(viewModel.draft.safetyAttested ? [.isButton, .isSelected] : .isButton)
-        .accessibilityValue(viewModel.draft.safetyAttested ? "Checked" : "Not checked")
     }
 
     // MARK: Actions
@@ -183,7 +152,7 @@ struct ReviewView: View {
     private func showFirstIssue(_ proxy: ScrollViewProxy) {
         guard let field = viewModel.firstBlockingField else { return }
         withAnimation(reduceMotion ? nil : .easeInOut) {
-            proxy.scrollTo(field, anchor: .top)
+            proxy.scrollTo(field, anchor: .center)
             highlighted = field
         }
         if let issue = viewModel.blockingIssues.first {
@@ -200,6 +169,42 @@ struct ReviewView: View {
         Task {
             if let result = await viewModel.publish() { onPublished(result) }
         }
+    }
+}
+
+/// Fields the keyboard toolbar moves through, in order.
+enum ReviewFocus: Hashable {
+    case title, description, room
+}
+
+/// Red tint on a row that "N things left" scrolled to; nil keeps the normal row background.
+func rowHighlight(_ isOn: Bool) -> Color? {
+    isOn ? Theme.Palette.danger.opacity(0.15) : nil
+}
+
+/// Section header text with an AI badge while the section still holds the AI's values.
+struct ReviewSectionHeader: View {
+    let title: String
+    var isAI = false
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            Text(title)
+            if isAI { AIBadge().textCase(nil) }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Inline validation message: blocking issues in red, warnings in orange, always with an icon.
+struct ReviewIssueText: View {
+    let issue: PostDraftValidator.Issue
+
+    var body: some View {
+        Label(issue.message, systemImage: issue.isBlocking ? "exclamationmark.circle.fill" : "exclamationmark.triangle.fill")
+            .font(.footnote)
+            .foregroundStyle(issue.isBlocking ? Theme.Palette.danger : Theme.Palette.warning)
+            .accessibilityLabel("\(issue.isBlocking ? "Required" : "Tip"): \(issue.message)")
     }
 }
 
