@@ -58,7 +58,7 @@ struct PrivacyView: View {
 
             Section {
                 Button { showsPolicy = true } label: {
-                    SettingsRow(title: LegalDocument.Kind.privacy.title, systemImage: "lock.doc", showsDisclosure: true)
+                    ListRow(title: LegalDocument.Kind.privacy.title, systemImage: "lock.doc", showsDisclosure: true)
                 }
             }
         }
