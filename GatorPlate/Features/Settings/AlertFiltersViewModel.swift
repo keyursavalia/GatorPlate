@@ -2,13 +2,16 @@ import Foundation
 import Observation
 
 /// "What to alert me about": edits a copy of the saved filters, previews them live against the posts on the map,
-/// and saves explicitly. Filters only choose which alerts this student gets; they're never shown to anyone.
+/// and saves automatically shortly after each change. Filters only choose which alerts this student gets; they're
+/// never shown to anyone.
 @MainActor
 @Observable
 final class AlertFiltersViewModel {
     var draft: AlertFilters
     private(set) var isSaving = false
     private(set) var errorMessage: String?
+    /// The last change reached the server.
+    private(set) var isSaved = false
     /// Inline message for the "add a food" field.
     private(set) var foodError: String?
 
@@ -16,15 +19,16 @@ final class AlertFiltersViewModel {
 
     @ObservationIgnored private let settings: SettingsViewModel
     @ObservationIgnored private let repository: PostsRepository
+    @ObservationIgnored private var saveTask: Task<Void, Never>?
+
+    /// Changes are saved this long after the last tap, so quick taps become one write.
+    static let autosaveDelay = Duration.milliseconds(600)
 
     init(settings: SettingsViewModel, repository: PostsRepository) {
         self.settings = settings
         self.repository = repository
         self.draft = settings.alertFilters ?? AlertFilters()
     }
-
-    /// Filters apply only while alerts are on.
-    var isEnabled: Bool { settings.alertsEnabled }
 
     var isCustom: Bool { draft.mode == .custom }
 
@@ -87,28 +91,61 @@ final class AlertFiltersViewModel {
     }
 
     func removeFood(_ food: String) {
-        draft.foods.removeAll { $0 == food }
+        draft.foods.removeAll { $0.caseInsensitiveCompare(food) == .orderedSame }
+    }
+
+    func isFoodSelected(_ food: String) -> Bool {
+        draft.foods.contains { $0.caseInsensitiveCompare(food) == .orderedSame }
+    }
+
+    func toggleFood(_ food: String) {
+        if isFoodSelected(food) { removeFood(food) } else { addFood(food) }
+    }
+
+    /// Suggestions first, then the student's own foods, each once.
+    var foodRows: [String] {
+        let custom = draft.foods.filter { food in
+            !Self.foodSuggestions.contains { $0.caseInsensitiveCompare(food) == .orderedSame }
+        }
+        return Self.foodSuggestions + custom
     }
 
     // MARK: Saving
 
-    func save() async -> Bool {
-        guard !isSaving else { return false }
+    /// Call after every change: saves once the taps settle.
+    func scheduleSave() {
+        isSaved = false
+        saveTask?.cancel()
+        saveTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.autosaveDelay)
+            guard !Task.isCancelled else { return }
+            await self?.save()
+        }
+    }
+
+    /// Leaving the screen: save a pending change now.
+    func flush() {
+        guard hasChanges else { return }
+        saveTask?.cancel()
+        saveTask = Task { await save() }
+    }
+
+    private func save() async {
+        guard hasChanges else { return }
+        guard !isSaving else {
+            // A save is running; save again with the newest draft after it.
+            scheduleSave()
+            return
+        }
         errorMessage = nil
         isSaving = true
         defer { isSaving = false }
         do {
             try await settings.saveAlertFilters(draft)
-            return true
+            isSaved = !hasChanges
         } catch {
             errorMessage = (error as? AppError)?.userMessage ?? AppError.unknown.userMessage
-            return false
         }
-    }
-
-    func discard() {
-        draft = settings.alertFilters ?? AlertFilters()
-        errorMessage = nil
     }
 
     private func toggle<T: Equatable>(_ value: T, in list: inout [T]) {
