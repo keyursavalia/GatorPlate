@@ -30,21 +30,23 @@ struct DeleteAccountView: View {
                 Text("For your security, enter your password to confirm.")
             }
             Section {
-                Button(role: .destructive) {
-                    Task { await viewModel.deleteAccount(password: password) }
-                } label: {
-                    HStack(spacing: Theme.Spacing.sm) {
-                        Text("Delete account permanently")
-                        if viewModel.deleteStatus == .working { ProgressView() }
+                VStack(spacing: Theme.Spacing.md) {
+                    StatusLine(status: viewModel.deleteStatus)
+                    DestructiveButton(title: "Delete account permanently",
+                                      isLoading: viewModel.deleteStatus == .working) {
+                        Task { await viewModel.deleteAccount(password: password) }
                     }
+                    .disabled(password.isEmpty)
+                    .opacity(password.isEmpty ? 0.5 : 1)
+                    Button("Cancel") { dismiss() }
+                        .frame(minHeight: Theme.Size.minTapTarget)
+                        .disabled(viewModel.deleteStatus == .working)
                 }
-                .disabled(password.isEmpty || viewModel.deleteStatus == .working)
-                .frame(minHeight: Theme.Size.minTapTarget)
-                StatusLine(status: viewModel.deleteStatus)
-                Button("Cancel") { dismiss() }
-                    .frame(minHeight: Theme.Size.minTapTarget)
             }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("Delete account")
         .navigationBarTitleDisplayMode(.inline)
         .interactiveDismissDisabled(viewModel.deleteStatus == .working)
