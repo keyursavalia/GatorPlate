@@ -1,10 +1,12 @@
 import Foundation
 
-/// Everything the signed-in UI shares for one session: the live posts listener, navigation, photo cache,
+/// Everything the main UI shares for one guest or account session: the live posts listener, navigation, photo cache,
 /// alerts settings, the first-run permission prompts and the Map/Feed view models. Created when the main UI appears; `prepareSignOut()` runs
 /// before sign-out.
 @MainActor
 final class MainSession {
+    /// The guest or account this session belongs to.
+    let uid: String
     let repository: PostsRepository
     let navigation: AppNavigation
     let images: PostImageCache
@@ -14,6 +16,7 @@ final class MainSession {
     let permissions: FirstRunPermissions
 
     init(environment: AppEnvironment, profile: UserProfile) {
+        self.uid = profile.uid
         let repository = PostsRepository(service: environment.posts)
         let navigation = AppNavigation(posts: repository)
         let images = PostImageCache(store: environment.images)
