@@ -1,11 +1,10 @@
 import SwiftUI
 
-/// Map sheet for a selected pin (design system screen 3, Sprint 08 layout). The ⋯ menu holds Report and
-/// Open in Apple Maps; the poster sees Mark as gone instead of Report.
+/// Map sheet for a selected pin. Open in Apple Maps is the main action; the ⋯ menu holds Report for everyone
+/// but the poster, who gets Mark as gone at the bottom instead.
 struct PostBottomCard: View {
     let post: FoodPost
     let viewModel: MapViewModel
-    let isExpanded: Bool
 
     @AppStorage(ReviewViewModel.showCaloriesKey) private var showCalories = true
     @State private var isReporting = false
@@ -13,10 +12,8 @@ struct PostBottomCard: View {
     var body: some View {
         PostDetailContent(post: post, photoSources: PostPhotoSource.sources(for: post), images: viewModel.images,
                           distanceMeters: viewModel.location.distance(to: post.coordinate),
-                          isExpanded: isExpanded, showCalories: showCalories) {
+                          showCalories: showCalories, onOpenInMaps: { viewModel.openInAppleMaps(post) }) {
             menu
-        } route: {
-            PostRouteSection(post: post, viewModel: viewModel)
         } actions: {
             PostActionsSection(post: post, viewModel: viewModel)
         }
@@ -25,27 +22,31 @@ struct PostBottomCard: View {
         }
     }
 
+    @ViewBuilder
     private var menu: some View {
-        Menu {
-            Button("Open in Apple Maps", systemImage: "map") { viewModel.openInAppleMaps(post) }
-            if !viewModel.isOwnPost(post), !viewModel.reportedPostIds.contains(post.id) {
+        if !viewModel.isOwnPost(post), !viewModel.reportedPostIds.contains(post.id) {
+            Menu {
                 Button("Report", systemImage: "flag") { isReporting = true }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.body.weight(.semibold))
+                    .frame(minWidth: Theme.Size.minTapTarget, minHeight: Theme.Size.minTapTarget)
+                    .contentShape(.rect)
             }
-        } label: {
-            Image(systemName: "ellipsis.circle")
-                .font(.title2)
-                .frame(minWidth: Theme.Size.minTapTarget, minHeight: Theme.Size.minTapTarget)
+            .accessibilityLabel("More actions")
+            .accessibilityHint("Report this post")
         }
-        .accessibilityLabel("More actions")
-        .accessibilityHint("Report or open in Apple Maps")
     }
 }
 
-#Preview("Medium") {
-    PostBottomCard(post: .sample, viewModel: .preview, isExpanded: true)
+#Preview {
+    Color.clear.sheet(isPresented: .constant(true)) {
+        PostBottomCard(post: .sample, viewModel: .preview)
+            .presentationDetents([.fraction(0.62), .large])
+    }
 }
 
-#Preview("Small, AX5") {
-    PostBottomCard(post: .sample, viewModel: .preview, isExpanded: false)
+#Preview("AX5") {
+    PostBottomCard(post: .sample, viewModel: .preview)
         .dynamicTypeSize(.accessibility5)
 }
