@@ -29,30 +29,29 @@ struct AccountView: View {
 private struct AccountForm: View {
     @Bindable var viewModel: AccountViewModel
 
+    @FocusState private var isNameFocused: Bool
+    @State private var isDeleting = false
+
     var body: some View {
         List {
             Section {
-                TextField(viewModel.isOrganization ? "Organization name" : "Name", text: $viewModel.name)
-                    .textContentType(viewModel.isOrganization ? .organizationName : .name)
-                    .submitLabel(.done)
-                    .onSubmit { Task { await viewModel.saveName() } }
-                    .accessibilityLabel(viewModel.isOrganization ? "Organization name" : "Name")
+                HStack(spacing: Theme.Spacing.sm) {
+                    TextField(viewModel.isOrganization ? "Organization name" : "Name", text: $viewModel.name)
+                        .textContentType(viewModel.isOrganization ? .organizationName : .name)
+                        .submitLabel(.done)
+                        .focused($isNameFocused)
+                        .onSubmit(save)
+                        .accessibilityLabel(viewModel.isOrganization ? "Organization name" : "Name")
+                    nameAccessory
+                }
+                .frame(minHeight: Theme.Size.minTapTarget)
                 if let error = viewModel.nameError {
                     Label(error, systemImage: "exclamationmark.circle")
                         .font(.footnote)
                         .foregroundStyle(Theme.Palette.danger)
+                } else if case .failed(let message) = viewModel.nameStatus {
+                    StatusLine(status: .failed(message))
                 }
-                Button {
-                    Task { await viewModel.saveName() }
-                } label: {
-                    HStack(spacing: Theme.Spacing.sm) {
-                        Text("Save name")
-                        if viewModel.nameStatus == .working { ProgressView() }
-                    }
-                }
-                .disabled(!viewModel.canSaveName)
-                .frame(minHeight: Theme.Size.minTapTarget)
-                StatusLine(status: viewModel.nameStatus)
             } header: {
                 Text("Profile")
             } footer: {
@@ -61,16 +60,11 @@ private struct AccountForm: View {
 
             Section("Account") {
                 LabeledContent("Email") {
-                    HStack(spacing: Theme.Spacing.xs) {
-                        Text(viewModel.profile.email)
-                        if AppConfig.requireEmailVerification {
-                            Image(systemName: "checkmark.seal.fill")
-                                .foregroundStyle(Theme.Palette.success)
-                                .accessibilityLabel("verified")
-                        }
-                    }
+                    Text(viewModel.profile.email ?? "")
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
-                LabeledContent("Account type", value: viewModel.isOrganization ? "Student organization" : "Student")
+                LabeledContent("Account type", value: viewModel.profile.accountType.displayName)
                 LabeledContent("Member since", value: viewModel.memberSince)
             }
 
@@ -78,17 +72,58 @@ private struct AccountForm: View {
                 NavigationLink {
                     ChangePasswordView(viewModel: viewModel)
                 } label: {
-                    Label("Change password", systemImage: "key")
+                    SettingsRow(title: "Change password", systemImage: "key")
                 }
             }
 
             Section {
-                NavigationLink {
-                    DeleteAccountView(viewModel: viewModel)
-                } label: {
-                    Label("Delete account", systemImage: "trash")
-                        .foregroundStyle(Theme.Palette.danger)
-                }
+                DestructiveButton(title: "Delete account") { isDeleting = true }
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+        }
+        .environment(\.defaultMinListRowHeight, 52)
+        .scrollDismissesKeyboard(.interactively)
+        .animation(.default, value: viewModel.hasNameChanges)
+        .animation(.default, value: viewModel.nameStatus)
+        .navigationDestination(isPresented: $isDeleting) {
+            DeleteAccountView(viewModel: viewModel)
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { isNameFocused = false }
+            }
+        }
+    }
+
+    /// Save appears only while the name differs from the saved one; after saving, a "Saved" check replaces it.
+    @ViewBuilder
+    private var nameAccessory: some View {
+        if viewModel.nameStatus == .working {
+            ProgressView()
+        } else if viewModel.hasNameChanges {
+            Button("Save", action: save)
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+                .tint(Theme.Palette.brandPurple)
+                .disabled(!viewModel.canSaveName)
+        } else if case .done(let message) = viewModel.nameStatus {
+            Label(message, systemImage: "checkmark.circle.fill")
+                .font(.subheadline)
+                .foregroundStyle(Theme.Palette.success)
+                .accessibilityLabel("Name saved")
+        }
+    }
+
+    private func save() {
+        guard viewModel.canSaveName else { return }
+        isNameFocused = false
+        Task {
+            await viewModel.saveName()
+            if case .done = viewModel.nameStatus {
+                AccessibilityNotification.Announcement("Name saved").post()
             }
         }
     }
