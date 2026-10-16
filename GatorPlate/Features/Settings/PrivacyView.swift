@@ -1,47 +1,41 @@
 import SwiftUI
 
-/// What GatorPlate keeps, for how long, and what it never does (RAI data inventory). Short rows to skim, plus the
-/// full Privacy Policy.
+/// What GatorPlate keeps, for how long, and what it never does (RAI data inventory). A three-point summary, then
+/// one row per kind of data: title with a short "how long" tag, and one line of detail. Plus the full policy.
 struct PrivacyView: View {
     private struct Entry: Identifiable {
         let id: String
         let icon: String
         let title: String
         let detail: String
-        let retention: String
+        /// How long it's kept, a few words.
+        let keep: String
     }
 
     private let kept = [
         Entry(id: "guest", icon: "person.crop.circle.badge.questionmark", title: "Guest browsing",
-              detail: "An anonymous ID. No name or email.",
-              retention: "Until you create an account or reinstall"),
+              detail: "An anonymous ID. No name or email.", keep: "Until sign-up"),
         Entry(id: "account", icon: "person.crop.circle", title: "Your account",
-              detail: "Email, name, account type and organization name. Only needed to post.",
-              retention: "Until you delete your account"),
+              detail: "Email, name and account type. Only needed to post.", keep: "Until deleted"),
         Entry(id: "alerts", icon: "bell.badge", title: "Alert settings",
-              detail: "Alerts on or off, quiet hours, this phone's alert ID and what you want alerts about. Only you can read them.",
-              retention: "Until you change them"),
-        Entry(id: "posts", icon: "fork.knife", title: "Your posts and photos",
-              detail: "Text, place, times and up to 4 food photos.",
-              retention: "Deleted 24 hours after a post ends"),
+              detail: "What you want alerts about. Only you can read them.", keep: "Until changed"),
+        Entry(id: "posts", icon: "fork.knife", title: "Posts and photos",
+              detail: "Text, place, times and up to 4 food photos.", keep: "24 h after end"),
         Entry(id: "reports", icon: "flag", title: "Reports you send",
-              detail: "The post and your reason.",
-              retention: "Deleted with your account"),
+              detail: "The post and your reason.", keep: "Until deleted"),
     ]
 
-    private let onDevice = [
+    private let notKept = [
         Entry(id: "location", icon: "location", title: "Your location",
-              detail: "Shows distances and routes while the app is open.",
-              retention: "Never stored or shared"),
+              detail: "Distances and routes, only while the app is open.", keep: "On device"),
         Entry(id: "ai", icon: "sparkles", title: "AI drafts",
-              detail: "Food photos go to Google's Gemini through Firebase to draft a post. No location, camera details, name or account.",
-              retention: "Not kept by GatorPlate"),
+              detail: "Food photos only. No location, name or account.", keep: "Not stored"),
     ]
 
-    private let never = [
-        ("eye.slash", "Track what food you pick up"),
-        ("scope", "Target alerts by need. Your own filters decide."),
-        ("dollarsign.circle", "Sell or share your data for ads"),
+    private let promises = [
+        ("eye.slash", "No tracking"),
+        ("scope", "No targeting"),
+        ("dollarsign.circle", "No selling"),
     ]
 
     @State private var showsPolicy = false
@@ -49,39 +43,62 @@ struct PrivacyView: View {
     var body: some View {
         List {
             Section {
+                summary
+            } footer: {
+                Text("We never track what you pick up, target alerts by need, or sell your data.")
+            }
+
+            Section("What we keep") {
                 ForEach(kept) { row($0) }
-            } header: {
-                Text("What we keep")
             }
 
-            Section {
-                ForEach(onDevice) { row($0) }
-            } header: {
-                Text("Used, not kept")
-            }
-
-            Section("We never") {
-                ForEach(never, id: \.1) { icon, text in
-                    Label {
-                        Text(text)
-                    } icon: {
-                        Image(systemName: icon).foregroundStyle(Theme.Palette.brandPurple)
-                    }
-                }
+            Section("Used, never kept") {
+                ForEach(notKept) { row($0) }
             }
 
             Section {
                 Button { showsPolicy = true } label: {
                     SettingsRow(title: LegalDocument.Kind.privacy.title, systemImage: "lock.doc", showsDisclosure: true)
                 }
-            } footer: {
-                Text("Alerts go to everyone whose own filters match; nothing is targeted by need.")
             }
         }
         .navigationTitle("Your privacy")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showsPolicy) {
             LegalDocumentSheet(kind: .privacy) { showsPolicy = false }
+        }
+    }
+
+    /// Three promises side by side; they stack at large text sizes.
+    private var summary: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 0) {
+                ForEach(promises, id: \.1) { icon, text in
+                    promise(icon: icon, text: text).frame(maxWidth: .infinity)
+                }
+            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                ForEach(promises, id: \.1) { icon, text in
+                    HStack(spacing: Theme.Spacing.md) {
+                        Image(systemName: icon).foregroundStyle(Theme.Palette.brandPurple).accessibilityHidden(true)
+                        Text(text).font(.subheadline.weight(.semibold))
+                    }
+                }
+            }
+        }
+        .padding(.vertical, Theme.Spacing.sm)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func promise(icon: String, text: String) -> some View {
+        VStack(spacing: Theme.Spacing.sm) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(Theme.Palette.brandPurple)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.subheadline.weight(.semibold))
+                .multilineTextAlignment(.center)
         }
     }
 
@@ -92,18 +109,42 @@ struct PrivacyView: View {
                 .frame(minWidth: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                Text(entry.title).font(.headline)
-                Text(entry.detail).font(.subheadline).foregroundStyle(.secondary)
-                Label(entry.retention, systemImage: "clock")
-                    .font(.footnote)
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(entry.title).font(.headline)
+                        Spacer(minLength: Theme.Spacing.sm)
+                        tag(entry.keep)
+                    }
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                        Text(entry.title).font(.headline)
+                        tag(entry.keep)
+                    }
+                }
+                Text(entry.detail)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, Theme.Spacing.xs)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(entry.title). \(entry.detail) \(entry.keep).")
+    }
+
+    private func tag(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(Theme.Palette.brandPurple)
+            .padding(.horizontal, Theme.Spacing.sm)
+            .padding(.vertical, 3)
+            .background(Theme.Palette.brandPurple.opacity(0.14), in: .capsule)
+            .fixedSize()
     }
 }
 
 #Preview {
     NavigationStack { PrivacyView() }
+}
+
+#Preview("AX5") {
+    NavigationStack { PrivacyView() }.dynamicTypeSize(.accessibility5)
 }
