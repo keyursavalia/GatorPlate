@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Poster: Mark as gone (with confirmation). Everyone else reports from the ⋯ menu; after reporting this shows
-/// "Reported". No pickup or claim tracking (R6).
+/// Bottom of the post sheet. Poster: a filled red Mark as gone (with confirmation). Others: "Reported" once they
+/// report from the ⋯ menu. No pickup or claim tracking (R6).
 struct PostActionsSection: View {
     let post: FoodPost
     let viewModel: MapViewModel
@@ -9,53 +9,32 @@ struct PostActionsSection: View {
     @State private var isConfirmingGone = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            if viewModel.isOwnPost(post) {
-                markGone
-            } else {
-                report
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var markGone: some View {
-        Button(role: .destructive) {
-            isConfirmingGone = true
-        } label: {
-            HStack(spacing: Theme.Spacing.sm) {
-                if viewModel.markGoneStatus == .working {
-                    ProgressView()
+        if viewModel.isOwnPost(post) {
+            Section {
+                DestructiveButton(title: "Mark as gone", isLoading: viewModel.markGoneStatus == .working) {
+                    isConfirmingGone = true
                 }
-                Label("Mark as gone", systemImage: "checkmark.circle")
+                .accessibilityHint("Removes this post for everyone")
+            } footer: {
+                if case .failed(let message) = viewModel.markGoneStatus {
+                    Label(message, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(Theme.Palette.danger)
+                }
             }
-            .frame(minHeight: Theme.Size.minTapTarget)
-        }
-        .buttonStyle(.bordered)
-        .disabled(viewModel.markGoneStatus == .working)
-        .accessibilityHint("Removes this post for everyone")
-        .confirmationDialog("Mark this food as gone?", isPresented: $isConfirmingGone, titleVisibility: .visible) {
-            Button("Mark as gone", role: .destructive) {
-                Task { await viewModel.markGone(post) }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            .confirmationDialog("Mark this food as gone?", isPresented: $isConfirmingGone, titleVisibility: .visible) {
+                Button("Mark as gone", role: .destructive) {
+                    Task { await viewModel.markGone(post) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("It disappears from the map and feed for everyone.")
             }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("It disappears from the map and feed for everyone.")
-        }
-
-        if case .failed(let message) = viewModel.markGoneStatus {
-            Label(message, systemImage: "exclamationmark.triangle")
-                .font(.subheadline)
-                .foregroundStyle(Theme.Palette.danger)
-        }
-    }
-
-    @ViewBuilder
-    private var report: some View {
-        if viewModel.reportedPostIds.contains(post.id) {
-            Label("Reported. Thanks, we'll review it.", systemImage: "checkmark.seal")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        } else if viewModel.reportedPostIds.contains(post.id) {
+            Section {
+                NoteRow(text: "Reported. Thanks, we'll review it.", systemImage: "checkmark.seal")
+            }
         }
     }
 }
