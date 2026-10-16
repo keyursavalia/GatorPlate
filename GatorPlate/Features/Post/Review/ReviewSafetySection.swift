@@ -1,108 +1,70 @@
 import SwiftUI
 
-/// "Allergens & safety": "May contain" chips for all nine allergens, cautions, and the calorie estimate
-/// (hideable here; Settings sets the default).
+/// "May contain" as a checklist of the nine allergens, "Heads up" notes, and the calorie estimate (shown when
+/// Settings > Show calorie estimates is on; always saved).
 struct ReviewSafetySection: View {
     @Bindable var viewModel: ReviewViewModel
+    var highlighted: PostDraftValidator.Field?
 
     var body: some View {
-        SectionCard(title: "Allergens & safety", systemImage: "exclamationmark.shield") {
-            if viewModel.allergensMatchAI { AIBadge() }
-        } content: {
-            VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                allergens
-                Divider()
-                cautions
-                if hasCalories {
-                    Divider()
-                    calories
+        Section {
+            ForEach(Allergen.allCases, id: \.self) { allergen in
+                CheckRow(title: allergen.displayName, isSelected: viewModel.draft.allergens.contains(allergen)) {
+                    viewModel.toggleAllergen(allergen)
                 }
+                .accessibilityValue(viewModel.draft.allergens.contains(allergen) ? "May contain" : "Not listed")
             }
-        }
-    }
-
-    // MARK: Allergens
-
-    private var allergens: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text("May contain").font(.subheadline.weight(.semibold))
-            FlowLayout {
-                ForEach(Allergen.allCases, id: \.self) { allergen in
-                    ToggleChip(title: allergen.displayName, systemImage: "exclamationmark.triangle",
-                               isSelected: viewModel.draft.allergens.contains(allergen),
-                               tint: Theme.Palette.warning) {
-                        viewModel.toggleAllergen(allergen)
-                    }
-                    .accessibilityValue(viewModel.draft.allergens.contains(allergen) ? "May contain" : "Not listed")
-                }
-            }
+        } header: {
+            ReviewSectionHeader(title: "May contain", isAI: viewModel.allergensMatchAI)
+        } footer: {
             if viewModel.draft.allergens.isEmpty {
-                Label("Allergen info unverified, ask the host.", systemImage: "exclamationmark.triangle.fill")
-                    .font(.footnote)
+                Label("None checked: students see allergens as not listed.", systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(Theme.Palette.warning)
+            } else {
+                Text("Never a guarantee. Students confirm with the host.")
             }
-            Text("Allergens are never guaranteed. Students should always confirm with the host.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
-    }
 
-    // MARK: Cautions
-
-    private var cautions: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            HStack(spacing: Theme.Spacing.sm) {
-                Text("Cautions").font(.subheadline.weight(.semibold))
-                if viewModel.isAIValue(.cautions), !viewModel.draft.cautions.isEmpty { AIBadge() }
-            }
-            .accessibilityElement(children: .combine)
+        Section {
             ForEach(viewModel.draft.cautions) { caution in
-                HStack(spacing: Theme.Spacing.sm) {
-                    TextField("e.g. Contains raw onion", text: cautionBinding(for: caution.id), axis: .vertical)
-                        .padding(Theme.Spacing.md)
-                        .background(.background, in: .rect(cornerRadius: Theme.Radius.field))
-                        .accessibilityLabel("Caution note")
-                    Button("Remove caution", systemImage: "minus.circle.fill") { viewModel.removeCaution(caution.id) }
-                        .labelStyle(.iconOnly)
-                        .foregroundStyle(Theme.Palette.danger)
-                        .frame(minWidth: Theme.Size.minTapTarget, minHeight: Theme.Size.minTapTarget)
-                }
+                TextField("e.g. Contains raw onion", text: cautionBinding(for: caution.id), axis: .vertical)
+                    .accessibilityLabel("Caution note")
+                    .listRowBackground(rowHighlight(highlighted == .cautions))
+                    .swipeActions {
+                        Button("Remove", systemImage: "trash", role: .destructive) { viewModel.removeCaution(caution.id) }
+                    }
             }
             if viewModel.draft.cautions.count < AppConfig.postMaxCautions {
-                Button("Add caution", systemImage: "plus.circle.fill") { viewModel.addCaution() }
-                    .font(.subheadline)
-                    .frame(minHeight: Theme.Size.minTapTarget)
+                Button("Add a note", systemImage: "plus") { viewModel.addCaution() }
+                    .foregroundStyle(Theme.Palette.brandPurple)
             }
+        } header: {
+            ReviewSectionHeader(title: "Heads up",
+                                isAI: viewModel.isAIValue(.cautions) && !viewModel.draft.cautions.isEmpty)
+        } footer: {
+            Text("Anything students should know, e.g. spicy or contains raw onion. Optional.")
         }
-    }
+        .id(PostDraftValidator.Field.cautions)
 
-    // MARK: Calories
-
-    private var hasCalories: Bool {
-        viewModel.draft.items.contains { $0.calories != nil }
-    }
-
-    private var calories: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            HStack {
-                Text("Calories (estimate)").font(.subheadline.weight(.semibold))
-                Spacer()
-                Button(viewModel.showCalories ? "Hide" : "Show") { viewModel.showCalories.toggle() }
-                    .font(.subheadline)
-                    .frame(minHeight: Theme.Size.minTapTarget)
-                    .accessibilityLabel(viewModel.showCalories ? "Hide calorie estimates" : "Show calorie estimates")
-            }
-            if viewModel.showCalories {
-                ForEach(viewModel.draft.items.filter { $0.calories != nil }) { item in
+        if viewModel.showCalories, !caloriesItems.isEmpty {
+            Section {
+                ForEach(caloriesItems) { item in
                     if let range = item.calories {
-                        Text("\(item.name.isEmpty ? "Item" : item.name): \(range.low)–\(range.high) kcal per serving")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        ListRow(title: item.name.isEmpty ? "Item" : item.name, systemImage: "flame",
+                                value: "\(range.low)–\(range.high) kcal")
                             .accessibilityLabel("\(item.name): \(range.low) to \(range.high) calories per serving, estimate")
                     }
                 }
+            } header: {
+                ReviewSectionHeader(title: "Calories (estimate)", isAI: true)
+            } footer: {
+                Text("Per serving. Hide these in Settings > Show calorie estimates.")
             }
         }
+    }
+
+    private var caloriesItems: [PostDraft.Item] {
+        viewModel.draft.items.filter { $0.calories != nil }
     }
 
     private func cautionBinding(for id: UUID) -> Binding<String> {
