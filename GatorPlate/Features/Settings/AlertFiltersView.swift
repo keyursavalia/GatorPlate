@@ -39,14 +39,8 @@ struct AlertFiltersView: View {
 
             if viewModel.isCustom {
                 Section {
-                    Label {
-                        Text("Filters only choose which alerts you get. AI labels can be wrong, so always confirm with the host.")
-                    } icon: {
-                        Image(systemName: "sparkles").foregroundStyle(Theme.Palette.brandPurple)
-                    }
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .listRowBackground(Theme.Palette.brandPurple.opacity(0.08))
+                    NoteRow(text: "Filters only choose which alerts you get. AI labels can be wrong, so always confirm with the host.",
+                            systemImage: "sparkles")
                 }
             }
         }
@@ -160,29 +154,5 @@ struct AlertFiltersView: View {
 
     private func addFood() {
         if viewModel.addFood(newFood) { newFood = "" }
-    }
-}
-
-/// A list row that toggles a checkmark. VoiceOver reads the selected trait.
-private struct CheckRow: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack {
-                Text(title).foregroundStyle(.primary)
-                Spacer()
-                Image(systemName: "checkmark")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(Theme.Palette.brandPurple)
-                    .opacity(isSelected ? 1 : 0)
-                    .accessibilityHidden(true)
-            }
-            .contentShape(.rect)
-        }
-        .accessibilityLabel(title)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
