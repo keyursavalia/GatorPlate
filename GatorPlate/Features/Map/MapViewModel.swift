@@ -31,8 +31,6 @@ final class MapViewModel {
     private(set) var isVisible = false
     /// Center limit for MapKit; its north edge follows the zoom (see `MapViewModel+Viewport`).
     var cameraBounds = MapViewModel.staticCameraBounds
-    /// Last measured camera at rest, for the DEBUG bounds overlay.
-    var viewport: ViewportReadout?
     @ObservationIgnored var boundsNorthLatitude = SFSUCampus.cameraCenterNorthLatitude
     @ObservationIgnored var boundsMaxDistance = SFSUCampus.maxCameraDistance
     private(set) var markGoneStatus = ActionStatus.idle
