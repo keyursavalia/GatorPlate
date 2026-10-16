@@ -5,11 +5,14 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /postImages/{imageId} {
+      // Guests (anonymous users) read too.
       allow read: if request.auth != null;
       // Up to 4 JPEGs per post: {postId}.jpg is the cover (slot 0), {postId}_1..3.jpg the others.
       // Each up to 300 KB (AppConfig.postImageMaxBytes), tagged with the uploader. Create only: no overwrites.
       // The deleteAccount function removes them with the Admin SDK.
+      // Only accounts post: anonymous guests have no email on their token (a missing key denies).
       allow create: if request.auth != null
+        && request.auth.token.email is string
         && imageId.matches('[A-Za-z0-9]{20}(_[1-3])?[.]jpg')
         && request.resource.size <= 300000
         && request.resource.contentType == 'image/jpeg'
