@@ -9,6 +9,9 @@ final class AccountViewModel {
         case idle, working, done(String), failed(String)
     }
 
+    /// How long the "Saved" check stays before the pencil returns.
+    static let savedConfirmationSeconds = 2.0
+
     var name: String {
         didSet {
             // Editing again clears the last "Saved" / error line.
@@ -76,6 +79,10 @@ final class AccountViewModel {
         } catch {
             nameStatus = .failed(Self.message(for: error))
         }
+    }
+
+    func clearSavedStatus() {
+        if case .done = nameStatus { nameStatus = .idle }
     }
 
     func changePassword(current: String, new: String, confirm: String) async -> Bool {
