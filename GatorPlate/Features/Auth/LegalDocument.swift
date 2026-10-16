@@ -1,7 +1,28 @@
 import Foundation
 
-/// Parses the bundled `TermsOfUse.md` into simple blocks so it can be rendered as accessible, Dynamic Type safe text.
-nonisolated struct TermsDocument {
+/// Parses a bundled legal document (`TermsOfUse.md`, `PrivacyPolicy.md`) into simple blocks so it can be rendered
+/// as accessible, Dynamic Type safe text.
+nonisolated struct LegalDocument {
+    enum Kind: String, Identifiable {
+        case terms, privacy
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .terms: "Terms of Use"
+            case .privacy: "Privacy Policy"
+            }
+        }
+
+        fileprivate var resourceName: String {
+            switch self {
+            case .terms: "TermsOfUse"
+            case .privacy: "PrivacyPolicy"
+            }
+        }
+    }
+
     struct Block: Identifiable {
         enum Kind { case heading, bullet, paragraph }
         let id: Int
@@ -15,15 +36,15 @@ nonisolated struct TermsDocument {
     var keyPoints: [Block] = []
     var body: [Block] = []
 
-    static func loadBundled() -> TermsDocument {
-        guard let url = Bundle.main.url(forResource: "TermsOfUse", withExtension: "md"),
+    static func loadBundled(_ kind: Kind) -> LegalDocument {
+        guard let url = Bundle.main.url(forResource: kind.resourceName, withExtension: "md"),
               let markdown = try? String(contentsOf: url, encoding: .utf8) else {
-            return TermsDocument(body: [Block(id: 0, kind: .paragraph, text: "The Terms of Use could not be loaded.")])
+            return LegalDocument(body: [Block(id: 0, kind: .paragraph, text: "The \(kind.title) could not be loaded.")])
         }
         return parse(markdown)
     }
 
-    static func parse(_ markdown: String) -> TermsDocument {
+    static func parse(_ markdown: String) -> LegalDocument {
         var sections: [[Block]] = [[]]
         var paragraph: [String] = []
         var nextID = 0
@@ -62,8 +83,8 @@ nonisolated struct TermsDocument {
         }
         flushParagraph()
 
-        guard sections.count >= 3 else { return TermsDocument(body: sections.flatMap { $0 }) }
-        return TermsDocument(intro: sections[0], keyPoints: sections[1], body: sections.dropFirst(2).flatMap { $0 })
+        guard sections.count >= 3 else { return LegalDocument(body: sections.flatMap { $0 }) }
+        return LegalDocument(intro: sections[0], keyPoints: sections[1], body: sections.dropFirst(2).flatMap { $0 })
     }
 
     /// Fills [TEAM NAME] / [CONTACT EMAIL] from `AppConfig`; empty values leave the placeholder visible.
