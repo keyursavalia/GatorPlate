@@ -3,7 +3,7 @@ import Observation
 import OSLog
 import SwiftUI
 
-/// Drives the campus map: live pins, selection, the walking route, poster/report actions and location banners.
+/// Drives the campus map: live pins, selection, Apple Maps directions, poster/report actions and location banners.
 @MainActor
 @Observable
 final class MapViewModel {
@@ -24,7 +24,6 @@ final class MapViewModel {
                                                     maximumDistance: SFSUCampus.maxCameraDistance)
 
     let location: any LocationProviding
-    let route: RouteController
     let images: PostImageCache?
     var cameraPosition: MapCameraPosition = .camera(MapViewModel.homeCamera)
     /// The Map tab is on screen (drives the first-run permission prompts).
@@ -59,7 +58,6 @@ final class MapViewModel {
         self.location = location
         self.images = images
         self.currentUid = currentUid
-        self.route = RouteController(routing: routing, location: location)
     }
 
     var posts: [FoodPost] { repository.activePosts }
@@ -113,12 +111,10 @@ final class MapViewModel {
         isVisible = false
         location.stopUpdates()
         selectedPostId = nil
-        route.end()
     }
 
     /// Selection changed (pin tap, feed, deep link, or the post ended).
     func selectionDidChange() {
-        route.selectionDidChange(to: selectedPostId)
         markGoneStatus = .idle
         reportStatus = .idle
     }
@@ -140,22 +136,7 @@ final class MapViewModel {
             : .camera(Self.homeCamera)
     }
 
-    /// Fits the active route above the sheet. `cameraBounds` still clamps it and the north-edge check may nudge
-    /// it south, so the campus lock holds.
-    func fitRouteIfActive() {
-        guard let route = route.route else { return }
-        cameraPosition = .rect(RouteFraming.rect(for: route.coordinates))
-    }
-
     // MARK: Directions
-
-    func requestDirections(to post: FoodPost) {
-        route.requestDirections(to: post)
-    }
-
-    func endRoute() {
-        route.end()
-    }
 
     func openInAppleMaps(_ post: FoodPost) {
         routing.openInAppleMaps(to: post.coordinate, name: post.locationName)
@@ -222,6 +203,6 @@ final class MapViewModel {
 
     /// Computed at render time, so the expiry tick never re-renders pins.
     func accessibilityLabel(for post: FoodPost) -> String {
-        PostCard.accessibilityLabel(for: post, distanceText: distanceText(to: post))
+        PostRow.accessibilityLabel(for: post, distanceText: distanceText(to: post))
     }
 }
