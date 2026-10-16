@@ -34,17 +34,23 @@ private struct AccountForm: View {
 
     var body: some View {
         List {
-            Section {
-                HStack(spacing: Theme.Spacing.sm) {
-                    TextField(viewModel.isOrganization ? "Organization name" : "Name", text: $viewModel.name)
-                        .textContentType(viewModel.isOrganization ? .organizationName : .name)
-                        .submitLabel(.done)
-                        .focused($isNameFocused)
-                        .onSubmit(save)
-                        .accessibilityLabel(viewModel.isOrganization ? "Organization name" : "Name")
-                    nameAccessory
+            Section("Account") {
+                LabeledContent(nameLabel) {
+                    HStack(spacing: Theme.Spacing.sm) {
+                        TextField(nameLabel, text: $viewModel.name)
+                            .multilineTextAlignment(.trailing)
+                            .foregroundStyle(isNameFocused ? Color.primary : Color.secondary)
+                            .textContentType(viewModel.isOrganization ? .organizationName : .name)
+                            .submitLabel(.done)
+                            .focused($isNameFocused)
+                            .onSubmit(save)
+                            .accessibilityLabel(nameLabel)
+                            .accessibilityHint("Edits the name on your new posts")
+                        nameAccessory
+                    }
                 }
-                .frame(minHeight: Theme.Size.minTapTarget)
+                .contentShape(.rect)
+                .onTapGesture { isNameFocused = true }
                 if let error = viewModel.nameError {
                     Label(error, systemImage: "exclamationmark.circle")
                         .font(.footnote)
@@ -52,13 +58,6 @@ private struct AccountForm: View {
                 } else if case .failed(let message) = viewModel.nameStatus {
                     StatusLine(status: .failed(message))
                 }
-            } header: {
-                Text("Profile")
-            } footer: {
-                Text("Changes apply to new posts. Posts already live keep the old name.")
-            }
-
-            Section("Account") {
                 LabeledContent("Email") {
                     Text(viewModel.profile.email ?? "")
                         .lineLimit(1)
@@ -86,6 +85,13 @@ private struct AccountForm: View {
         .scrollDismissesKeyboard(.interactively)
         .animation(.default, value: viewModel.hasNameChanges)
         .animation(.default, value: viewModel.nameStatus)
+        .task(id: viewModel.nameStatus) {
+            // "Saved" shows briefly, then the pencil comes back.
+            guard case .done = viewModel.nameStatus else { return }
+            try? await Task.sleep(for: .seconds(AccountViewModel.savedConfirmationSeconds))
+            guard !Task.isCancelled else { return }
+            viewModel.clearSavedStatus()
+        }
         .navigationDestination(isPresented: $isDeleting) {
             DeleteAccountView(viewModel: viewModel)
         }
@@ -97,24 +103,32 @@ private struct AccountForm: View {
         }
     }
 
-    /// Save appears only while the name differs from the saved one; after saving, a "Saved" check replaces it.
+    private var nameLabel: String { viewModel.isOrganization ? "Organization name" : "Name" }
+
+    /// Pencil = editable. While the name differs from the saved one: Save. Saving: spinner. Saved: a check that
+    /// fades back to the pencil.
     @ViewBuilder
     private var nameAccessory: some View {
-        if viewModel.nameStatus == .working {
-            ProgressView()
-        } else if viewModel.hasNameChanges {
-            Button("Save", action: save)
-                .font(.subheadline.weight(.semibold))
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.capsule)
-                .tint(Theme.Palette.brandPurple)
-                .disabled(!viewModel.canSaveName)
-        } else if case .done(let message) = viewModel.nameStatus {
-            Label(message, systemImage: "checkmark.circle.fill")
-                .font(.subheadline)
-                .foregroundStyle(Theme.Palette.success)
-                .accessibilityLabel("Name saved")
+        Group {
+            if viewModel.nameStatus == .working {
+                ProgressView()
+            } else if viewModel.hasNameChanges {
+                Button("Save", action: save)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Theme.Palette.brandPurple)
+                    .buttonStyle(.borderless)
+                    .disabled(!viewModel.canSaveName)
+            } else if case .done = viewModel.nameStatus {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(Theme.Palette.success)
+                    .accessibilityLabel("Name saved")
+            } else {
+                Image(systemName: "pencil")
+                    .foregroundStyle(Theme.Palette.brandPurple)
+                    .accessibilityHidden(true)
+            }
         }
+        .transition(.opacity)
     }
 
     private func save() {
