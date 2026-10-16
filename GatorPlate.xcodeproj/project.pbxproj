@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3C4344163081A04600FD11DA /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 3C4344153081A04600FD11DA /* FirebaseFunctions */; };
 		3CB0AB413076EF3500FA1532 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 3CB0AB403076EF3500FA1532 /* FirebaseStorage */; };
 		3CD05A503074711D0013DE84 /* FirebaseAILogic in Frameworks */ = {isa = PBXBuildFile; productRef = 3CD05A4F3074711D0013DE84 /* FirebaseAILogic */; };
 		3CD05A523074711D0013DE84 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 3CD05A513074711D0013DE84 /* FirebaseAppCheck */; };
@@ -45,6 +46,7 @@
 			isa = PBXFrameworksBuildPhase;
 			files = (
 				3CD05A523074711D0013DE84 /* FirebaseAppCheck in Frameworks */,
+				3C4344163081A04600FD11DA /* FirebaseFunctions in Frameworks */,
 				3CD05A563074711D0013DE84 /* FirebaseFirestore in Frameworks */,
 				3CD05A583074711D0013DE84 /* FirebaseMessaging in Frameworks */,
 				3CD05A543074711D0013DE84 /* FirebaseAuth in Frameworks */,
@@ -103,6 +105,7 @@
 				3CD05A553074711D0013DE84 /* FirebaseFirestore */,
 				3CD05A573074711D0013DE84 /* FirebaseMessaging */,
 				3CB0AB403076EF3500FA1532 /* FirebaseStorage */,
+				3C4344153081A04600FD11DA /* FirebaseFunctions */,
 			);
 			productName = MyApp;
 			productReference = 000000000000000000000120 /* GatorPlate.app */;
@@ -419,6 +422,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		3C4344153081A04600FD11DA /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3CD05A4E3074711D0013DE84 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
+		};
 		3CB0AB403076EF3500FA1532 /* FirebaseStorage */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 3CD05A4E3074711D0013DE84 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
