@@ -68,7 +68,7 @@ struct SettingsView: View {
             .navigationDestination(for: AppNavigation.SettingsRoute.self) { route in
                 switch route {
                 case .alertFilters:
-                    AlertFiltersView(settings: viewModel, repository: session.repository)
+                    AlertFiltersView(settings: viewModel)
                 case .account:
                     AccountView(profile: profile, onDeleteAccount: onDeleteAccount)
                 }
@@ -174,7 +174,7 @@ struct SettingsView: View {
             Text("Alerts")
         } footer: {
             Text(viewModel.alertsEnabled
-                 ? "You choose what you're alerted about; nothing is targeted by need. Your own posts don't alert you. Quiet hours use campus time (Pacific)."
+                 ? "You choose what you're alerted about; nothing is targeted by need. Your own posts don't alert you."
                  : "Get a notification when free food is posted on campus.")
         }
     }
