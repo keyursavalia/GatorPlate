@@ -1,12 +1,7 @@
 import SwiftUI
 
-/// Fields the keyboard toolbar moves through, in order.
-enum ReviewFocus: Hashable {
-    case title, description, room
-}
-
-/// "What's there": the title (auto-title preview line, or the user's own), items with a diet pill, the
-/// description with its counter, and servings.
+/// Title (follows the food, place and time until the poster writes their own), what's there (items, overall
+/// diet, servings) and the description.
 struct ReviewWhatSection: View {
     @Bindable var viewModel: ReviewViewModel
     var focus: FocusState<ReviewFocus?>.Binding
@@ -15,141 +10,122 @@ struct ReviewWhatSection: View {
     @State private var isWritingTitle = false
 
     var body: some View {
-        SectionCard(title: "What's there", systemImage: "fork.knife") {
-            if isAnyAIValue { AIBadge() }
-        } content: {
-            VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                title.id(PostDraftValidator.Field.title)
-                Divider()
-                ReviewItemsSection(viewModel: viewModel).id(PostDraftValidator.Field.items)
-                Divider()
-                description.id(PostDraftValidator.Field.description)
-                Divider()
-                servings.id(PostDraftValidator.Field.servings)
+        Section {
+            titleRow
+                .listRowBackground(rowHighlight(highlighted == .title))
+                .id(PostDraftValidator.Field.title)
+        } header: {
+            ReviewSectionHeader(title: "Title", isAI: viewModel.isAIValue(.title))
+        } footer: {
+            titleFooter
+        }
+
+        Section {
+            ReviewItemsSection(viewModel: viewModel, highlighted: highlighted)
+            servingsRow
+                .listRowBackground(rowHighlight(highlighted == .servings))
+                .id(PostDraftValidator.Field.servings)
+        } header: {
+            ReviewSectionHeader(title: "What's there", isAI: viewModel.isAIValue(.items))
+        } footer: {
+            if let issue = viewModel.warning(for: .items) { ReviewIssueText(issue: issue) }
+        }
+
+        Section {
+            TextField("What it is, how much, anything to know", text: $viewModel.description, axis: .vertical)
+                .lineLimit(2...6)
+                .focused(focus, equals: .description)
+                .accessibilityLabel("Description")
+                .listRowBackground(rowHighlight(highlighted == .description))
+                .id(PostDraftValidator.Field.description)
+        } header: {
+            ReviewSectionHeader(title: "Description", isAI: viewModel.isAIValue(.description))
+        } footer: {
+            HStack(alignment: .firstTextBaseline) {
+                if let issue = viewModel.warning(for: .description) {
+                    ReviewIssueText(issue: issue)
+                }
+                Spacer(minLength: Theme.Spacing.sm)
+                Text("\(viewModel.draft.description.count)/\(AppConfig.postDescriptionMaxLength)")
+                    .monospacedDigit()
+                    .accessibilityLabel("\(viewModel.draft.description.count) of \(AppConfig.postDescriptionMaxLength) characters")
             }
         }
-        .reviewHighlight(highlighted.map { [.title, .items, .description, .servings].contains($0) } ?? false)
-    }
-
-    private var isAnyAIValue: Bool {
-        viewModel.isAIValue(.title) || viewModel.isAIValue(.items) || viewModel.isAIValue(.description)
     }
 
     // MARK: Title
 
     @ViewBuilder
-    private var title: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            fieldLabel("Title", isAI: viewModel.isAIValue(.title))
-            if viewModel.draft.titleIsCustom || isWritingTitle {
-                TextField("FREE: food - place - until time", text: $viewModel.title, axis: .vertical)
-                    .lineLimit(1...3)
-                    .focused(focus, equals: .title)
-                    .submitLabel(.next)
-                    .padding(Theme.Spacing.md)
-                    .background(.background, in: .rect(cornerRadius: Theme.Radius.field))
-                    .accessibilityLabel("Title")
-                if viewModel.draft.titleIsCustom {
-                    Button("Use suggested title") {
-                        viewModel.useSuggestedTitle()
-                        isWritingTitle = false
-                    }
-                    .font(.subheadline)
-                    .frame(minHeight: Theme.Size.minTapTarget)
-                    .accessibilityHint("Replaces your title with \(viewModel.suggestedTitle)")
-                }
-            } else {
-                HStack(alignment: .top, spacing: Theme.Spacing.sm) {
+    private var titleRow: some View {
+        if viewModel.draft.titleIsCustom || isWritingTitle {
+            TextField("FREE: food - place - until time", text: $viewModel.title, axis: .vertical)
+                .lineLimit(1...3)
+                .font(.body.weight(.semibold))
+                .focused(focus, equals: .title)
+                .submitLabel(.next)
+                .accessibilityLabel("Title")
+        } else {
+            Button {
+                isWritingTitle = true
+                focus.wrappedValue = .title
+            } label: {
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
                     Text(viewModel.draft.title)
                         .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Button("Write your own title", systemImage: "pencil") {
-                        isWritingTitle = true
-                        focus.wrappedValue = .title
-                    }
-                    .labelStyle(.iconOnly)
-                    .frame(minWidth: Theme.Size.minTapTarget, minHeight: Theme.Size.minTapTarget)
+                    Image(systemName: "pencil")
+                        .foregroundStyle(Theme.Palette.brandPurple)
+                        .accessibilityHidden(true)
                 }
-                Text("Follows the food, place and time until you write your own.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                .contentShape(.rect)
             }
-            if let issue = viewModel.warning(for: .title) { ReviewIssueText(issue: issue) }
+            .accessibilityLabel("Title: \(viewModel.draft.title)")
+            .accessibilityHint("Write your own title")
         }
     }
 
-    // MARK: Description
-
-    private var description: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            HStack {
-                fieldLabel("Description", isAI: viewModel.isAIValue(.description))
-                Spacer()
-                Text("\(viewModel.draft.description.count)/\(AppConfig.postDescriptionMaxLength)")
-                    .font(.footnote.monospacedDigit())
-                    .foregroundStyle(viewModel.warning(for: .description) == nil ? Color.secondary : Theme.Palette.warning)
-                    .accessibilityLabel("\(viewModel.draft.description.count) of \(AppConfig.postDescriptionMaxLength) characters")
+    @ViewBuilder
+    private var titleFooter: some View {
+        if let issue = viewModel.warning(for: .title) {
+            ReviewIssueText(issue: issue)
+        } else if viewModel.draft.titleIsCustom {
+            Button("Use suggested title") {
+                viewModel.useSuggestedTitle()
+                isWritingTitle = false
+                focus.wrappedValue = nil
             }
-            TextField("What it is, how much, anything to know", text: $viewModel.description, axis: .vertical)
-                .lineLimit(3...6)
-                .focused(focus, equals: .description)
-                .padding(Theme.Spacing.md)
-                .background(.background, in: .rect(cornerRadius: Theme.Radius.field))
-                .accessibilityLabel("Description")
-            if let issue = viewModel.warning(for: .description) { ReviewIssueText(issue: issue) }
+            .font(.footnote.weight(.semibold))
+            .accessibilityHint("Replaces your title with \(viewModel.suggestedTitle)")
+        } else {
+            Text("Updates with the food, place and time until you edit it.")
         }
     }
 
     // MARK: Servings
 
-    private var servings: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: Theme.Spacing.md) { servingsContent }
-            VStack(alignment: .leading, spacing: Theme.Spacing.sm) { servingsContent }
-        }
-    }
-
     @ViewBuilder
-    private var servingsContent: some View {
-        fieldLabel("Servings", isAI: viewModel.isAIValue(.servings) && viewModel.draft.estimatedServings != nil)
-        Spacer(minLength: 0)
+    private var servingsRow: some View {
         if let servings = viewModel.draft.estimatedServings {
             Stepper(value: servingsBinding(default: servings), in: AppConfig.postServingsRange, step: 5) {
-                Text("~\(servings)").font(.headline.monospacedDigit())
+                ListRow(title: "Servings", systemImage: "person.2", value: "~\(servings)")
             }
-            .fixedSize()
             .accessibilityLabel("About \(servings) servings")
-            Button("Not sure") { viewModel.draft.estimatedServings = nil }
-                .font(.subheadline)
-                .frame(minHeight: Theme.Size.minTapTarget)
+            .swipeActions {
+                Button("Not sure") { viewModel.draft.estimatedServings = nil }
+            }
+            .accessibilityAction(named: "Not sure") { viewModel.draft.estimatedServings = nil }
         } else {
-            Button("Add an estimate", systemImage: "plus.circle.fill") { viewModel.draft.estimatedServings = 10 }
-                .font(.subheadline)
-                .frame(minHeight: Theme.Size.minTapTarget)
+            Button {
+                viewModel.draft.estimatedServings = 10
+            } label: {
+                ListRow(title: "Servings", systemImage: "person.2", value: "Add estimate")
+            }
         }
     }
 
     private func servingsBinding(default value: Int) -> Binding<Int> {
         Binding(get: { viewModel.draft.estimatedServings ?? value },
                 set: { viewModel.draft.estimatedServings = $0 })
-    }
-
-    private func fieldLabel(_ text: String, isAI: Bool) -> some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            Text(text).font(.subheadline.weight(.semibold))
-            if isAI { AIBadge() }
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-extension View {
-    /// A brief outline when "N things left" scrolls to this section.
-    func reviewHighlight(_ isOn: Bool) -> some View {
-        overlay {
-            RoundedRectangle(cornerRadius: Theme.Radius.card)
-                .strokeBorder(Theme.Palette.danger, lineWidth: isOn ? 2 : 0)
-                .allowsHitTesting(false)
-        }
     }
 }
