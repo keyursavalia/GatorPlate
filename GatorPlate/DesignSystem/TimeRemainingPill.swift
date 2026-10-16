@@ -5,19 +5,29 @@ struct TimeRemainingPill: View {
     let expiresAt: Date
     /// Over a photo: an opaque backing (glass and tints never go over photos).
     var isSolid = false
+    /// Plain text in a row (no capsule), e.g. the Feed.
+    var isInline = false
 
     var body: some View {
         TimelineView(CountdownSchedule(expiresAt: expiresAt)) { context in
             let state = Urgency(minutesLeft: Self.minutesLeft(until: expiresAt, now: context.date))
-            Label(state.text, systemImage: state.icon)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(state.tint)
-                .padding(.horizontal, Theme.Spacing.md)
-                .padding(.vertical, Theme.Spacing.xs)
-                .background(state.tint.opacity(isSolid ? 0 : 0.12), in: .capsule)
-                .background(isSolid ? AnyShapeStyle(.background) : AnyShapeStyle(.clear), in: .capsule)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(state.spokenText)
+            Group {
+                if isInline {
+                    Label(state.text, systemImage: state.icon)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(state.inlineTint)
+                } else {
+                    Label(state.text, systemImage: state.icon)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(state.tint)
+                        .padding(.horizontal, Theme.Spacing.md)
+                        .padding(.vertical, Theme.Spacing.xs)
+                        .background(state.tint.opacity(isSolid ? 0 : 0.12), in: .capsule)
+                        .background(isSolid ? AnyShapeStyle(.background) : AnyShapeStyle(.clear), in: .capsule)
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(state.spokenText)
         }
     }
 
@@ -55,6 +65,11 @@ struct TimeRemainingPill: View {
             case ..<10: Theme.Palette.warning
             default: .secondary
             }
+        }
+
+        /// Brand purple while there's plenty of time, so the time stands out in a row of gray text.
+        var inlineTint: Color {
+            minutesLeft < 10 ? tint : Theme.Palette.brandPurple
         }
     }
 }
