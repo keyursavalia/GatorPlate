@@ -2,15 +2,15 @@ import SwiftUI
 
 /// Settings > Alerts > What to alert me about (reachable only while alerts are on). One "All free food" switch;
 /// turning it off shows simple checklists: diet, places, favorite foods (with "+ Custom") and allergens to avoid.
-/// Every change saves on its own a moment later.
+/// Every change saves on its own a moment later, so there is no Save button or status.
 struct AlertFiltersView: View {
     @State private var viewModel: AlertFiltersViewModel
     @State private var newFood = ""
     @State private var isAddingFood = false
     @State private var isPickingPlaces = false
 
-    init(settings: SettingsViewModel, repository: PostsRepository) {
-        _viewModel = State(initialValue: AlertFiltersViewModel(settings: settings, repository: repository))
+    init(settings: SettingsViewModel) {
+        _viewModel = State(initialValue: AlertFiltersViewModel(settings: settings))
     }
 
     var body: some View {
@@ -19,11 +19,7 @@ struct AlertFiltersView: View {
                 Toggle("All free food", isOn: allFoodBinding)
                     .font(.body.weight(.semibold))
             } footer: {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    Text(viewModel.summary)
-                    Text(viewModel.matchLine)
-                }
-                .accessibilityElement(children: .combine)
+                Text(viewModel.summary)
             }
 
             if let error = viewModel.errorMessage {
@@ -41,18 +37,23 @@ struct AlertFiltersView: View {
                 allergensSection
             }
 
-            Section {
-            } footer: {
-                Text("Filters only choose which alerts you get. AI labels can be wrong. Always confirm with the host.")
+            if viewModel.isCustom {
+                Section {
+                    Label {
+                        Text("Filters only choose which alerts you get. AI labels can be wrong, so always confirm with the host.")
+                    } icon: {
+                        Image(systemName: "sparkles").foregroundStyle(Theme.Palette.brandPurple)
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .listRowBackground(Theme.Palette.brandPurple.opacity(0.08))
+                }
             }
         }
         .environment(\.defaultMinListRowHeight, 48)
         .animation(.default, value: viewModel.isCustom)
         .navigationTitle("What to alert me about")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) { saveStatus }
-        }
         .onChange(of: viewModel.draft) { viewModel.scheduleSave() }
         .onDisappear { viewModel.flush() }
         .sheet(isPresented: $isPickingPlaces) {
@@ -95,11 +96,10 @@ struct AlertFiltersView: View {
                 HStack {
                     Text(CampusBuilding.byId(id)?.name ?? id)
                     Spacer()
-                    Button("Remove", systemImage: "minus.circle.fill") { viewModel.removePlace(id) }
+                    Button("Remove", systemImage: "xmark.circle.fill") { viewModel.removePlace(id) }
                         .labelStyle(.iconOnly)
-                        .foregroundStyle(Theme.Palette.danger)
-                        .buttonStyle(.plain)
-                        .frame(minWidth: Theme.Size.minTapTarget, minHeight: Theme.Size.minTapTarget)
+                        .foregroundStyle(.secondary)
+                        .buttonStyle(.borderless)
                         .accessibilityLabel("Remove \(CampusBuilding.byId(id)?.name ?? id)")
                 }
             }
@@ -149,19 +149,6 @@ struct AlertFiltersView: View {
             Text("Avoid allergens")
         } footer: {
             Text("Posts that may contain these won't alert you.")
-        }
-    }
-
-    @ViewBuilder
-    private var saveStatus: some View {
-        if viewModel.isSaving {
-            ProgressView()
-                .accessibilityLabel("Saving")
-        } else if viewModel.isSaved {
-            Label("Saved", systemImage: "checkmark.circle.fill")
-                .labelStyle(.iconOnly)
-                .foregroundStyle(Theme.Palette.success)
-                .accessibilityLabel("Saved")
         }
     }
 
