@@ -10,8 +10,8 @@ nonisolated enum FirebaseErrorMapper {
 
         if nsError.domain == AuthErrorDomain, let code = AuthErrorCode(rawValue: nsError.code) {
             switch code {
-            case .emailAlreadyInUse:
-                return .validation("That email already has an account. Try logging in.")
+            case .emailAlreadyInUse, .credentialAlreadyInUse:
+                return .validation("That email already has an account. Try signing in.")
             case .weakPassword:
                 return .validation("Use at least \(AppConfig.minPasswordLength) characters.")
             case .wrongPassword, .invalidCredential, .userNotFound, .invalidEmail, .userDisabled:
