@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Post flow step 4: a drawn checkmark, "Your post is live", the post as students see it in the Feed, then
+/// Post flow step 4: a drawn checkmark, "Your post is live", the post's Feed row, then
 /// View on map and Done. Photos that didn't upload show as one warning row.
 struct PublishSuccessView: View {
     let result: PublishResult
@@ -29,8 +29,10 @@ struct PublishSuccessView: View {
                 }
                 .multilineTextAlignment(.center)
 
-                PostCard(post: result.post, distanceText: nil, images: nil, coverSource: coverSource)
-                    .accessibilityLabel("Your post: " + PostCard.accessibilityLabel(for: result.post, distanceText: nil))
+                PostRow(post: result.post, distanceText: nil, images: nil, coverSource: coverSource)
+                    .padding(Theme.Spacing.md)
+                    .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
+                    .accessibilityLabel("Your post: " + PostRow.accessibilityLabel(for: result.post, distanceText: nil))
 
                 if result.hasPhotoFailures {
                     Banner(style: .warning, message: photoWarning)
@@ -38,14 +40,7 @@ struct PublishSuccessView: View {
 
                 VStack(spacing: Theme.Spacing.md) {
                     PrimaryButton(title: "View on map", action: onViewMap)
-                    Button(action: onDone) {
-                        Text("Done")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, minHeight: Theme.Size.primaryButtonHeight)
-                    }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.capsule)
-                    .tint(Theme.Palette.brandPurple)
+                    SecondaryButton(title: "Done", action: onDone)
                 }
             }
             .padding(Theme.Spacing.xl)
