@@ -1,7 +1,7 @@
 import MapKit
 import SwiftUI
 
-/// Campus map locked to SFSU with rotation, live post pins and a non-modal post sheet.
+/// Campus map locked to SFSU with rotation, live post pins (filtered like the Feed) and a non-modal post sheet.
 struct MapScreen: View {
     @Bindable var viewModel: MapViewModel
     /// First-run location and notification prompts; owns the "Notifications on" toast.
@@ -90,6 +90,8 @@ struct MapScreen: View {
             ForEach(viewModel.posts) { post in
                 Annotation(post.title, coordinate: post.coordinate.clLocationCoordinate) {
                     PostPin(dietary: post.overallDietary, isSelected: post.id == viewModel.selectedPostId)
+                        // Filter changes fade pins in and out; the camera never moves for them.
+                        .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
                         .accessibilityLabel(viewModel.accessibilityLabel(for: post))
                         .accessibilityHint("Shows details")
                         .accessibilityAddTraits(.isButton)
@@ -100,6 +102,7 @@ struct MapScreen: View {
         }
         .mapStyle(.standard(emphasis: .muted, pointsOfInterest: .including(Self.pointsOfInterest)))
         .mapControls {}
+        .animation(reduceMotion ? .easeOut(duration: 0.2) : .snappy, value: viewModel.posts.map(\.id))
     }
 
     /// Reads the real visible north edge from the 4 drawn corners (exact for any heading, device or orientation)
@@ -141,10 +144,20 @@ struct MapScreen: View {
                 solidBanner(Banner(style: .info, message: notice))
                     .transition(.opacity)
             }
+            if viewModel.showsFilterPill {
+                FilterPill(shown: viewModel.posts.count, total: viewModel.browse.totalCount,
+                           onOpen: viewModel.openFilters, onClear: viewModel.clearFilters)
+                    .frame(maxWidth: .infinity)
+                    .transition(.opacity)
+            }
             if let banner = viewModel.locationBanner {
                 locationBanner(banner)
             }
             VStack(spacing: Theme.Spacing.sm) {
+                // One sheet at a time: hidden while a post's sheet is open.
+                if viewModel.selectedPost == nil {
+                    FilterButton(activeCount: viewModel.filterCount, action: viewModel.openFilters)
+                }
                 GlassIconButton(
                     systemImage: viewModel.canCenterOnUser ? "location.fill" : "building.columns",
                     accessibilityLabel: viewModel.canCenterOnUser ? "Center on my location" : "Show whole campus",
@@ -157,6 +170,11 @@ struct MapScreen: View {
         }
         .padding(.horizontal, Theme.Spacing.lg)
         .padding(.top, Theme.Spacing.sm)
+        .animation(reduceMotion ? nil : .easeInOut, value: viewModel.showsFilterPill)
+        .sheet(isPresented: $viewModel.isFilterSheetPresented, onDismiss: viewModel.filterSheetDidDismiss) {
+            PostFilterSheet(store: viewModel.browse.filters, browse: viewModel.browse, showsSort: false,
+                            notificationPicks: viewModel.browse.notificationPicks)
+        }
     }
 
     @ViewBuilder
