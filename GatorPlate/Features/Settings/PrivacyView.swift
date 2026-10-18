@@ -17,8 +17,8 @@ struct PrivacyView: View {
               detail: "An anonymous ID. No name or email.", keep: "Until sign-up"),
         Entry(id: "account", icon: "person.crop.circle", title: "Your account",
               detail: "Email, name and account type. Only needed to post.", keep: "Until deleted"),
-        Entry(id: "alerts", icon: "bell.badge", title: "Alert settings",
-              detail: "What you want alerts about. Only you can read them.", keep: "Until changed"),
+        Entry(id: "alerts", icon: "bell.badge", title: "Notification settings",
+              detail: "What you want notifications about. Only you can read them.", keep: "Until changed"),
         Entry(id: "posts", icon: "fork.knife", title: "Posts and photos",
               detail: "Text, place, times and up to 4 food photos.", keep: "24 h after end"),
         Entry(id: "reports", icon: "flag", title: "Reports you send",
@@ -45,7 +45,7 @@ struct PrivacyView: View {
             Section {
                 summary
             } footer: {
-                Text("We never track what you pick up, target alerts by need, or sell your data.")
+                Text("We never track what you pick up, target notifications by need, or sell your data.")
             }
 
             Section("What we keep") {
