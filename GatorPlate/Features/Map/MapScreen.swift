@@ -58,6 +58,10 @@ struct MapScreen: View {
             if new != nil { detent = Self.peekDetent }
             viewModel.selectionDidChange()
         }
+        .onChange(of: viewModel.cameraFocusPostId) { _, id in
+            guard id != nil else { return }
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.6)) { viewModel.focusOnAlertPost() }
+        }
         .onChange(of: permissions.announcement) { _, announcement in
             guard let announcement else { return }
             AccessibilityNotification.Announcement(announcement).post()
@@ -192,6 +196,8 @@ struct MapScreen: View {
     private var bottomCard: some View {
         if let post = viewModel.selectedPost {
             PostBottomCard(post: post, viewModel: viewModel)
+                // A new post (e.g. from an alert) resets the card, closing a Report sheet left open for the old one.
+                .id(post.id)
                 .presentationDetents([Self.peekDetent, .large], selection: $detent)
                 .presentationBackgroundInteraction(.enabled(upThrough: Self.peekDetent))
                 .presentationDragIndicator(.visible)
