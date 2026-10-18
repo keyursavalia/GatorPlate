@@ -45,12 +45,22 @@ final class FirebaseAccountService: AccountService {
     func sendPasswordReset(email: String) async throws {
         do {
             try await Auth.auth().sendPasswordReset(withEmail: email)
+            Logger.services.info("Password reset requested")
         } catch {
-            let mapped = FirebaseErrorMapper.map(error)
-            // Only a network failure is worth telling the user; anything else looks the same as success.
-            if mapped == .network { throw mapped }
-            Logger.services.notice("Password reset request not sent")
+            let nsError = error as NSError
+            // Only a network failure or the rate limit is worth telling the user; anything else (no such account,
+            // disabled, ...) looks the same as success, like Firebase's email enumeration protection.
+            if nsError.domain == AuthErrorDomain, nsError.code == AuthErrorCode.tooManyRequests.rawValue {
+                throw AppError.validation(AccountMessages.resetRateLimited)
+            }
+            if FirebaseErrorMapper.map(error) == .network { throw AppError.network }
+            Logger.services.notice("Password reset request not sent: \(nsError.code, privacy: .public)")
         }
+    }
+
+    func sendPasswordResetToCurrentUser() async throws {
+        guard let email = Auth.auth().currentUser?.email else { throw AppError.unauthorized }
+        try await sendPasswordReset(email: email)
     }
 
     func deleteAccount(password: String, prepare: () async -> Void) async throws {
