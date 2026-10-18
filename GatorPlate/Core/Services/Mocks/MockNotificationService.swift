@@ -5,7 +5,8 @@ import Observation
 @Observable
 final class MockNotificationService: NotificationService {
     var authorization: NotificationAuthorization
-    var pendingOpenPostId: String?
+    var pendingAlert: AlertOpenRequest?
+    private(set) var handledAlerts: [AlertOpenRequest] = []
     /// What `requestAuthorization` grants.
     var grants = true
     var setError: AppError?
@@ -18,9 +19,9 @@ final class MockNotificationService: NotificationService {
         self.authorization = authorization
     }
 
-    func consumePendingOpen() -> String? {
-        defer { pendingOpenPostId = nil }
-        return pendingOpenPostId
+    func alertHandled(_ request: AlertOpenRequest) {
+        handledAlerts.append(request)
+        if pendingAlert == request { pendingAlert = nil }
     }
 
     func refreshAuthorization() async {}
@@ -59,4 +60,11 @@ final class MockNotificationService: NotificationService {
         activeUid = nil
         alertsEnabled = false
     }
+
+    #if DEBUG
+    func scheduleTestAlert(postId: String) async throws {
+        if let setError { throw setError }
+        pendingAlert = AlertOpenRequest(postId: postId, appState: .foreground, notificationId: UUID().uuidString)
+    }
+    #endif
 }
