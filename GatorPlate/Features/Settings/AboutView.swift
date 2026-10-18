@@ -16,7 +16,7 @@ struct AboutView: View {
         Step(id: "draft", icon: "sparkles", title: "AI drafts the post",
              detail: "Items, diet and allergens, reviewed by the poster."),
         Step(id: "find", icon: "map", title: "Students find it",
-             detail: "Live on the map, with alerts and walking directions."),
+             detail: "Live on the map, with notifications and Apple Maps directions."),
     ]
 
     var body: some View {
