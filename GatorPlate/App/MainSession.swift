@@ -1,7 +1,7 @@
 import Foundation
 
 /// Everything the main UI shares for one guest or account session: the live posts listener, navigation, photo cache,
-/// alerts settings, the first-run permission prompts and the Map/Feed view models. Created when the main UI appears; `prepareSignOut()` runs
+/// alerts settings, the Map/Feed filter and its results, the first-run permission prompts and the Map/Feed view models. Created when the main UI appears; `prepareSignOut()` runs
 /// before sign-out.
 @MainActor
 final class MainSession {
@@ -10,6 +10,9 @@ final class MainSession {
     let repository: PostsRepository
     let navigation: AppNavigation
     let images: PostImageCache
+    /// The Map/Feed filter (device only) and the posts it lets through.
+    let filters: PostFilterStore
+    let browse: BrowseResults
     let map: MapViewModel
     let feed: FeedViewModel
     let settings: SettingsViewModel
@@ -21,15 +24,23 @@ final class MainSession {
         let notifications = environment.notifications
         let navigation = AppNavigation(posts: repository, alertResolved: { notifications.alertHandled($0) })
         let images = PostImageCache(store: environment.images)
+        let settings = SettingsViewModel(notifications: environment.notifications, profile: profile)
+        let filters = PostFilterStore(uid: profile.uid)
+        let browse = BrowseResults(filters: filters, repository: repository, navigation: navigation,
+                                   location: environment.location, notificationPicks: {
+                                       // "Use my notification filters" shows only while Custom notifications are on.
+                                       settings.alertsEnabled ? AlertFilterMatcher.effective(settings.alertFilters) : nil
+                                   })
         self.repository = repository
         self.navigation = navigation
         self.images = images
+        self.filters = filters
+        self.browse = browse
         self.map = MapViewModel(repository: repository, navigation: navigation, postService: environment.posts,
                                 routing: environment.routing, location: environment.location, images: images,
-                                currentUid: profile.uid)
+                                browse: browse, currentUid: profile.uid)
         self.feed = FeedViewModel(repository: repository, navigation: navigation, location: environment.location,
-                                  images: images)
-        let settings = SettingsViewModel(notifications: environment.notifications, profile: profile)
+                                  images: images, browse: browse)
         self.settings = settings
         self.permissions = FirstRunPermissions(location: environment.location,
                                                notifications: environment.notifications,
@@ -38,6 +49,7 @@ final class MainSession {
 
     func start() {
         repository.start()
+        browse.start()
         settings.activate()
     }
 
@@ -59,6 +71,7 @@ final class MainSession {
     /// Removes the listener. Call before signing out.
     func stop() {
         navigation.selectedPostId = nil
+        browse.stop()
         repository.stop()
     }
 }
