@@ -13,7 +13,7 @@ struct WelcomeTermsView: View {
 
     private let points = [
         Point(id: "browse", icon: "map", text: "See free food on campus right now. No account needed."),
-        Point(id: "alerts", icon: "bell.badge", text: "Get alerts for the food you care about."),
+        Point(id: "alerts", icon: "bell.badge", text: "Get notifications for the food you care about."),
         Point(id: "risk", icon: "exclamationmark.shield",
               text: "Food is shared by students. Eat at your own risk and confirm allergens with the host."),
     ]
