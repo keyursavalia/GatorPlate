@@ -94,6 +94,7 @@ struct MainTabView: View {
             }
             Tab("Settings", systemImage: "gearshape", value: AppNavigation.TabID.settings) {
                 SettingsView(session: session, authSession: authSession, isSigningOut: isSigningOut,
+                             passwordReset: auth.passwordReset,
                              onRequestAccount: { accountFlow = $0 }, onSignOut: signOut,
                              onDeleteAccount: deleteAccount)
             }
