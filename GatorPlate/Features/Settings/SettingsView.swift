@@ -6,6 +6,8 @@ struct SettingsView: View {
     let session: MainSession
     let authSession: AuthSession
     let isSigningOut: Bool
+    /// Forgot password, for Account > Change password.
+    let passwordReset: PasswordResetModel
     /// Opens the account flow (join, sign in, or verify the email).
     let onRequestAccount: (AccountFlowView.Start) -> Void
     let onSignOut: () -> Void
@@ -80,7 +82,7 @@ struct SettingsView: View {
                 case .alertFilters:
                     AlertFiltersView(settings: viewModel)
                 case .account:
-                    AccountView(profile: profile, onDeleteAccount: onDeleteAccount)
+                    AccountView(profile: profile, passwordReset: passwordReset, onDeleteAccount: onDeleteAccount)
                 }
             }
             .sheet(item: $openDocument) { kind in
@@ -234,7 +236,8 @@ struct SettingsView: View {
                                                                acceptedTermsAt: nil, notificationsEnabled: true,
                                                                createdAt: .now),
                                           isEmailVerified: true),
-                 isSigningOut: false, onRequestAccount: { _ in }, onSignOut: {}, onDeleteAccount: { _ in })
+                 isSigningOut: false, passwordReset: PasswordResetModel(account: MockAccountService()),
+                 onRequestAccount: { _ in }, onSignOut: {}, onDeleteAccount: { _ in })
 }
 
 #Preview("Guest") {
@@ -245,5 +248,6 @@ struct SettingsView: View {
                                                                acceptedTermsVersion: nil, acceptedTermsAt: nil,
                                                                notificationsEnabled: false, createdAt: .now),
                                           isEmailVerified: false),
-                 isSigningOut: false, onRequestAccount: { _ in }, onSignOut: {}, onDeleteAccount: { _ in })
+                 isSigningOut: false, passwordReset: PasswordResetModel(account: MockAccountService()),
+                 onRequestAccount: { _ in }, onSignOut: {}, onDeleteAccount: { _ in })
 }
