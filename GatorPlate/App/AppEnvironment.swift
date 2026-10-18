@@ -15,7 +15,8 @@ struct AppEnvironment {
     static var live: AppEnvironment {
         let images = FirebaseStorageImageStore()
         let notifications = FirebaseNotificationService(
-            registerForRemoteNotifications: AppDelegate.registerForRemoteNotifications)
+            registerForRemoteNotifications: AppDelegate.registerForRemoteNotifications,
+            appState: AppDelegate.alertAppState)
         AppDelegate.deviceTokenHandler = { notifications.apnsTokenDidArrive($0) }
         return AppEnvironment(auth: FirebaseAuthService(), posts: FirestorePostService(images: images),
                               analyzer: GeminiFoodAnalyzer(), location: CoreLocationProvider(),
