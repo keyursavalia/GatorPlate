@@ -8,6 +8,10 @@
 	<false/>
 	<key>FirebaseMessagingInstallationIdEnabled</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>message</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Take photos of leftover food so GatorPlate can draft your post. Photograph the food, not people.</string>
 	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
