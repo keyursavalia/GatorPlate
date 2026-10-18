@@ -1,12 +1,16 @@
 import Foundation
 import Observation
 
-/// "What to alert me about": edits a copy of the saved filters and saves automatically shortly after each change.
-/// Filters only choose which alerts this student gets; they're never shown to anyone.
+/// "Custom notifications": edits a copy of the saved filters and saves automatically shortly after each change.
+/// The categories are always shown. Picking anything switches "All free food" off; clearing every pick (or
+/// switching "All free food" back on) returns to all. Filters only choose which notifications this student gets;
+/// they're never shown to anyone.
 @MainActor
 @Observable
 final class AlertFiltersViewModel {
-    var draft: AlertFilters
+    var draft: AlertFilters {
+        didSet { syncMode(from: oldValue) }
+    }
     private(set) var isSaving = false
     private(set) var errorMessage: String?
     /// Inline message for the "add a food" field.
@@ -22,7 +26,10 @@ final class AlertFiltersViewModel {
 
     init(settings: SettingsViewModel) {
         self.settings = settings
-        self.draft = settings.alertFilters ?? AlertFilters()
+        var draft = settings.alertFilters ?? AlertFilters()
+        // Older saves kept picks under "All free food"; they were ignored, so they aren't shown as checked.
+        if draft.mode == .all { Self.clearSelections(&draft) }
+        self.draft = draft
     }
 
     var isCustom: Bool { draft.mode == .custom }
@@ -31,12 +38,53 @@ final class AlertFiltersViewModel {
         Self.comparable(draft) != Self.comparable(settings.alertFilters ?? AlertFilters())
     }
 
-    var summary: String { AlertFilterSummary.sentence(for: draft) }
+    var summary: String {
+        isCustom ? "You'll get notifications only for the customized categories."
+                 : "You'll get notifications for all food postings on campus."
+    }
+
+    /// Any category picked (diet, place, food, allergen, or "skip posts with no allergen info").
+    var hasSelections: Bool {
+        Self.hasSelections(draft)
+    }
 
     // MARK: Editing
 
+    /// The "All free food" switch. On clears every pick; off waits for the student to pick something.
     func setCustom(_ isCustom: Bool) {
-        draft.mode = isCustom ? .custom : .all
+        if isCustom {
+            draft.mode = .custom
+        } else {
+            var cleared = draft
+            Self.clearSelections(&cleared)
+            draft = cleared
+        }
+    }
+
+    /// Picking something turns "All free food" off; removing the last pick turns it back on.
+    private func syncMode(from oldValue: AlertFilters) {
+        let had = Self.hasSelections(oldValue)
+        let has = Self.hasSelections(draft)
+        if has, draft.mode == .all {
+            draft.mode = .custom
+        } else if had, !has {
+            draft.mode = .all
+        }
+    }
+
+    private static func hasSelections(_ filters: AlertFilters) -> Bool {
+        !filters.diets.isEmpty || !filters.places.isEmpty || !filters.foods.isEmpty
+            || !filters.avoidAllergens.isEmpty || filters.skipUnverifiedAllergens
+    }
+
+    private static func clearSelections(_ filters: inout AlertFilters) {
+        filters.mode = .all
+        filters.diets = []
+        filters.includeUnknownDiet = false
+        filters.places = []
+        filters.foods = []
+        filters.avoidAllergens = []
+        filters.skipUnverifiedAllergens = false
     }
 
     func toggle(_ diet: AlertFilters.Diet) {
