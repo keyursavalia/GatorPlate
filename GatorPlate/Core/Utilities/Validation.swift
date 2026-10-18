@@ -21,6 +21,17 @@ nonisolated enum Validation {
         return AppConfig.allowedEmailDomains.contains(String(parts[1])) ? nil : .domainNotAllowed
     }
 
+    /// The inline message for an email field, or nil when it's fine (Sign in, Create account, Forgot password).
+    static func emailMessage(_ raw: String) -> String? {
+        if raw.trimmingCharacters(in: .whitespaces).isEmpty { return "Email is required." }
+        switch emailIssue(raw) {
+        case .invalidFormat: return "Enter a valid email address."
+        case .domainNotAllowed:
+            return "Use an email ending in \(AppConfig.allowedEmailDomains.joined(separator: ", "))."
+        case nil: return nil
+        }
+    }
+
     static func isPasswordValid(_ password: String) -> Bool {
         password.count >= AppConfig.minPasswordLength
     }
