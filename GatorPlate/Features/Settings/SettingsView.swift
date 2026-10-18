@@ -184,24 +184,10 @@ struct SettingsView: View {
         }
     }
 
-    /// "All", or one small icon per category in use (diet, places, favorite foods, allergens).
-    @ViewBuilder
+    /// "All" for all free food, "On" once custom notifications are set (VoiceOver names the categories).
     private var filterGlance: some View {
-        let categories = AlertFilterSummary.categories(for: viewModel.alertFilters)
-        if categories.isEmpty {
-            Text("All").foregroundStyle(.secondary)
-        } else {
-            HStack(spacing: Theme.Spacing.xs) {
-                ForEach(categories, id: \.self) { category in
-                    Image(systemName: category.symbol)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.Palette.brandPurple)
-                        .frame(width: 24, height: 24)
-                        .background(Theme.Palette.brandPurple.opacity(0.14), in: .circle)
-                }
-            }
-            .transition(.opacity)
-        }
+        Text(AlertFilterSummary.categories(for: viewModel.alertFilters).isEmpty ? "All" : "On")
+            .foregroundStyle(.secondary)
     }
 
     private var alertsBinding: Binding<Bool> {
