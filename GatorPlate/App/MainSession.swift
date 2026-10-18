@@ -18,7 +18,8 @@ final class MainSession {
     init(environment: AppEnvironment, profile: UserProfile) {
         self.uid = profile.uid
         let repository = PostsRepository(service: environment.posts)
-        let navigation = AppNavigation(posts: repository)
+        let notifications = environment.notifications
+        let navigation = AppNavigation(posts: repository, alertResolved: { notifications.alertHandled($0) })
         let images = PostImageCache(store: environment.images)
         self.repository = repository
         self.navigation = navigation
