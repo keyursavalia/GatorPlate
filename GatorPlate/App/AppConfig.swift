@@ -126,7 +126,19 @@ nonisolated enum AppConfig {
     static let alertFilterMaxFoods = 10
     static let alertFilterFoodMaxLength = 30
 
+    // Map/Feed filter (device only: `PostFilterStore`, UserDefaults per uid)
+    /// "Time left" choices besides Any: at least this many minutes left.
+    static let browseFilterMinutesLeftOptions = [10, 20]
+    /// "Distance" choices besides Any: at most this many minutes' walk.
+    static let browseFilterWalkMinutesOptions = [5, 10, 15]
+    /// A new location fix re-filters only after moving this far (no work on every fix).
+    static let browseLocationChangeMeters = 25.0
+    /// "Showing 3 of 7 posts" is announced this long after the last change.
+    static let browseAnnouncementDelaySeconds = 1.0
+
     // Account
+    /// "Resend link" in Forgot password is disabled this long after each send.
+    static let passwordResetResendSeconds = 60
     /// The server requires a sign-in this recent to delete an account (`auth_time`).
     static let accountRecentLoginSeconds = 300
     /// Deadline for the delete-account callable.
