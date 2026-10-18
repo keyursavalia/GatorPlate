@@ -24,7 +24,7 @@ struct PublishSuccessView: View {
                     Text("Your post is live")
                         .font(.title.bold())
                         .accessibilityAddTraits(.isHeader)
-                    Text("Students with alerts on are being notified.")
+                    Text("Students with notifications on are being notified.")
                         .foregroundStyle(.secondary)
                 }
                 .multilineTextAlignment(.center)
