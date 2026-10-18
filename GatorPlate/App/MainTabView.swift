@@ -118,7 +118,8 @@ struct MainTabView: View {
         FirstRunPermissions.Conditions(
             mapVisible: session.map.isVisible && session.navigation.selectedTab == .map,
             sceneActive: scenePhase == .active,
-            coverOrSheetOpen: isPostFlowPresented || accountFlow != nil || session.map.selectedPost != nil,
+            coverOrSheetOpen: isPostFlowPresented || accountFlow != nil || session.map.selectedPost != nil
+                || session.navigation.filterSheetTab != nil,
             alertPending: environment.notifications.pendingAlert != nil || session.navigation.hasPendingSelection)
     }
 
