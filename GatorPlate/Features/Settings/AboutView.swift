@@ -19,6 +19,11 @@ struct AboutView: View {
              detail: "Live on the map, with notifications and Apple Maps directions."),
     ]
 
+    #if DEBUG
+    /// "Send test alert", DEBUG builds only.
+    var testAlert: DebugTestAlertSection?
+    #endif
+
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xxl) {
@@ -47,6 +52,9 @@ struct AboutView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+                #if DEBUG
+                if let testAlert { testAlert }
+                #endif
             }
             .padding(.horizontal, Theme.Spacing.xl)
             .padding(.vertical, Theme.Spacing.lg)
