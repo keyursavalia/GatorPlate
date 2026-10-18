@@ -18,6 +18,9 @@ struct AlertFiltersView: View {
             Section {
                 Toggle("All free food", isOn: allFoodBinding)
                     .font(.body.weight(.semibold))
+                    // Stays on until something below is picked; then it can be switched back on to clear the picks.
+                    .disabled(!viewModel.isCustom)
+                    .accessibilityHint(viewModel.isCustom ? "Clears your picks" : "Pick categories below to customize")
             } footer: {
                 Text(viewModel.summary)
             }
