@@ -50,9 +50,11 @@ final class AlertFiltersViewModel {
 
     // MARK: Editing
 
-    /// The "All free food" switch. On clears every pick; off waits for the student to pick something.
+    /// The "All free food" switch. On clears every pick. It only turns off by picking something, so it never
+    /// says "customized" while nothing is filtered.
     func setCustom(_ isCustom: Bool) {
         if isCustom {
+            guard hasSelections else { return }
             draft.mode = .custom
         } else {
             var cleared = draft
