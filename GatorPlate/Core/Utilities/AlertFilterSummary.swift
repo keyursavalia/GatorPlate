@@ -1,19 +1,9 @@
 import Foundation
 
-/// The "Custom notifications" row in Settings: which categories are in use, shown as icons. Empty = all free food.
+/// The "Custom notifications" row in Settings: which categories are in use ("On"), or none ("All").
 nonisolated enum AlertFilterSummary {
     enum Category: String, CaseIterable, Sendable {
         case diet, places, foods, allergens
-
-        /// SF Symbol shown in the Settings row.
-        var symbol: String {
-            switch self {
-            case .diet: "leaf.fill"
-            case .places: "mappin"
-            case .foods: "heart.fill"
-            case .allergens: "exclamationmark.triangle.fill"
-            }
-        }
 
         var name: String {
             switch self {
