@@ -4,7 +4,7 @@ import SwiftUI
 /// Campus map locked to SFSU with rotation, live post pins and a non-modal post sheet.
 struct MapScreen: View {
     @Bindable var viewModel: MapViewModel
-    /// First-run location and notification prompts; owns the "Alerts on" toast.
+    /// First-run location and notification prompts; owns the "Notifications on" toast.
     let permissions: FirstRunPermissions
     let onPostFood: () -> Void
 
@@ -178,7 +178,7 @@ struct MapScreen: View {
     }
 
     private var alertsToast: some View {
-        Toast(message: "Alerts on for all free food.", systemImage: "bell.badge.fill",
+        Toast(message: "Notifications on for all free food.", systemImage: "bell.badge.fill",
               action: Toast.Action(title: "Customize") { viewModel.openAlertFilters() },
               onDismiss: { permissions.dismissAlertsToast() })
     }
