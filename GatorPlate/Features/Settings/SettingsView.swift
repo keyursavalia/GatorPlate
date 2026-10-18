@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Settings: profile card (opens Account) or, for guests, a Join / Sign in card; alerts (filters and quiet hours
-/// only while alerts are on); display; privacy and legal; about; sign out for accounts.
+/// Settings: profile card (opens Account) or, for guests, a Join / Sign in card; notifications (custom notifications
+/// and quiet hours only while notifications are on); display; privacy and legal; about; sign out for accounts.
 struct SettingsView: View {
     let session: MainSession
     let authSession: AuthSession
@@ -80,7 +80,7 @@ struct SettingsView: View {
                 Button("Sign out", role: .destructive, action: onSignOut)
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("You'll keep browsing as a guest. Alerts on this phone stop until you turn them on again.")
+                Text("You'll keep browsing as a guest. Notifications on this phone stop until you turn them on again.")
             }
         }
     }
@@ -120,7 +120,7 @@ struct SettingsView: View {
                     .textCase(.uppercase)
                     .multilineTextAlignment(.center)
                     .accessibilityAddTraits(.isHeader)
-                Text("Browsing and alerts work without an account. You need one only to post.")
+                Text("Browsing and notifications work without an account. You need one only to post.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -141,13 +141,13 @@ struct SettingsView: View {
     private var alertsSection: some View {
         Section {
             Toggle(isOn: alertsBinding) {
-                ListRow(title: "Free food alerts", systemImage: "bell.badge")
+                ListRow(title: "Free food notifications", systemImage: "bell.badge")
             }
             .disabled(viewModel.isUpdating)
 
             if viewModel.alertsEnabled {
                 NavigationLink(value: AppNavigation.SettingsRoute.alertFilters) {
-                    ListRow(title: "What to alert me about", systemImage: "line.3.horizontal.decrease.circle",
+                    ListRow(title: "Custom notifications", systemImage: "line.3.horizontal.decrease.circle",
                                 value: AlertFilterSummary.short(for: viewModel.alertFilters))
                 }
                 Toggle(isOn: quietHoursBinding) {
@@ -171,10 +171,10 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.Palette.danger)
             }
         } header: {
-            Text("Alerts")
+            Text("Notifications")
         } footer: {
             Text(viewModel.alertsEnabled
-                 ? "You choose what you're alerted about; nothing is targeted by need. Your own posts don't alert you."
+                 ? "You choose what you're notified about; nothing is targeted by need. Your own posts don't notify you."
                  : "Get a notification when free food is posted on campus.")
         }
     }
