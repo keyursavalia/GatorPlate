@@ -147,8 +147,13 @@ struct SettingsView: View {
 
             if viewModel.alertsEnabled {
                 NavigationLink(value: AppNavigation.SettingsRoute.alertFilters) {
-                    ListRow(title: "Custom notifications", systemImage: "line.3.horizontal.decrease.circle",
-                                value: AlertFilterSummary.short(for: viewModel.alertFilters))
+                    HStack(spacing: Theme.Spacing.sm) {
+                        ListRow(title: "Custom notifications", systemImage: "line.3.horizontal.decrease.circle")
+                        filterGlance
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Custom notifications")
+                    .accessibilityValue(AlertFilterSummary.spoken(for: viewModel.alertFilters))
                 }
                 Toggle(isOn: quietHoursBinding) {
                     ListRow(title: SettingsViewModel.quietHoursLabel, systemImage: "moon")
@@ -176,6 +181,26 @@ struct SettingsView: View {
             Text(viewModel.alertsEnabled
                  ? "You choose what you're notified about; nothing is targeted by need. Your own posts don't notify you."
                  : "Get a notification when free food is posted on campus.")
+        }
+    }
+
+    /// "All", or one small icon per category in use (diet, places, favorite foods, allergens).
+    @ViewBuilder
+    private var filterGlance: some View {
+        let categories = AlertFilterSummary.categories(for: viewModel.alertFilters)
+        if categories.isEmpty {
+            Text("All").foregroundStyle(.secondary)
+        } else {
+            HStack(spacing: Theme.Spacing.xs) {
+                ForEach(categories, id: \.self) { category in
+                    Image(systemName: category.symbol)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.Palette.brandPurple)
+                        .frame(width: 24, height: 24)
+                        .background(Theme.Palette.brandPurple.opacity(0.14), in: .circle)
+                }
+            }
+            .transition(.opacity)
         }
     }
 
