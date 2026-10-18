@@ -3,7 +3,8 @@ import Observation
 import OSLog
 import SwiftUI
 
-/// Drives the campus map: live pins, selection, Apple Maps directions, poster/report actions and location banners.
+/// Drives the campus map: live pins (through the Map/Feed filter), selection, Apple Maps directions, poster/report
+/// actions and location banners.
 @MainActor
 @Observable
 final class MapViewModel {
@@ -25,6 +26,8 @@ final class MapViewModel {
 
     let location: any LocationProviding
     let images: PostImageCache?
+    /// The shared Map/Feed filter and the posts it lets through.
+    let browse: BrowseResults
     var cameraPosition: MapCameraPosition = .camera(MapViewModel.homeCamera)
     /// The Map tab is on screen (drives the first-run permission prompts).
     private(set) var isVisible = false
@@ -49,7 +52,7 @@ final class MapViewModel {
 
     init(repository: PostsRepository, navigation: AppNavigation, postService: any PostService,
          routing: any RoutingService, location: any LocationProviding, images: PostImageCache?,
-         currentUid: String?, dismissals: BannerDismissals = BannerDismissals()) {
+         browse: BrowseResults, currentUid: String?, dismissals: BannerDismissals = BannerDismissals()) {
         self.dismissals = dismissals
         self.repository = repository
         self.navigation = navigation
@@ -57,10 +60,42 @@ final class MapViewModel {
         self.routing = routing
         self.location = location
         self.images = images
+        self.browse = browse
         self.currentUid = currentUid
     }
 
-    var posts: [FoodPost] { repository.activePosts }
+    /// Pins: the posts the filter lets through, plus the open post even when the filter would hide it.
+    var posts: [FoodPost] { browse.posts }
+
+    // MARK: Filters
+
+    var filterCount: Int { browse.filters.filter.activeCount }
+
+    /// The filter sheet (closed by a tapped alert before its post opens).
+    var isFilterSheetPresented: Bool {
+        get { navigation.filterSheetTab == .map }
+        set { navigation.filterSheetTab = newValue ? .map : nil }
+    }
+
+    /// "Filtered · 3 of 7" over the map: only while the filter hides something.
+    var showsFilterPill: Bool { browse.hiddenCount > 0 }
+
+    func openFilters() {
+        isFilterSheetPresented = true
+    }
+
+    func clearFilters() {
+        browse.filters.clear()
+    }
+
+    func filterSheetDidDismiss() {
+        navigation.filterSheetDidDismiss()
+    }
+
+    /// "Hidden by your filters" in the sheet of a post that was opened on purpose.
+    func isHiddenByFilters(_ post: FoodPost) -> Bool {
+        browse.isHiddenByFilters(post)
+    }
 
     var selectedPostId: String? {
         get { navigation.selectedPostId }
