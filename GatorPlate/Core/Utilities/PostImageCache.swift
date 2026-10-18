@@ -3,7 +3,8 @@ import Foundation
 import ImageIO
 import OSLog
 
-/// In-memory post photos for the map card and the feed. Loads each photo once, even when asked twice at once.
+/// In-memory post photos for the map sheet, the feed and the viewer. Keyed by `"\(postId)#\(slot)"`.
+/// Loads each photo once, even when asked twice at once.
 @MainActor
 final class PostImageCache {
     private let store: any ImageStore
@@ -17,34 +18,39 @@ final class PostImageCache {
         self.limit = limit
     }
 
-    func cachedImage(for postId: String) -> CGImage? {
-        images[postId]
+    static func key(postId: String, slot: Int) -> String {
+        "\(postId)#\(slot)"
+    }
+
+    func cachedImage(for postId: String, slot: Int) -> CGImage? {
+        images[Self.key(postId: postId, slot: slot)]
     }
 
     /// Nil when there is no photo or it couldn't load; the caller shows a placeholder.
-    func image(for postId: String) async -> CGImage? {
-        if let image = images[postId] { return image }
-        if let task = inFlight[postId] { return await task.value }
+    func image(for postId: String, slot: Int) async -> CGImage? {
+        let key = Self.key(postId: postId, slot: slot)
+        if let image = images[key] { return image }
+        if let task = inFlight[key] { return await task.value }
         let store = store
         let task = Task<CGImage?, Never> {
             do {
-                guard let data = try await store.load(forPostId: postId) else { return nil }
+                guard let data = try await store.load(forPostId: postId, slot: slot) else { return nil }
                 return Self.decode(data)
             } catch {
                 Logger.services.error("Post photo load failed")
                 return nil
             }
         }
-        inFlight[postId] = task
+        inFlight[key] = task
         let image = await task.value
-        inFlight[postId] = nil
-        if let image { insert(image, for: postId) }
+        inFlight[key] = nil
+        if let image { insert(image, for: key) }
         return image
     }
 
-    private func insert(_ image: CGImage, for postId: String) {
-        if images[postId] == nil { order.append(postId) }
-        images[postId] = image
+    private func insert(_ image: CGImage, for key: String) {
+        if images[key] == nil { order.append(key) }
+        images[key] = image
         while order.count > limit {
             images[order.removeFirst()] = nil
         }

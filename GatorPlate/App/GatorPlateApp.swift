@@ -15,7 +15,7 @@ struct GatorPlateApp: App {
         // Built after configure so no Firebase service is touched before App Check is installed.
         let environment = AppEnvironment.live
         self.environment = environment
-        _authViewModel = State(initialValue: AuthViewModel(auth: environment.auth))
+        _authViewModel = State(initialValue: AuthViewModel(auth: environment.auth, account: environment.account))
     }
 
     var body: some Scene {

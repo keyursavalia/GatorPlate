@@ -2,7 +2,7 @@ import CoreLocation
 import Observation
 import OSLog
 
-/// Live location via CoreLocation. Never prompts on its own: the map asks only after its pre-prompt.
+/// Live location via CoreLocation. Never prompts on its own: `FirstRunPermissions` asks on the first Map appearance.
 @MainActor
 @Observable
 final class CoreLocationProvider: NSObject, LocationProviding {
@@ -14,6 +14,11 @@ final class CoreLocationProvider: NSObject, LocationProviding {
     @ObservationIgnored private var session: CLServiceSession?
     @ObservationIgnored private var updatesTask: Task<Void, Never>?
     @ObservationIgnored private var wantsUpdates = false
+    /// Waiting for the user to answer the system prompt.
+    @ObservationIgnored private var authorizationWaiters: [CheckedContinuation<LocationAuthorization, Never>] = []
+
+    /// After this long the request returns the current status, even if the alert is still up.
+    private static let authorizationWaitCap: Duration = .seconds(60)
 
     override init() {
         super.init()
@@ -21,8 +26,24 @@ final class CoreLocationProvider: NSObject, LocationProviding {
         refreshAuthorization()
     }
 
-    func requestAuthorization() {
-        manager.requestWhenInUseAuthorization()
+    func requestAuthorization() async -> LocationAuthorization {
+        guard authorization == .notDetermined else { return authorization }
+        let cap = Task { [weak self] in
+            try? await Task.sleep(for: Self.authorizationWaitCap)
+            guard !Task.isCancelled else { return }
+            self?.resumeAuthorizationWaiters()
+        }
+        defer { cap.cancel() }
+        return await withCheckedContinuation { continuation in
+            authorizationWaiters.append(continuation)
+            manager.requestWhenInUseAuthorization()
+        }
+    }
+
+    private func resumeAuthorizationWaiters() {
+        let waiters = authorizationWaiters
+        authorizationWaiters = []
+        for waiter in waiters { waiter.resume(returning: authorization) }
     }
 
     func requestTemporaryPreciseAccuracy() {
@@ -95,6 +116,7 @@ final class CoreLocationProvider: NSObject, LocationProviding {
             .authorized(precise: manager.accuracyAuthorization == .fullAccuracy)
         @unknown default: .denied
         }
+        if authorization != .notDetermined { resumeAuthorizationWaiters() }
         if authorization.isAuthorized {
             beginUpdatesIfPossible()
         } else {

@@ -3,11 +3,16 @@ import Foundation
 @MainActor
 final class MockImageStore: ImageStore {
     private var storage: [String: Data] = [:]
+    /// Slots that fail to upload, to preview partial failures.
+    var failingSlots: Set<Int> = []
 
-    func save(jpeg: Data, forPostId postId: String) async throws {
+    func save(jpeg: Data, forPostId postId: String, slot: Int) async throws {
         guard jpeg.count <= AppConfig.postImageMaxBytes else { throw AppError.validation("Photo is too large.") }
-        storage[postId] = jpeg
+        guard !failingSlots.contains(slot) else { throw AppError.network }
+        storage[PostPhotoSlots.objectName(postId: postId, slot: slot)] = jpeg
     }
 
-    func load(forPostId postId: String) async throws -> Data? { storage[postId] }
+    func load(forPostId postId: String, slot: Int) async throws -> Data? {
+        storage[PostPhotoSlots.objectName(postId: postId, slot: slot)]
+    }
 }

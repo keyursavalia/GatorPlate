@@ -1,8 +1,9 @@
 import Foundation
 
-/// Post photos. Implementations reject JPEGs over `AppConfig.postImageMaxBytes` before writing.
+/// Post photos, one object per slot (0 = cover at `postImages/{postId}.jpg`, 1-3 at `{postId}_{slot}.jpg`).
+/// Implementations reject JPEGs over `AppConfig.postImageMaxBytes` before writing.
 @MainActor
-protocol ImageStore {
-    func save(jpeg: Data, forPostId postId: String) async throws
-    func load(forPostId postId: String) async throws -> Data?
+protocol ImageStore: Sendable {
+    func save(jpeg: Data, forPostId postId: String, slot: Int) async throws
+    func load(forPostId postId: String, slot: Int) async throws -> Data?
 }

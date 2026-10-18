@@ -9,7 +9,7 @@ struct AnalysisRejectedView: View {
 
     var body: some View {
         AnalysisMessageLayout(icon: content.icon, title: content.title, message: content.message, evalLine: evalLine) {
-            PrimaryButton(title: "Retake photo", action: onRetake)
+            PrimaryButton(title: reason == .containsPeople ? "Take new photos" : "Back to photos", action: onRetake)
             Button(action: onFillManually) {
                 Text("Fill it in myself")
                     .font(.headline)
@@ -28,7 +28,7 @@ struct AnalysisRejectedView: View {
              "Try another photo of the food, or fill in the post yourself.")
         case .containsPeople:
             ("person.crop.square.badge.camera", "Please avoid photographing people",
-             "Retake the photo with only the food in frame. This photo won't be used.")
+             "Take new photos with only the food in frame. These photos won't be used.")
         case .lowConfidence:
             ("eye.trianglebadge.exclamationmark", "We couldn't tell what this is",
              "Try a closer, brighter photo of the food, or fill in the post yourself.")

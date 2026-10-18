@@ -1,69 +1,61 @@
 import SwiftUI
 
-/// Items editor: rename, diet picker, remove, add. Calories are AI estimates and read-only.
+/// Item rows inside "What's there": the diet icon, the name, and a diet menu on the right; swipe to remove.
+/// Then Add item and the overall diet. Calories are AI estimates, shown in their own section.
 struct ReviewItemsSection: View {
     @Bindable var viewModel: ReviewViewModel
+    var highlighted: PostDraftValidator.Field?
+
+    @ScaledMetric(relativeTo: .body) private var iconWidth: CGFloat = 28
 
     var body: some View {
-        Section {
-            ForEach(viewModel.draft.items) { item in
-                itemRow(item)
-            }
-            .onDelete { offsets in
-                for id in offsets.map({ viewModel.draft.items[$0].id }) { viewModel.removeItem(id) }
-            }
-            if viewModel.draft.items.count < AppConfig.postMaxItems {
-                Button {
-                    viewModel.addItem()
-                } label: {
-                    Label("Add item", systemImage: "plus.circle.fill")
+        ForEach(viewModel.draft.items) { item in
+            itemRow(item)
+                .listRowBackground(rowHighlight(highlighted == .items))
+                .swipeActions {
+                    if viewModel.draft.items.count > 1 {
+                        Button("Remove", systemImage: "trash", role: .destructive) { viewModel.removeItem(item.id) }
+                    }
                 }
-            }
-            HStack(spacing: Theme.Spacing.sm) {
-                Text("Overall").font(.subheadline.weight(.semibold))
-                DietaryBadge(dietary: viewModel.draft.overallDietary, isEstimate: viewModel.aiBaseline != nil)
-            }
-            .accessibilityElement(children: .combine)
-            Toggle("Show calorie estimates", isOn: $viewModel.showCalories)
-        } header: {
-            ReviewSectionHeader(title: "Items", isAIValue: viewModel.isAIValue(.items))
-        } footer: {
-            if let issue = viewModel.warning(for: .items) { ReviewIssueText(issue: issue) }
         }
+        if viewModel.draft.items.count < AppConfig.postMaxItems {
+            Button("Add item", systemImage: "plus") { viewModel.addItem() }
+                .foregroundStyle(Theme.Palette.brandPurple)
+        }
+        ListRow(title: "Overall", systemImage: viewModel.draft.overallDietary.icon,
+                value: viewModel.aiBaseline != nil ? viewModel.draft.overallDietary.estimateLabel
+                                                   : viewModel.draft.overallDietary.label,
+                iconTint: viewModel.draft.overallDietary.tint)
+            // "N things left" scrolls here for a missing item name.
+            .id(PostDraftValidator.Field.items)
     }
 
     private func itemRow(_ item: PostDraft.Item) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            HStack(alignment: .firstTextBaseline) {
-                TextField("Food item, e.g. Veggie pizza", text: nameBinding(for: item.id))
-                    .textInputAutocapitalization(.sentences)
-                    .accessibilityLabel("Food item name")
-                if viewModel.draft.items.count > 1 {
-                    Button {
-                        viewModel.removeItem(item.id)
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .foregroundStyle(Theme.Palette.danger)
-                            .frame(minWidth: Theme.Size.minTapTarget, minHeight: Theme.Size.minTapTarget)
+        HStack(spacing: Theme.Spacing.md) {
+            Image(systemName: item.dietary.icon)
+                .foregroundStyle(item.dietary.tint)
+                .frame(width: iconWidth)
+                .accessibilityHidden(true)
+            TextField("Food item, e.g. Veggie pizza", text: nameBinding(for: item.id))
+                .textInputAutocapitalization(.sentences)
+                .accessibilityLabel("Food item name")
+            Menu {
+                Picker("Diet", selection: dietaryBinding(for: item.id)) {
+                    ForEach(DietaryClass.itemChoices, id: \.self) { dietary in
+                        Label(dietary.label, systemImage: dietary.icon).tag(dietary)
                     }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel("Remove \(item.name.isEmpty ? "item" : item.name)")
                 }
-            }
-            Picker("Diet", selection: dietaryBinding(for: item.id)) {
-                ForEach(DietaryClass.itemChoices, id: \.self) { dietary in
-                    Label(dietary.label, systemImage: dietary.icon).tag(dietary)
+            } label: {
+                HStack(spacing: 2) {
+                    Text(item.dietary.label)
+                    Image(systemName: "chevron.up.chevron.down").font(.caption2)
                 }
+                .font(.subheadline)
+                .foregroundStyle(Theme.Palette.brandPurple)
+                .fixedSize()
             }
-            .pickerStyle(.menu)
-            if viewModel.showCalories, let calories = item.calories {
-                Label("\(calories.low)–\(calories.high) cal · estimate", systemImage: "flame")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("\(calories.low) to \(calories.high) calories per serving, estimate")
-            }
+            .accessibilityLabel("Diet for \(item.name.isEmpty ? "item" : item.name): \(item.dietary.label)")
         }
-        .padding(.vertical, Theme.Spacing.xs)
     }
 
     private func nameBinding(for id: UUID) -> Binding<String> {
@@ -85,31 +77,4 @@ struct ReviewItemsSection: View {
 extension DietaryClass {
     /// Per-item choices; "mixed" only applies to a whole post.
     static let itemChoices: [DietaryClass] = [.vegan, .vegetarian, .nonVegetarian, .unknown]
-}
-
-/// Section title with the AI badge while the value is still the AI's.
-struct ReviewSectionHeader: View {
-    let title: String
-    var isAIValue = false
-
-    var body: some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            Text(title)
-            if isAIValue { AIBadge() }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
-    }
-}
-
-/// Inline validation message: blocking issues in red, warnings in orange, always with an icon.
-struct ReviewIssueText: View {
-    let issue: PostDraftValidator.Issue
-
-    var body: some View {
-        Label(issue.message, systemImage: issue.isBlocking ? "exclamationmark.circle.fill" : "exclamationmark.triangle.fill")
-            .font(.footnote)
-            .foregroundStyle(issue.isBlocking ? Theme.Palette.danger : Theme.Palette.warning)
-            .accessibilityLabel("\(issue.isBlocking ? "Required" : "Tip"): \(issue.message)")
-    }
 }

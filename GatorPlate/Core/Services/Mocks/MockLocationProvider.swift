@@ -15,7 +15,13 @@ final class MockLocationProvider: LocationProviding {
         self.simulatedCoordinate = simulatedCoordinate
     }
 
-    func requestAuthorization() { authorization = .authorized(precise: true) }
+    /// What `requestAuthorization` answers when the status is `.notDetermined`.
+    var answer: LocationAuthorization = .authorized(precise: true)
+
+    func requestAuthorization() async -> LocationAuthorization {
+        if authorization == .notDetermined { authorization = answer }
+        return authorization
+    }
 
     func requestTemporaryPreciseAccuracy() {
         if authorization.isAuthorized { authorization = .authorized(precise: true) }

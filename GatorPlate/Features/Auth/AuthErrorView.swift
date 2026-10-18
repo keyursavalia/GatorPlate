@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shown when a session exists but its profile couldn't be loaded.
+/// Shown when the guest session couldn't start or the profile couldn't be loaded.
 struct AuthErrorView: View {
     let message: String
     let onRetry: () -> Void
@@ -8,9 +8,9 @@ struct AuthErrorView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            EmptyState(icon: "exclamationmark.triangle.fill", title: "Couldn't load your account",
+            EmptyState(icon: "exclamationmark.triangle.fill", title: "Couldn't connect",
                        message: message, actionTitle: "Try again", action: onRetry)
-            Button("Sign out", role: .destructive, action: onSignOut)
+            Button("Start over as a guest", role: .destructive, action: onSignOut)
                 .frame(minHeight: Theme.Size.minTapTarget)
                 .padding(.bottom, Theme.Spacing.xl)
         }

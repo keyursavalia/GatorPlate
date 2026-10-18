@@ -38,9 +38,16 @@ nonisolated enum AppConfig {
     static let aiMaxCautions = 4
     static let aiMaxCalories = 3000
     static let aiServingsRange = 1...500
-    /// Analyzing screen: status line rotation and the "Still working..." threshold.
-    static let aiStatusRotationSeconds = 1.5
+    /// Analyzing screen: the "Still working..." threshold.
     static let aiSlowThresholdSeconds = 10
+    /// With this many photos or more, each is downscaled to `aiMultiPhotoLongEdge` (fewer image tokens).
+    static let aiMultiPhotoDownscaleThreshold = 3
+    static let aiMultiPhotoLongEdge = 768
+    /// The deadline grows by this much per extra photo, up to `aiMaxTimeoutSeconds`.
+    static let aiPerExtraPhotoSeconds = 4
+    static let aiMaxTimeoutSeconds = 35
+    /// Analyzing checklist: a step is checked off this often until the result arrives.
+    static let aiChecklistStepSeconds = 2.0
 
     // Posts
     static let postDurationOptionsMinutes = [15, 30, 45, 60]
@@ -66,7 +73,9 @@ nonisolated enum AppConfig {
     static let postPublishTimeoutSeconds = 15
     static let postImageUploadTimeoutSeconds = 10
 
-    // Post photos (Cloud Storage `postImages/{postId}.jpg`)
+    // Post photos (Cloud Storage `postImages/{postId}.jpg` for the cover, `{postId}_{slot}.jpg` for slots 1-3)
+    /// Photos per post, camera and library combined. `storage.rules` and `firestore.rules` allow slots 0-3.
+    static let postMaxPhotos = 4
     static let postImageMaxLongEdge = 800
     static let postImageJPEGQuality = 0.6
     /// Tried in order when the photo is over the cap, first at `postImageMaxLongEdge`, then at the fallback edge.
@@ -94,12 +103,6 @@ nonisolated enum AppConfig {
     /// Info notices on the map (e.g. "That food post has ended.") hide after this long.
     static let mapNoticeSeconds = 4
 
-    // Directions
-    /// Total deadline for an `MKDirections` walking route.
-    static let routeTimeoutSeconds = 15
-    /// How long Directions waits for a first location fix.
-    static let routeLocationWaitSeconds = 5
-
     // Notifications (FCM per-device installation IDs; the `onPostCreated` Cloud Function sends the alerts)
     /// Data payload key for the post to open. The function writes the same key.
     static let notificationPostIdKey = "postId"
@@ -112,9 +115,45 @@ nonisolated enum AppConfig {
     static let quietHoursStartHour = 23
     static let quietHoursEndHour = 7
 
+    // Alert filters (users/{uid}.alertFilters; `functions/src/filters.ts` mirrors these limits)
+    static let alertFilterMaxPlaces = 15
+    static let alertFilterMaxFoods = 10
+    static let alertFilterFoodMaxLength = 30
+
+    // Account
+    /// The server requires a sign-in this recent to delete an account (`auth_time`).
+    static let accountRecentLoginSeconds = 300
+    /// Deadline for the delete-account callable.
+    static let accountDeleteTimeoutSeconds = 30
+    static let accountWriteTimeoutSeconds = 10
+    /// Cloud Functions region (matches Firestore nam5 and `onPostCreated`).
+    static let functionsRegion = "us-central1"
+
+    // First-run permissions (location, then notifications, on the first Map appearance)
+    /// The campus map renders before the location prompt.
+    static let permissionSettleSeconds = 0.6
+    /// Pause between the location answer and the notification prompt.
+    static let permissionGapSeconds = 1.0
+    /// The camera prompt waits for the post-flow cover to finish presenting.
+    static let cameraPromptDelaySeconds = 0.35
+    /// "Starting camera" shows only if the session takes longer than this.
+    static let cameraSpinnerDelaySeconds = 0.3
+    /// A dismissed location banner comes back after this long.
+    static let locationBannerSnoozeDays = 7
+    /// Map toasts (e.g. "Alerts on for all free food") hide after this long.
+    static let toastSeconds = 6.0
+
     // Campus
     /// Dropped pins may sit this far outside the campus outline (sidewalks, entrances).
     static let campusPinEdgeToleranceMeters = 25.0
+
+    // Map camera (north visible edge stops at Stonestown; see `CampusViewport`)
+    /// `false` keeps the static center bounds and relies on the rubber band alone.
+    static let mapAdaptiveCenterBounds = true
+    /// The visible north edge may pass the limit by this much before the camera is moved back.
+    static let mapNorthToleranceMeters = 10.0
+    /// The correction moves this much further south than the excess, so its own check passes.
+    static let mapCorrectionPaddingMeters = 5.0
 
     // Location
     /// Key in `NSLocationTemporaryUsageDescriptionDictionary` (Info.plist).

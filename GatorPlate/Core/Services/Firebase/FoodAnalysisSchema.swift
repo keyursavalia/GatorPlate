@@ -18,11 +18,21 @@ enum FoodAnalysisSchema {
         optionalProperties: ["caloriesLow", "caloriesHigh"],
         propertyOrdering: ["name", "dietary", "caloriesLow", "caloriesHigh"])
 
-    /// `isFood` and `containsPeople` come first so the model decides them before writing any text.
+    /// One per input photo; `index` is the N in its "Photo N:" label.
+    static let photo = Schema.object(
+        properties: [
+            "index": .integer(description: "The N from the photo's label", minimum: 1, maximum: AppConfig.postMaxPhotos),
+            "isFood": .boolean(description: "This photo shows edible food or drink"),
+            "containsPeople": .boolean(description: "Any identifiable person is visible in this photo"),
+        ],
+        propertyOrdering: ["index", "isFood", "containsPeople"])
+
+    /// The per-photo flags and `isFood`/`containsPeople` come first so the model decides them before writing text.
     static let response = Schema.object(
         properties: [
-            "isFood": .boolean(),
-            "containsPeople": .boolean(description: "True if any identifiable person is visible"),
+            "photos": .array(items: photo, maxItems: AppConfig.postMaxPhotos),
+            "isFood": .boolean(description: "True if at least one photo shows food"),
+            "containsPeople": .boolean(description: "True if any photo shows an identifiable person"),
             "confidence": .double(description: "0 to 1, overall confidence in the identification",
                                   minimum: 0, maximum: 1),
             "items": .array(items: item, maxItems: AppConfig.aiMaxItems),
@@ -37,6 +47,6 @@ enum FoodAnalysisSchema {
             "notes": .string(description: "Why you were unsure about anything"),
         ],
         optionalProperties: ["estimatedServings", "notes"],
-        propertyOrdering: ["isFood", "containsPeople", "confidence", "items", "overallDietary",
+        propertyOrdering: ["photos", "isFood", "containsPeople", "confidence", "items", "overallDietary",
                            "estimatedServings", "allergens", "cautions", "title", "description", "notes"])
 }

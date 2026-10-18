@@ -1,36 +1,87 @@
 import MapKit
 import SwiftUI
 
-/// Campus map locked to SFSU with rotation, live post pins, a walking route and a non-modal bottom card.
+/// Campus map locked to SFSU with rotation, live post pins and a non-modal post sheet.
 struct MapScreen: View {
     @Bindable var viewModel: MapViewModel
+    /// First-run location and notification prompts; owns the "Notifications on" toast.
+    let permissions: FirstRunPermissions
     let onPostFood: () -> Void
 
     @Namespace private var mapScope
-    @State private var detent: PresentationDetent = Self.smallDetent
+    @State private var detent: PresentationDetent = Self.peekDetent
+    /// The map's full drawn area in its own coordinates, safe areas included (the map draws under the bars).
+    @State private var drawnRect = CGRect.zero
     @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private static let smallDetent = PresentationDetent.fraction(0.3)
+    /// Opens here: photo, title, the three facts and Open in Apple Maps. Pull up (or scroll) for the rest; the
+    /// layout is the same at both heights.
+    private static let peekDetent = PresentationDetent.fraction(0.62)
     private static let pointsOfInterest: [MKPointOfInterestCategory] = [
         .university, .library, .cafe, .restaurant, .bakery, .foodMarket,
         .park, .stadium, .restroom, .publicTransport,
     ]
 
     var body: some View {
+        MapReader { proxy in
+            map
+                .onMapCameraChange(frequency: .onEnd) { context in
+                    cameraDidEnd(context.camera, proxy: proxy)
+                }
+        }
+        .onGeometryChange(for: CGRect.self) { geometry in
+            let insets = geometry.safeAreaInsets
+            return CGRect(x: -insets.leading, y: -insets.top,
+                          width: geometry.size.width + insets.leading + insets.trailing,
+                          height: geometry.size.height + insets.top + insets.bottom)
+        } action: { rect in
+            drawnRect = rect
+        }
+        .overlay(alignment: .top) { topOverlay }
+        .overlay(alignment: .bottomTrailing) {
+            // Hidden while the bottom card is up: the cover can't present over the sheet.
+            if viewModel.selectedPost == nil {
+                VStack(alignment: .trailing, spacing: Theme.Spacing.md) {
+                    if permissions.showsAlertsToast {
+                        alertsToast.transition(.opacity)
+                    }
+                    PostFAB(action: onPostFood)
+                }
+                .padding(Theme.Spacing.lg)
+            }
+        }
+        .mapScope(mapScope)
+        .sensoryFeedback(.impact(weight: .light), trigger: viewModel.selectedPostId) { _, new in new != nil }
+        .sheet(isPresented: isSheetPresented) { bottomCard }
+        .onChange(of: viewModel.selectedPostId) { _, new in
+            if new != nil { detent = Self.peekDetent }
+            viewModel.selectionDidChange()
+        }
+        .onChange(of: permissions.announcement) { _, announcement in
+            guard let announcement else { return }
+            AccessibilityNotification.Announcement(announcement).post()
+            permissions.clearAnnouncement()
+        }
+        .animation(reduceMotion ? nil : .easeInOut, value: permissions.showsAlertsToast)
+        .onAppear { viewModel.onAppear() }
+        .onDisappear { viewModel.onDisappear() }
+        .task(id: viewModel.notice) {
+            guard let notice = viewModel.notice else { return }
+            AccessibilityNotification.Announcement(notice).post()
+            try? await Task.sleep(for: .seconds(AppConfig.mapNoticeSeconds))
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? nil : .easeOut) { viewModel.dismissNotice() }
+        }
+    }
+
+    private var map: some View {
         Map(position: $viewModel.cameraPosition,
-            bounds: MapViewModel.cameraBounds,
+            bounds: viewModel.cameraBounds,
             interactionModes: [.pan, .zoom, .rotate],
             selection: $viewModel.selectedPostId,
             scope: mapScope) {
             UserAnnotation()
-
-            if let route = viewModel.route.route {
-                MapPolyline(coordinates: route.coordinates.map(\.clLocationCoordinate))
-                    .stroke(Theme.Palette.brandPurple,
-                            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
-                    .mapOverlayLevel(level: .aboveRoads)
-            }
 
             ForEach(viewModel.posts) { post in
                 Annotation(post.title, coordinate: post.coordinate.clLocationCoordinate) {
@@ -45,48 +96,36 @@ struct MapScreen: View {
         }
         .mapStyle(.standard(emphasis: .muted, pointsOfInterest: .including(Self.pointsOfInterest)))
         .mapControls {}
-        .overlay(alignment: .top) { topOverlay }
-        .overlay(alignment: .bottomTrailing) {
-            // Hidden while the bottom card is up: the cover can't present over the sheet.
-            if viewModel.selectedPost == nil {
-                PostFAB(action: onPostFood)
-                    .padding(Theme.Spacing.lg)
-            }
-        }
-        .mapScope(mapScope)
-        .sensoryFeedback(.impact(weight: .light), trigger: viewModel.selectedPostId) { _, new in new != nil }
-        .sheet(isPresented: isSheetPresented) { bottomCard }
-        .onChange(of: viewModel.selectedPostId) { _, new in
-            if new != nil { detent = Self.smallDetent }
-            viewModel.selectionDidChange()
-        }
-        .onChange(of: viewModel.route.state) { _, new in
-            routeDidChange(new)
-        }
-        .onAppear { viewModel.onAppear() }
-        .onDisappear { viewModel.onDisappear() }
-        .task(id: viewModel.notice) {
-            guard let notice = viewModel.notice else { return }
-            AccessibilityNotification.Announcement(notice).post()
-            try? await Task.sleep(for: .seconds(AppConfig.mapNoticeSeconds))
-            guard !Task.isCancelled else { return }
-            withAnimation(reduceMotion ? nil : .easeOut) { viewModel.dismissNotice() }
+    }
+
+    /// Reads the real visible north edge from the 4 drawn corners (exact for any heading, device or orientation)
+    /// and moves the camera south when it overshoots. Only at rest (`.onEnd`), never while the finger is down.
+    private func cameraDidEnd(_ camera: MapCamera, proxy: MapProxy) {
+        let rect = drawnRect
+        guard rect.width > 0, rect.height > 0 else { return }
+        let corners = [CGPoint(x: rect.minX, y: rect.minY), CGPoint(x: rect.maxX, y: rect.minY),
+                       CGPoint(x: rect.minX, y: rect.maxY), CGPoint(x: rect.maxX, y: rect.maxY)]
+        let latitudes = corners.compactMap { proxy.convert($0, from: .local)?.latitude }
+        guard latitudes.count == corners.count else { return }
+        let correction = viewModel.cameraDidEnd(
+            cornerLatitudes: latitudes, center: Coordinate(camera.centerCoordinate), distance: camera.distance,
+            heading: camera.heading, metersPerPointPerMeter: metersPerPointPerMeter(proxy: proxy, camera: camera),
+            viewSize: rect.size)
+        guard let correction else { return }
+        withAnimation(reduceMotion ? nil : .smooth(duration: 0.35)) {
+            viewModel.cameraPosition = .camera(correction)
         }
     }
 
-    private func routeDidChange(_ state: RouteController.State) {
-        switch state {
-        case .active(_, let route):
-            // Smaller sheet so the route stays visible.
-            detent = Self.smallDetent
-            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.6)) { viewModel.fitRouteIfActive() }
-            AccessibilityNotification.Announcement(
-                "Route ready, \(DistanceText.walkMinutes(seconds: route.expectedTravelTime)) minute walk").post()
-        case .failed(_, let failure):
-            AccessibilityNotification.Announcement(failure.userMessage).post()
-        case .idle, .calculating:
-            break
-        }
+    /// Meters per screen point at the center, measured 100 pt up, divided by the camera distance.
+    private func metersPerPointPerMeter(proxy: MapProxy, camera: MapCamera) -> Double? {
+        let mid = CGPoint(x: drawnRect.midX, y: drawnRect.midY)
+        guard camera.distance > 0,
+              let center = proxy.convert(mid, from: .local),
+              let above = proxy.convert(CGPoint(x: mid.x, y: mid.y - 100), from: .local) else { return nil }
+        let meters = CLLocation(latitude: center.latitude, longitude: center.longitude)
+            .distance(from: CLLocation(latitude: above.latitude, longitude: above.longitude))
+        return meters / 100 / camera.distance
     }
 
     private var topOverlay: some View {
@@ -120,11 +159,6 @@ struct MapScreen: View {
     private func locationBanner(_ banner: MapViewModel.LocationBanner) -> some View {
         let notNow = Banner.Action(title: "Not now", isPrimary: false) { viewModel.dismissBanner(banner) }
         switch banner {
-        case .prePrompt:
-            solidBanner(Banner(
-                style: .info,
-                message: "See how far free food is from you. GatorPlate uses your location only while the map is open.",
-                actions: [Banner.Action(title: "Enable location") { viewModel.enableLocation() }, notNow]))
         case .denied:
             solidBanner(Banner(
                 style: .warning,
@@ -143,6 +177,12 @@ struct MapScreen: View {
         }
     }
 
+    private var alertsToast: some View {
+        Toast(message: "Notifications on for all free food.", systemImage: "bell.badge.fill",
+              action: Toast.Action(title: "Customize") { viewModel.openAlertFilters() },
+              onDismiss: { permissions.dismissAlertsToast() })
+    }
+
     /// Opaque backing so banner text stays readable over the map (glass is for controls only).
     private func solidBanner(_ banner: Banner) -> some View {
         banner.background(.background, in: .rect(cornerRadius: Theme.Radius.photo))
@@ -151,12 +191,11 @@ struct MapScreen: View {
     @ViewBuilder
     private var bottomCard: some View {
         if let post = viewModel.selectedPost {
-            PostBottomCard(post: post, viewModel: viewModel, isExpanded: detent == .medium)
-                .presentationDetents([Self.smallDetent, .medium], selection: $detent)
-                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+            PostBottomCard(post: post, viewModel: viewModel)
+                .presentationDetents([Self.peekDetent, .large], selection: $detent)
+                .presentationBackgroundInteraction(.enabled(upThrough: Self.peekDetent))
                 .presentationDragIndicator(.visible)
-                // Solid, not glass: the card is content (design system: glass on controls only).
-                .presentationBackground(.background)
+                .presentationContentInteraction(.scrolls)
         }
     }
 
@@ -175,5 +214,6 @@ struct MapScreen: View {
 }
 
 #Preview("On campus") {
-    MapScreen(viewModel: .preview, onPostFood: {})
+    let session = MainSession.preview
+    MapScreen(viewModel: session.map, permissions: session.permissions, onPostFood: {})
 }

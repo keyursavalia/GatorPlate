@@ -1,44 +1,46 @@
 import Foundation
 import Observation
 
-/// Runs one AI analysis for a photo, with rotating status text, a slow-response hint and cancellation.
+/// Runs one AI analysis for the post's 1-4 photos, with a step checklist that advances on a timer (all checked on
+/// success), a slow-response hint and cancellation.
 @MainActor
 @Observable
 final class AnalysisViewModel {
     enum State: Equatable {
         case idle
-        case analyzing(statusIndex: Int)
+        case analyzing
         case success(FoodAnalysisResult)
         case rejected(FoodAnalysisRejection)
         case failed(AppError)
     }
 
-    static let statusMessages = ["Identifying food…", "Checking allergens…", "Writing your post…"]
-
     private(set) var state: State = .idle
-    /// True after `AppConfig.aiSlowThresholdSeconds`; the status line becomes "Still working…".
+    /// Checklist steps done so far. The last one is checked only when the draft is ready.
+    private(set) var completedSteps = 0
+    /// True after `AppConfig.aiSlowThresholdSeconds`; a "Still working…" line appears.
     private(set) var isSlow = false
     /// DEBUG only: content-free CSV line for the evaluation report.
     private(set) var evalLine: String?
 
-    let photo: CapturedPhoto
+    let photos: [CapturedPhoto]
     private let analyzer: any FoodAnalyzing
     @ObservationIgnored private var analysisTask: Task<Void, Never>?
 
-    init(photo: CapturedPhoto, analyzer: any FoodAnalyzing) {
-        self.photo = photo
+    init(photos: [CapturedPhoto], analyzer: any FoodAnalyzing) {
+        self.photos = photos
         self.analyzer = analyzer
     }
 
-    var statusMessage: String {
-        guard !isSlow else { return "Still working…" }
-        if case .analyzing(let index) = state { return Self.statusMessages[index % Self.statusMessages.count] }
-        return Self.statusMessages[0]
+    var steps: [String] {
+        [photos.count == 1 ? "Looking at your photo" : "Looking at \(photos.count) photos",
+         "Checking allergens",
+         "Writing the description"]
     }
 
     func start() {
         guard analysisTask == nil else { return }
-        state = .analyzing(statusIndex: 0)
+        state = .analyzing
+        completedSteps = 0
         isSlow = false
         evalLine = nil
         analysisTask = Task { [weak self] in
@@ -56,15 +58,19 @@ final class AnalysisViewModel {
     }
 
     private func run() async {
-        let ticker = Task { [weak self] in await self?.rotateStatus() }
+        let ticker = Task { [weak self] in await self?.advanceSteps() }
         defer {
             ticker.cancel()
             analysisTask = nil
         }
         do {
-            switch try await analyzer.analyze(jpegData: photo.jpegData) {
-            case .accepted(let result): state = .success(result)
-            case .rejected(let reason): state = .rejected(reason)
+            let data = try await requestData()
+            switch try await analyzer.analyze(photos: data) {
+            case .accepted(let result):
+                completedSteps = steps.count
+                state = .success(result)
+            case .rejected(let reason):
+                state = .rejected(reason)
             }
         } catch {
             state = error == .cancelled ? .idle : .failed(error)
@@ -74,12 +80,24 @@ final class AnalysisViewModel {
         #endif
     }
 
-    private func rotateStatus() async {
+    /// With 3+ photos each is shrunk to `aiMultiPhotoLongEdge` (fewer image tokens, faster).
+    private func requestData() async throws(AppError) -> [Data] {
+        guard photos.count >= AppConfig.aiMultiPhotoDownscaleThreshold else { return photos.map(\.jpegData) }
+        let preprocessor = ImagePreprocessor(maxLongEdge: AppConfig.aiMultiPhotoLongEdge)
+        var data: [Data] = []
+        for photo in photos {
+            if Task.isCancelled { throw .cancelled }
+            data.append(try await preprocessor.downscaledJPEG(photo.jpegData))
+        }
+        return data
+    }
+
+    private func advanceSteps() async {
         let start = ContinuousClock.now
         while !Task.isCancelled {
-            try? await Task.sleep(for: .seconds(AppConfig.aiStatusRotationSeconds))
-            guard !Task.isCancelled, case .analyzing(let index) = state else { return }
-            state = .analyzing(statusIndex: index + 1)
+            try? await Task.sleep(for: .seconds(AppConfig.aiChecklistStepSeconds))
+            guard !Task.isCancelled, state == .analyzing else { return }
+            if completedSteps < steps.count - 1 { completedSteps += 1 }
             if start.duration(to: .now) >= .seconds(AppConfig.aiSlowThresholdSeconds) { isSlow = true }
         }
     }

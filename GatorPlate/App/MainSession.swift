@@ -1,18 +1,22 @@
 import Foundation
 
-/// Everything the signed-in UI shares for one session: the live posts listener, navigation, photo cache,
-/// alerts settings and the Map/Feed view models. Created when the main UI appears; `prepareSignOut()` runs
+/// Everything the main UI shares for one guest or account session: the live posts listener, navigation, photo cache,
+/// alerts settings, the first-run permission prompts and the Map/Feed view models. Created when the main UI appears; `prepareSignOut()` runs
 /// before sign-out.
 @MainActor
 final class MainSession {
+    /// The guest or account this session belongs to.
+    let uid: String
     let repository: PostsRepository
     let navigation: AppNavigation
     let images: PostImageCache
     let map: MapViewModel
     let feed: FeedViewModel
     let settings: SettingsViewModel
+    let permissions: FirstRunPermissions
 
     init(environment: AppEnvironment, profile: UserProfile) {
+        self.uid = profile.uid
         let repository = PostsRepository(service: environment.posts)
         let navigation = AppNavigation(posts: repository)
         let images = PostImageCache(store: environment.images)
@@ -24,7 +28,11 @@ final class MainSession {
                                 currentUid: profile.uid)
         self.feed = FeedViewModel(repository: repository, navigation: navigation, location: environment.location,
                                   images: images)
-        self.settings = SettingsViewModel(notifications: environment.notifications, profile: profile)
+        let settings = SettingsViewModel(notifications: environment.notifications, profile: profile)
+        self.settings = settings
+        self.permissions = FirstRunPermissions(location: environment.location,
+                                               notifications: environment.notifications,
+                                               optIn: { await settings.optInFromChain() })
     }
 
     func start() {
@@ -34,13 +42,21 @@ final class MainSession {
 
     /// Stops the listener and removes this device's alert registration while the user can still write.
     func prepareSignOut() async {
+        // Not in `stop()`: the post-flow cover makes the tabs disappear and come back mid-session.
+        permissions.cancel()
         stop()
         await settings.deactivate()
     }
 
-    /// Removes the listener and ends any route. Call before signing out.
+    /// Account deletion: like `prepareSignOut` but without the Firestore write (the server deletes the profile).
+    func stopForDeletion() {
+        permissions.cancel()
+        stop()
+        settings.forgetForDeletedAccount()
+    }
+
+    /// Removes the listener. Call before signing out.
     func stop() {
-        map.endRoute()
         navigation.selectedPostId = nil
         repository.stop()
     }
@@ -55,6 +71,8 @@ extension MainSession {
                                   accountType: .student, orgName: nil, acceptedTermsVersion: nil,
                                   acceptedTermsAt: nil, notificationsEnabled: false, createdAt: .now)
         let session = MainSession(environment: environment, profile: profile)
+        // Previews never fire the first-run prompts.
+        session.permissions.cancel()
         session.start()
         return session
     }

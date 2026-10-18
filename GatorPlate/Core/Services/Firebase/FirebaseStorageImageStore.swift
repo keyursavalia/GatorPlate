@@ -3,7 +3,8 @@ import FirebaseStorage
 import Foundation
 import OSLog
 
-/// Post photos in Cloud Storage at `postImages/{postId}.jpg`. `storage.rules` allows one create per object
+/// Post photos in Cloud Storage at `postImages/{postId}.jpg` (slot 0, the cover) and `postImages/{postId}_{slot}.jpg`
+/// (slots 1-3; `PostPhotoSlots.objectName`). `storage.rules` allows one create per object
 /// (no overwrite), JPEG only, up to `postImageMaxBytes`, with `authorUid` metadata matching the uploader.
 /// A bucket lifecycle rule deletes objects after the retention window.
 @MainActor
@@ -17,7 +18,7 @@ final class FirebaseStorageImageStore: ImageStore {
         return storage
     }
 
-    func save(jpeg: Data, forPostId postId: String) async throws {
+    func save(jpeg: Data, forPostId postId: String, slot: Int) async throws {
         guard jpeg.count <= AppConfig.postImageMaxBytes else {
             Logger.services.error("Post image over the cap; not uploaded")
             throw AppError.validation("Photo is too large.")
@@ -26,7 +27,7 @@ final class FirebaseStorageImageStore: ImageStore {
         let metadata = StorageMetadata()
         metadata.contentType = Self.contentType
         metadata.customMetadata = ["authorUid": uid]
-        let reference = reference(for: postId)
+        let reference = reference(for: postId, slot: slot)
         do {
             try await awaitCompletion(deadlineSeconds: AppConfig.postImageUploadTimeoutSeconds) { completion in
                 reference.putData(jpeg, metadata: metadata) { _, error in completion(error) }
@@ -39,8 +40,8 @@ final class FirebaseStorageImageStore: ImageStore {
         }
     }
 
-    func load(forPostId postId: String) async throws -> Data? {
-        let reference = reference(for: postId)
+    func load(forPostId postId: String, slot: Int) async throws -> Data? {
+        let reference = reference(for: postId, slot: slot)
         do {
             // Completion-handler API: the async overloads send the non-Sendable reference off the main actor.
             return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
@@ -64,8 +65,8 @@ final class FirebaseStorageImageStore: ImageStore {
         return owner == uid
     }
 
-    private func reference(for postId: String) -> StorageReference {
-        storage.reference(withPath: "postImages/\(postId).jpg")
+    private func reference(for postId: String, slot: Int) -> StorageReference {
+        storage.reference(withPath: "postImages/" + PostPhotoSlots.objectName(postId: postId, slot: slot))
     }
 
     private static func map(_ error: Error) -> AppError {

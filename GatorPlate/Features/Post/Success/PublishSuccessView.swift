@@ -1,14 +1,16 @@
 import SwiftUI
 
-/// Post flow step 4: confirmation with a success haptic and "View on map".
+/// Post flow step 4: a drawn checkmark, "Your post is live", the post's Feed row, then
+/// View on map and Done. Photos that didn't upload show as one warning row.
 struct PublishSuccessView: View {
-    let post: FoodPost
-    /// True when a photo was chosen but couldn't be uploaded.
-    let photoFailed: Bool
+    let result: PublishResult
+    /// The flow's photos, by slot, for the live card (no download needed).
+    let photos: [CapturedPhoto]
     let onViewMap: () -> Void
     let onDone: () -> Void
 
     @State private var hasAppeared = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ScrollView {
@@ -16,32 +18,29 @@ struct PublishSuccessView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 72))
                     .foregroundStyle(Theme.Palette.success)
+                    .symbolEffect(.drawOn, isActive: !hasAppeared && !reduceMotion)
                     .accessibilityHidden(true)
                 VStack(spacing: Theme.Spacing.sm) {
                     Text("Your post is live")
                         .font(.title.bold())
                         .accessibilityAddTraits(.isHeader)
-                    Text(verbatim: post.title)
-                        .font(.headline)
-                    Text("Available until \(post.expiresAt.formatted(date: .omitted, time: .shortened)) at \(post.locationName).")
+                    Text("Students with notifications on are being notified.")
                         .foregroundStyle(.secondary)
                 }
                 .multilineTextAlignment(.center)
 
-                if photoFailed {
-                    Banner(style: .warning, message: "Your photo couldn't upload, so the post has no photo.")
+                PostRow(post: result.post, distanceText: nil, images: nil, coverSource: coverSource)
+                    .padding(Theme.Spacing.md)
+                    .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
+                    .accessibilityLabel("Your post: " + PostRow.accessibilityLabel(for: result.post, distanceText: nil))
+
+                if result.hasPhotoFailures {
+                    Banner(style: .warning, message: photoWarning)
                 }
 
                 VStack(spacing: Theme.Spacing.md) {
                     PrimaryButton(title: "View on map", action: onViewMap)
-                    Button(action: onDone) {
-                        Text("Done")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, minHeight: Theme.Size.primaryButtonHeight)
-                    }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.capsule)
-                    .tint(Theme.Palette.brandPurple)
+                    SecondaryButton(title: "Done", action: onDone)
                 }
             }
             .padding(Theme.Spacing.xl)
@@ -51,10 +50,25 @@ struct PublishSuccessView: View {
         .scrollBounceBehavior(.basedOnSize)
         .background(.background)
         .sensoryFeedback(.success, trigger: hasAppeared)
-        .onAppear { hasAppeared = true }
+        .task {
+            try? await Task.sleep(for: .milliseconds(100))
+            hasAppeared = true
+        }
+    }
+
+    private var coverSource: PostPhotoSource? {
+        guard let slot = result.post.coverSlot, photos.indices.contains(slot) else { return nil }
+        return .captured(photos[slot])
+    }
+
+    private var photoWarning: String {
+        result.uploadedPhotos == 0
+            ? "Your photos couldn't upload, so the post has no photo."
+            : "\(result.uploadedPhotos) of \(result.requestedPhotos) photos uploaded."
     }
 }
 
 #Preview {
-    PublishSuccessView(post: .sample, photoFailed: true, onViewMap: {}, onDone: {})
+    PublishSuccessView(result: PublishResult(post: .sample, requestedPhotos: 2), photos: [],
+                       onViewMap: {}, onDone: {})
 }

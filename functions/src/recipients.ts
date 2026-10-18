@@ -2,9 +2,10 @@
  * Who gets a free food alert. Pure functions, so they can be tested without Firebase.
  * Field names match the app's `FirebaseNotificationService` (users/{uid}).
  */
+import { CAMPUS_TIME_ZONE, type FilterablePost, matchesFilters } from "./filters.js";
 
-/** Campus time; quiet hours mirror AppConfig.quietHoursStartHour / quietHoursEndHour in the app. */
-export const CAMPUS_TIME_ZONE = "America/Los_Angeles";
+export { CAMPUS_TIME_ZONE };
+/** Quiet hours mirror AppConfig.quietHoursStartHour / quietHoursEndHour in the app (campus time). */
 export const QUIET_HOURS_START = 23;
 export const QUIET_HOURS_END = 7;
 
@@ -18,6 +19,15 @@ export interface Subscriber {
   notificationsEnabled?: unknown;
   fcmInstallationId?: unknown;
   quietHoursEnabled?: unknown;
+  /** The student's own "What to alert me about" choices; malformed or missing means all free food. */
+  alertFilters?: unknown;
+}
+
+export interface Recipients {
+  /** Installation IDs to alert, each device once. */
+  ids: string[];
+  /** Opted-in devices skipped only because the post didn't match their filters (a count, for logs). */
+  filteredOut: number;
 }
 
 export function isInstallationId(value: unknown): value is string {
@@ -38,14 +48,15 @@ export function isQuietHours(date: Date, timeZone: string = CAMPUS_TIME_ZONE): b
 
 /**
  * Installation IDs to alert: opted in, valid ID, not the author (nor any device the author uses),
- * not muted by quiet hours, each device once.
+ * not muted by quiet hours, then matching the student's filters, each device once.
  */
 export function recipientIds(
   subscribers: Subscriber[],
+  post: FilterablePost,
   authorUid: string,
   authorInstallationId: unknown,
   now: Date,
-): string[] {
+): Recipients {
   const authorIds = new Set<string>();
   if (isInstallationId(authorInstallationId)) authorIds.add(authorInstallationId);
   for (const subscriber of subscribers) {
@@ -56,15 +67,20 @@ export function recipientIds(
 
   const quiet = isQuietHours(now);
   const ids = new Set<string>();
+  let filteredOut = 0;
   for (const subscriber of subscribers) {
     if (subscriber.uid === authorUid) continue;
     if (subscriber.notificationsEnabled !== true) continue;
     if (!isInstallationId(subscriber.fcmInstallationId)) continue;
     if (authorIds.has(subscriber.fcmInstallationId)) continue;
     if (quiet && subscriber.quietHoursEnabled === true) continue;
+    if (!matchesFilters(post, subscriber.alertFilters)) {
+      filteredOut += 1;
+      continue;
+    }
     ids.add(subscriber.fcmInstallationId);
   }
-  return [...ids];
+  return { ids: [...ids], filteredOut };
 }
 
 /** The post title as the alert body: trimmed, single line, at most MAX_BODY_LENGTH characters. */

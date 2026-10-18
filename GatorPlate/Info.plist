@@ -5,7 +5,7 @@
 	<key>FirebaseMessagingInstallationIdEnabled</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>GatorPlate uses the camera so you can photograph leftover food for a post.</string>
+	<string>Take photos of leftover food so GatorPlate can draft your post. Photograph the food, not people.</string>
 	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
 	<dict>
 		<key>FoodNearby</key>

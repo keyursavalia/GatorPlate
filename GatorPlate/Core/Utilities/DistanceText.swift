@@ -13,12 +13,10 @@ nonisolated enum DistanceText {
         meters.map { "\(distance(meters: $0)) away" }
     }
 
-    /// Whole minutes, rounded up, at least 1: "6 min walk".
-    static func walk(seconds: TimeInterval) -> String {
-        "\(walkMinutes(seconds: seconds)) min walk"
+    /// Straight-line walking estimate at about 80 m a minute ("4 min walk"). Apple Maps gives the real route.
+    static func walkMinutes(meters: Double) -> Int {
+        max(1, Int((meters / walkingMetersPerMinute).rounded(.up)))
     }
 
-    static func walkMinutes(seconds: TimeInterval) -> Int {
-        max(1, Int((seconds / 60).rounded(.up)))
-    }
+    static let walkingMetersPerMinute = 80.0
 }

@@ -19,6 +19,12 @@ nonisolated struct ImagePreprocessor: Sendable {
                              pixelWidth: image.width, pixelHeight: image.height, source: source)
     }
 
+    /// Re-encodes a stripped JPEG at this preprocessor's `maxLongEdge` (used to shrink 3+ photos for the AI request).
+    @concurrent
+    func downscaledJPEG(_ data: Data) async throws(AppError) -> Data {
+        try encodeJPEG(try downscaledImage(from: data))
+    }
+
     /// Long edge <= `maxLongEdge` (never upscales), with the EXIF orientation baked into the pixels.
     private func downscaledImage(from data: Data) throws(AppError) -> CGImage {
         let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary

@@ -18,13 +18,28 @@ nonisolated enum SFSUCampus {
         center: center.clLocationCoordinate,
         span: MKCoordinateSpan(latitudeDelta: 0.0077, longitudeDelta: 0.0073))
 
-    /// Frames the academic core and UPN; shown when the map opens and on recenter when the user is off campus.
-    static let homeCoordinate = Coordinate(latitude: 37.7240, longitude: -122.4801)
+    /// The visible map never shows north of Stonestown's north edge, Eucalyptus Drive (OSM, checked
+    /// 2026-10-15: 37.7307-37.7312; Pine Lake Park starts at 37.73515). Camera only: `region`, `contains`,
+    /// pin validation and the rules are unchanged. Enforced by `CampusViewport` (adaptive bounds + rubber band).
+    static let northVisibleLimit = 37.7310
 
-    /// Camera altitude limits in meters.
+    /// Frames the academic core, UPN and Stonestown; shown when the map opens and on recenter off campus.
+    /// At `homeCameraDistance` and any heading the top edge stays at or below `northVisibleLimit`.
+    static let homeCoordinate = Coordinate(latitude: 37.7235, longitude: -122.4801)
+
+    /// Camera altitude limits in meters. The home view is the most zoomed-out view.
     static let minCameraDistance: CLLocationDistance = 120
-    static let maxCameraDistance: CLLocationDistance = 3500
+    static let maxCameraDistance: CLLocationDistance = 2800
     static let homeCameraDistance: CLLocationDistance = 2800
+
+    /// North edge of `cameraCenterRegion` (the static center limit, used when zoomed in).
+    static var cameraCenterNorthLatitude: Double {
+        cameraCenterRegion.center.latitude + cameraCenterRegion.span.latitudeDelta / 2
+    }
+
+    static var cameraCenterSouthLatitude: Double {
+        cameraCenterRegion.center.latitude - cameraCenterRegion.span.latitudeDelta / 2
+    }
 
     static func contains(_ coordinate: Coordinate) -> Bool {
         let halfLat = region.span.latitudeDelta / 2

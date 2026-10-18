@@ -3,7 +3,8 @@ import Foundation
 nonisolated struct UserProfile: Codable, Sendable {
     var uid: String
     var displayName: String
-    var email: String
+    /// Nil for guests.
+    var email: String?
     var accountType: AccountType
     var orgName: String?
     /// Nil until the user accepts the Terms of Use.
@@ -12,5 +13,9 @@ nonisolated struct UserProfile: Codable, Sendable {
     var notificationsEnabled: Bool
     /// Mutes alerts 11 PM - 7 AM campus time (checked by the Cloud Function). Nil until set.
     var quietHoursEnabled: Bool?
+    /// Nil until the user saves filters; nil means all free food.
+    var alertFilters: AlertFilters?
     var createdAt: Date
+
+    var isGuest: Bool { accountType == .guest }
 }

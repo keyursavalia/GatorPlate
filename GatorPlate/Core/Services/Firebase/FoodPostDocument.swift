@@ -21,6 +21,8 @@ nonisolated enum FoodPostDocument {
         static let latitude = "latitude"
         static let longitude = "longitude"
         static let hasPhoto = "hasPhoto"
+        /// Uploaded slots; `hasPhoto` is kept equal to `!photoSlots.isEmpty` for older readers.
+        static let photoSlots = "photoSlots"
         static let aiGenerated = "aiGenerated"
         static let editedAfterAI = "editedAfterAI"
         static let status = "status"
@@ -44,7 +46,7 @@ nonisolated enum FoodPostDocument {
     }
 
     /// Create payload. `createdAt`/`updatedAt` are server timestamps; optional fields are omitted when nil.
-    static func fields(for submission: PostSubmission, hasPhoto: Bool, expiresAt: Timestamp) -> [String: Any] {
+    static func fields(for submission: PostSubmission, photoSlots: [Int], expiresAt: Timestamp) -> [String: Any] {
         var fields: [String: Any] = [
             Key.authorUid: submission.author.uid,
             Key.authorName: submission.author.displayName,
@@ -59,7 +61,8 @@ nonisolated enum FoodPostDocument {
             Key.locationDetail: submission.locationDetail,
             Key.latitude: submission.location.coordinate.latitude,
             Key.longitude: submission.location.coordinate.longitude,
-            Key.hasPhoto: hasPhoto,
+            Key.hasPhoto: !photoSlots.isEmpty,
+            Key.photoSlots: photoSlots,
             Key.aiGenerated: submission.aiGenerated,
             Key.editedAfterAI: submission.editedAfterAI,
             Key.status: PostStatus.active.rawValue,
@@ -107,7 +110,7 @@ nonisolated enum FoodPostDocument {
             buildingId: buildingId, locationName: locationName,
             locationDetail: data[Key.locationDetail] as? String,
             latitude: latitude, longitude: longitude,
-            hasPhoto: data[Key.hasPhoto] as? Bool ?? false,
+            photoSlots: PostPhotoSlots.decode(data[Key.photoSlots], hasPhoto: data[Key.hasPhoto] as? Bool),
             aiGenerated: data[Key.aiGenerated] as? Bool ?? false,
             editedAfterAI: data[Key.editedAfterAI] as? Bool ?? false,
             status: status, createdAt: createdAt, expiresAt: expiresAt,

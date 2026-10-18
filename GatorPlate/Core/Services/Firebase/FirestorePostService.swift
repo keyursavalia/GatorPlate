@@ -43,23 +43,13 @@ final class FirestorePostService: PostService {
         posts.document().documentID
     }
 
-    func publish(_ submission: PostSubmission, imageJPEG: Data?) async throws -> FoodPost {
+    func publish(_ submission: PostSubmission, photos: [Data?]) async throws -> PublishResult {
         guard let uid = Auth.auth().currentUser?.uid, uid == submission.author.uid else { throw AppError.unauthorized }
 
-        var hasPhoto = false
-        if let imageJPEG {
-            do {
-                try await images.save(jpeg: imageJPEG, forPostId: submission.postId)
-                hasPhoto = true
-            } catch {
-                // Never block the post on the photo.
-                Logger.services.error("Photo upload failed; publishing without photo")
-            }
-        }
-
+        let photoSlots = await uploadPhotos(photos, postId: submission.postId)
         let now = Date.now
         let expiresAt = FoodPostDocument.expiresAt(from: now, durationMinutes: submission.durationMinutes)
-        let fields = FoodPostDocument.fields(for: submission, hasPhoto: hasPhoto, expiresAt: expiresAt)
+        let fields = FoodPostDocument.fields(for: submission, photoSlots: photoSlots, expiresAt: expiresAt)
         let document = posts.document(submission.postId)
         let start = ContinuousClock.now
         do {
@@ -78,8 +68,35 @@ final class FirestorePostService: PostService {
                 throw appError
             }
         }
-        Logger.services.info("Post published in \((ContinuousClock.now - start).formatted(.units(allowed: [.milliseconds])), privacy: .public), photo: \(hasPhoto, privacy: .public)")
-        return FoodPost(submission: submission, hasPhoto: hasPhoto, createdAt: now, expiresAt: expiresAt.dateValue())
+        Logger.services.info("Post published in \((ContinuousClock.now - start).formatted(.units(allowed: [.milliseconds])), privacy: .public), photos: \(photoSlots.count, privacy: .public)/\(photos.count, privacy: .public)")
+        let post = FoodPost(submission: submission, photoSlots: photoSlots, createdAt: now,
+                            expiresAt: expiresAt.dateValue())
+        return PublishResult(post: post, requestedPhotos: photos.count)
+    }
+
+    /// Parallel uploads, each with its own deadline (`ImageStore`). Returns the slots that made it, ascending.
+    /// A retried publish reuses the post ID and slots; an object already uploaded counts as uploaded.
+    private func uploadPhotos(_ photos: [Data?], postId: String) async -> [Int] {
+        let images = images
+        // Main-actor tasks run concurrently: each upload waits on its own network completion.
+        let uploads: [Task<Int?, Never>] = photos.prefix(AppConfig.postMaxPhotos).enumerated().compactMap { slot, jpeg in
+            guard let jpeg else { return nil }
+            return Task {
+                do {
+                    try await images.save(jpeg: jpeg, forPostId: postId, slot: slot)
+                    return slot
+                } catch {
+                    // Never block the post on a photo.
+                    Logger.services.error("Photo upload failed for slot \(slot, privacy: .public)")
+                    return nil
+                }
+            }
+        }
+        var uploaded: [Int] = []
+        for upload in uploads {
+            if let slot = await upload.value { uploaded.append(slot) }
+        }
+        return uploaded.sorted()
     }
 
     func markGone(postId: String) async throws {

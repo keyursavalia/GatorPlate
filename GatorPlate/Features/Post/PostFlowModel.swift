@@ -1,35 +1,42 @@
 import Foundation
 import Observation
 
-/// Post flow steps: camera -> preview -> AI analysis -> review -> success. "Fill it in myself" goes straight
-/// to an empty review. Everything lives in memory for as long as the flow is open; nothing is written to disk.
+/// Post flow steps: capture (1-4 photos in a tray) -> AI analysis -> review -> success. "Fill it in myself" goes
+/// straight to review. One post, one AI call, one set of items. Everything lives in memory while the flow is open.
 @MainActor
 @Observable
 final class PostFlowModel {
     enum Step: Equatable {
-        case camera
-        case preview(CapturedPhoto)
+        case capture
         /// Analyzing, then rejection or failure; see `analysis.state`. Success moves on to review.
-        case analysis(CapturedPhoto)
+        case analysis
         /// See `review`.
         case review
-        /// See `publishedPost`.
+        /// See `publishResult`.
         case success
     }
 
-    private(set) var step: Step = .camera
-    /// Kept across retakes so the camera keeps its flash setting and configured session.
+    /// Edit photos from Review changed the photos of an edited AI draft: re-draft or keep the edits?
+    enum RedraftChoice: Equatable {
+        case none, asking
+    }
+
+    private(set) var step: Step = .capture
+    /// Kept across the flow so the camera keeps its flash setting and configured session.
     let camera: CameraViewModel
+    let tray = PhotoTrayModel()
     private(set) var analysis: AnalysisViewModel?
     private(set) var review: ReviewViewModel?
-    private(set) var publishedPost: FoodPost?
-    /// A photo was chosen but the published post has none.
-    private(set) var photoUploadFailed = false
+    private(set) var publishResult: PublishResult?
+    /// Capture was opened from Review ("Edit photos"); Next returns to Review.
+    private(set) var isEditingPhotos = false
+    var redraftChoice = RedraftChoice.none
 
     private let analyzer: any FoodAnalyzing
     private let posts: any PostService
     private let location: any LocationProviding
     private let author: PostAuthor
+    @ObservationIgnored private var photosAtEditStart: [UUID] = []
 
     init(camera: any CameraCapturing, analyzer: any FoodAnalyzing, posts: any PostService,
          location: any LocationProviding, author: PostAuthor) {
@@ -45,72 +52,126 @@ final class PostFlowModel {
         analyzer.prepare()
     }
 
-    func didTake(_ photo: CapturedPhoto) {
-        step = .preview(photo)
+    // MARK: Capture
+
+    /// "Next" on the capture screen.
+    func next() {
+        guard !tray.isEmpty else { return }
+        guard isEditingPhotos, let review else {
+            startAnalysis()
+            return
+        }
+        guard tray.ids != photosAtEditStart else {
+            finishEditingPhotos()
+            return
+        }
+        if review.aiBaseline == nil {
+            // Manual post: just use the new photos.
+            review.updatePhotos(tray.photos)
+            finishEditingPhotos()
+        } else if review.hasUserEdits {
+            redraftChoice = .asking
+        } else {
+            startAnalysis()
+        }
     }
 
-    /// Drops the photo (and any analysis or draft) and returns to the camera.
-    func retake() {
-        endAnalysis()
-        review = nil
-        step = .camera
+    /// "Re-draft with AI (replaces your edits)".
+    func redraftWithAI() {
+        redraftChoice = .none
+        startAnalysis()
     }
 
-    /// Switches to the Analyzing screen immediately, then starts the request.
-    func usePhoto() {
-        guard case .preview(let photo) = step else { return }
-        let analysis = AnalysisViewModel(photo: photo, analyzer: analyzer)
+    /// "Keep my edits": the new photos join the existing draft without AI.
+    func keepEdits() {
+        redraftChoice = .none
+        review?.updatePhotos(tray.photos)
+        finishEditingPhotos()
+    }
+
+    /// "Edit photos" on Review: back to capture with the tray as it was.
+    func editPhotos() {
+        photosAtEditStart = tray.ids
+        isEditingPhotos = true
+        step = .capture
+    }
+
+    // MARK: Analysis
+
+    private func startAnalysis() {
+        let analysis = AnalysisViewModel(photos: tray.photos, analyzer: analyzer)
         self.analysis = analysis
-        step = .analysis(photo)
+        step = .analysis
         analysis.start()
     }
 
-    /// Cancel on the Analyzing screen: back to the photo, nothing lost.
+    /// Cancel on the Analyzing screen: back to the photos, nothing lost.
     func cancelAnalysis() {
-        guard case .analysis(let photo) = step else { return }
+        guard step == .analysis else { return }
         endAnalysis()
-        step = .preview(photo)
+        step = isEditingPhotos && review != nil ? .review : .capture
+        if step == .review { isEditingPhotos = false }
     }
 
-    /// AI draft ready: open the Review form pre-filled. AI never publishes on its own.
+    /// AI draft ready: photos with people or no food are dropped for good, then Review opens pre-filled.
+    /// When re-drafting after Edit photos, the user's place, time and attestation carry over.
     func showReview(with result: FoodAnalysisResult) {
-        guard case .analysis(let photo) = step else { return }
+        guard step == .analysis else { return }
         endAnalysis()
-        review = makeReview(photo: photo, analysis: result)
+        tray.keep(indices: result.keptPhotoIndices)
+        let previous = review
+        let newReview = makeReview(analysis: result)
+        if let previous { newReview.carryOverWhereAndWhen(from: previous) }
+        review = newReview
+        isEditingPhotos = false
         step = .review
     }
 
-    /// Manual entry is always available. A photo rejected for showing people is not carried over.
+    /// "Retake" after a rejection: photos showing people never stay; the rest go back to the tray.
+    func retake() {
+        if analysis?.state == .rejected(.containsPeople) { tray.removeAll() }
+        endAnalysis()
+        step = .capture
+    }
+
+    /// Manual entry is always available. Photos rejected for showing people are not carried over.
     func fillManually() {
-        var photo: CapturedPhoto?
-        switch step {
-        case .preview(let current), .analysis(let current): photo = current
-        case .camera, .review, .success: photo = nil
-        }
-        if analysis?.state == .rejected(.containsPeople) { photo = nil }
+        if analysis?.state == .rejected(.containsPeople) { tray.removeAll() }
         endAnalysis()
-        review = makeReview(photo: photo, analysis: nil)
+        if let review, isEditingPhotos {
+            review.updatePhotos(tray.photos)
+            finishEditingPhotos()
+            return
+        }
+        review = makeReview(analysis: nil)
+        isEditingPhotos = false
         step = .review
     }
 
-    func didPublish(_ post: FoodPost) {
-        photoUploadFailed = review?.photo != nil && !post.hasPhoto
-        publishedPost = post
+    // MARK: Publish
+
+    func didPublish(_ result: PublishResult) {
+        publishResult = result
         review = nil
         step = .success
     }
 
     /// True when closing would throw away a draft.
     var hasUnsavedDraft: Bool {
-        step == .review
+        review != nil && step != .success
     }
 
     func close() {
         endAnalysis()
     }
 
-    private func makeReview(photo: CapturedPhoto?, analysis: FoodAnalysisResult?) -> ReviewViewModel {
-        ReviewViewModel(photo: photo, analysis: analysis, author: author, posts: posts, location: location)
+    private func makeReview(analysis: FoodAnalysisResult?) -> ReviewViewModel {
+        ReviewViewModel(photos: tray.photos, analysis: analysis, author: author, posts: posts, location: location)
+    }
+
+    private func finishEditingPhotos() {
+        isEditingPhotos = false
+        step = .review
     }
 
     private func endAnalysis() {

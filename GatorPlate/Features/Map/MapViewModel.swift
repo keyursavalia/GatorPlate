@@ -3,12 +3,13 @@ import Observation
 import OSLog
 import SwiftUI
 
-/// Drives the campus map: live pins, selection, the walking route, poster/report actions and location banners.
+/// Drives the campus map: live pins, selection, Apple Maps directions, poster/report actions and location banners.
 @MainActor
 @Observable
 final class MapViewModel {
-    enum LocationBanner: Hashable {
-        case prePrompt, denied, restricted, reducedAccuracy
+    /// No "not asked yet" banner: the system prompt fires on its own (`FirstRunPermissions`).
+    enum LocationBanner: String, Hashable {
+        case denied, restricted, reducedAccuracy
     }
 
     enum ActionStatus: Equatable {
@@ -18,20 +19,27 @@ final class MapViewModel {
     static let homeCamera = MapCamera(centerCoordinate: SFSUCampus.homeCoordinate.clLocationCoordinate,
                                       distance: SFSUCampus.homeCameraDistance)
 
-    static let cameraBounds = MapCameraBounds(centerCoordinateBounds: SFSUCampus.cameraCenterRegion,
-                                              minimumDistance: SFSUCampus.minCameraDistance,
-                                              maximumDistance: SFSUCampus.maxCameraDistance)
+    static let staticCameraBounds = MapCameraBounds(centerCoordinateBounds: SFSUCampus.cameraCenterRegion,
+                                                    minimumDistance: SFSUCampus.minCameraDistance,
+                                                    maximumDistance: SFSUCampus.maxCameraDistance)
 
     let location: any LocationProviding
-    let route: RouteController
     let images: PostImageCache?
     var cameraPosition: MapCameraPosition = .camera(MapViewModel.homeCamera)
+    /// The Map tab is on screen (drives the first-run permission prompts).
+    private(set) var isVisible = false
+    /// Center limit for MapKit; its north edge follows the zoom (see `MapViewModel+Viewport`).
+    var cameraBounds = MapViewModel.staticCameraBounds
+    @ObservationIgnored var boundsNorthLatitude = SFSUCampus.cameraCenterNorthLatitude
+    @ObservationIgnored var boundsMaxDistance = SFSUCampus.maxCameraDistance
     private(set) var markGoneStatus = ActionStatus.idle
     private(set) var reportStatus = ActionStatus.idle
     /// Posts reported in this session: Report turns into "Thanks, we'll review it."
     private(set) var reportedPostIds: Set<String> = []
 
-    private var dismissedBanners: Set<LocationBanner> = []
+    /// Bumped on "Not now" so `locationBanner` re-reads the stored dismissals.
+    private var dismissalCount = 0
+    @ObservationIgnored private let dismissals: BannerDismissals
 
     @ObservationIgnored private let repository: PostsRepository
     @ObservationIgnored private let navigation: AppNavigation
@@ -41,7 +49,8 @@ final class MapViewModel {
 
     init(repository: PostsRepository, navigation: AppNavigation, postService: any PostService,
          routing: any RoutingService, location: any LocationProviding, images: PostImageCache?,
-         currentUid: String?) {
+         currentUid: String?, dismissals: BannerDismissals = BannerDismissals()) {
+        self.dismissals = dismissals
         self.repository = repository
         self.navigation = navigation
         self.postService = postService
@@ -49,7 +58,6 @@ final class MapViewModel {
         self.location = location
         self.images = images
         self.currentUid = currentUid
-        self.route = RouteController(routing: routing, location: location)
     }
 
     var posts: [FoodPost] { repository.activePosts }
@@ -72,13 +80,14 @@ final class MapViewModel {
 
     var locationBanner: LocationBanner? {
         let banner: LocationBanner? = switch location.authorization {
-        case .notDetermined: .prePrompt
+        case .notDetermined: nil
         case .denied: .denied
         case .restricted: .restricted
         case .authorized(precise: false): .reducedAccuracy
         case .authorized(precise: true): nil
         }
-        guard let banner, !dismissedBanners.contains(banner) else { return nil }
+        _ = dismissalCount
+        guard let banner, !dismissals.isSnoozed(banner.rawValue) else { return nil }
         return banner
     }
 
@@ -94,24 +103,29 @@ final class MapViewModel {
     // MARK: Lifecycle
 
     func onAppear() {
+        isVisible = true
         location.startUpdates()
     }
 
     func onDisappear() {
+        isVisible = false
         location.stopUpdates()
         selectedPostId = nil
-        route.end()
     }
 
     /// Selection changed (pin tap, feed, deep link, or the post ended).
     func selectionDidChange() {
-        route.selectionDidChange(to: selectedPostId)
         markGoneStatus = .idle
         reportStatus = .idle
     }
 
     func dismissNotice() {
         navigation.dismissNotice()
+    }
+
+    /// The "Customize" action on the alerts toast.
+    func openAlertFilters() {
+        navigation.openAlertFilters()
     }
 
     // MARK: Camera
@@ -122,21 +136,7 @@ final class MapViewModel {
             : .camera(Self.homeCamera)
     }
 
-    /// Fits the active route above the sheet. `cameraBounds` still clamps it, so the campus lock holds.
-    func fitRouteIfActive() {
-        guard let route = route.route else { return }
-        cameraPosition = .rect(RouteFraming.rect(for: route.coordinates))
-    }
-
     // MARK: Directions
-
-    func requestDirections(to post: FoodPost) {
-        route.requestDirections(to: post)
-    }
-
-    func endRoute() {
-        route.end()
-    }
 
     func openInAppleMaps(_ post: FoodPost) {
         routing.openInAppleMaps(to: post.coordinate, name: post.locationName)
@@ -184,16 +184,14 @@ final class MapViewModel {
 
     // MARK: Location
 
-    func enableLocation() {
-        location.requestAuthorization()
-    }
-
     func requestPreciseLocation() {
         location.requestTemporaryPreciseAccuracy()
     }
 
+    /// "Not now": hidden for `AppConfig.locationBannerSnoozeDays`, across launches.
     func dismissBanner(_ banner: LocationBanner) {
-        dismissedBanners.insert(banner)
+        dismissals.dismiss(banner.rawValue)
+        dismissalCount += 1
     }
 
     // MARK: Text
@@ -205,6 +203,6 @@ final class MapViewModel {
 
     /// Computed at render time, so the expiry tick never re-renders pins.
     func accessibilityLabel(for post: FoodPost) -> String {
-        PostCard.accessibilityLabel(for: post, distanceText: distanceText(to: post))
+        PostRow.accessibilityLabel(for: post, distanceText: distanceText(to: post))
     }
 }

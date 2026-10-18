@@ -2,8 +2,8 @@ import Foundation
 import Observation
 import OSLog
 
-/// The Review form (design system screen 4 step 3): AI draft or empty manual draft, edited by the user,
-/// validated, then published. State lives in memory only.
+/// The Review composer (design system screen 4 step 3): AI draft or empty manual draft, edited by the user,
+/// validated, then published with its photos. State lives in memory only.
 @MainActor
 @Observable
 final class ReviewViewModel {
@@ -19,26 +19,35 @@ final class ReviewViewModel {
         didSet { refreshAutoTitle() }
     }
     private(set) var publishState: PublishState = .idle
-    /// Form-only preference; calories are still saved on the items.
-    var showCalories = true
+    /// Starts from Settings > Show calorie estimates; "Hide" on Review only hides them here. Calories are still saved.
+    var showCalories = UserDefaults.standard.object(forKey: ReviewViewModel.showCaloriesKey) as? Bool ?? true
     /// Nil on the manual path.
     let aiBaseline: FoodAnalysisResult?
-    /// Nil when there is no photo, or when it was rejected for showing people.
-    let photo: CapturedPhoto?
+    /// Cover first. Photos rejected for showing people are never here. Set through `updatePhotos`.
+    var photos: [CapturedPhoto]
+    /// "We left out 1 photo that showed people." Dismissible.
+    var removedPhotosNotice: String?
 
-    private let author: PostAuthor
+    /// Settings > Display > Show calorie estimates (`@AppStorage` in the views).
+    static let showCaloriesKey = "display.showCalories"
+
+    let author: PostAuthor
     private let posts: any PostService
     private let location: any LocationProviding
     private let cooldown: PostCooldown
-    private let encoder = PostImageEncoder()
-    /// Created once so retries write the same document.
+    let encoder = PostImageEncoder()
+    /// Created once so retries write the same document and photo slots.
     private let postId: String
-    @ObservationIgnored private var encodedPhoto: Data?
+    /// Encoded for upload, by photo ID; nil = couldn't be encoded.
+    @ObservationIgnored var encodedPhotos: [UUID: Data?] = [:]
+    /// The draft as first shown, to tell whether the user changed anything.
+    @ObservationIgnored var initialDraft = PostDraft()
 
-    init(photo: CapturedPhoto?, analysis: FoodAnalysisResult?, author: PostAuthor,
+    init(photos: [CapturedPhoto], analysis: FoodAnalysisResult?, author: PostAuthor,
          posts: any PostService, location: any LocationProviding, cooldown: PostCooldown = PostCooldown()) {
-        self.photo = photo
+        self.photos = photos
         self.aiBaseline = analysis
+        self.removedPhotosNotice = analysis.flatMap(Self.removedNotice)
         self.author = author
         self.posts = posts
         self.location = location
@@ -52,6 +61,7 @@ final class ReviewViewModel {
         }
         self.draft = draft
         refreshAutoTitle()
+        initialDraft = self.draft
     }
 
     // MARK: Fields
@@ -136,6 +146,11 @@ final class ReviewViewModel {
         issues.filter(\.isBlocking)
     }
 
+    /// Where "N things left" scrolls to.
+    var firstBlockingField: PostDraftValidator.Field? {
+        blockingIssues.first?.field
+    }
+
     var canPublish: Bool {
         !issues.contains(where: \.isBlocking) && publishState != .publishing
     }
@@ -191,7 +206,7 @@ final class ReviewViewModel {
 
     // MARK: Publish
 
-    func publish() async -> FoodPost? {
+    func publish() async -> PublishResult? {
         guard publishState != .publishing else { return nil }
         let remaining = cooldown.secondsRemaining()
         guard remaining == 0 else {
@@ -205,10 +220,10 @@ final class ReviewViewModel {
                                                              editedAfterAI: editedAfterAI) else { return nil }
         publishState = .publishing
         do {
-            let post = try await posts.publish(submission, imageJPEG: await encodedPhotoData())
+            let result = try await posts.publish(submission, photos: await encodedPhotoData())
             cooldown.recordPublish()
             publishState = .idle
-            return post
+            return result
         } catch {
             let appError = error as? AppError ?? .unknown
             publishState = .failed(Self.message(for: appError))
@@ -218,14 +233,6 @@ final class ReviewViewModel {
 
     func dismissPublishMessage() {
         if publishState != .publishing { publishState = .idle }
-    }
-
-    private func encodedPhotoData() async -> Data? {
-        if let encodedPhoto { return encodedPhoto }
-        guard let photo else { return nil }
-        let data = await encoder.encode(photo.jpegData)
-        encodedPhoto = data
-        return data
     }
 
     private static func message(for error: AppError) -> String {

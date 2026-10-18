@@ -3,6 +3,8 @@ import { test } from "node:test";
 import { alertBody, chunk, errorCode, isAlreadyExists, isQuietHours, recipientIds } from "../lib/recipients.js";
 
 const id = (n) => `installation-id-${n}`;
+const post = { title: "FREE: Veggie curry", items: [{ name: "Veggie curry", dietary: "vegetarian" }], buildingId: "library" };
+const ids = (...args) => recipientIds(args[0], post, ...args.slice(1)).ids;
 // 2026-10-08 12:00 PDT and 23:30 PDT / 06:59 PDT / 07:00 PDT.
 const noon = new Date("2026-10-08T19:00:00Z");
 const lateNight = new Date("2026-10-09T06:30:00Z");
@@ -27,7 +29,7 @@ test("excludes the author, opted-out users and invalid IDs", () => {
     { uid: "d", notificationsEnabled: true, fcmInstallationId: 42 },
     { uid: "e", notificationsEnabled: "true", fcmInstallationId: id(5) },
   ];
-  assert.deepEqual(recipientIds(subscribers, "author", undefined, noon), [id(2)]);
+  assert.deepEqual(ids(subscribers, "author", undefined, noon), [id(2)]);
 });
 
 test("excludes the author's device even under another account, and dedupes", () => {
@@ -37,7 +39,7 @@ test("excludes the author's device even under another account, and dedupes", () 
     { uid: "c", notificationsEnabled: true, fcmInstallationId: id(2) },
   ];
   // The author has alerts off (not in the query) but their device ID is still known from their profile.
-  assert.deepEqual(recipientIds(subscribers, "author", id(9), noon), [id(2)]);
+  assert.deepEqual(ids(subscribers, "author", id(9), noon), [id(2)]);
 });
 
 test("quiet hours mute only users who chose them", () => {
@@ -46,8 +48,8 @@ test("quiet hours mute only users who chose them", () => {
     { uid: "b", notificationsEnabled: true, fcmInstallationId: id(2), quietHoursEnabled: false },
     { uid: "c", notificationsEnabled: true, fcmInstallationId: id(3) },
   ];
-  assert.deepEqual(recipientIds(subscribers, "x", undefined, lateNight), [id(2), id(3)]);
-  assert.deepEqual(recipientIds(subscribers, "x", undefined, noon), [id(1), id(2), id(3)]);
+  assert.deepEqual(ids(subscribers, "x", undefined, lateNight), [id(2), id(3)]);
+  assert.deepEqual(ids(subscribers, "x", undefined, noon), [id(1), id(2), id(3)]);
 });
 
 test("alert body is the trimmed one-line title, capped at 120 characters", () => {
@@ -72,4 +74,21 @@ test("only ALREADY_EXISTS counts as an already-sent alert", () => {
   assert.equal(isAlreadyExists(undefined), false);
   assert.equal(errorCode({ code: "messaging/invalid-argument" }), "messaging/invalid-argument");
   assert.equal(errorCode("nope"), undefined);
+});
+
+test("filters run after author and quiet hours, and filtered devices are counted", () => {
+  const subscribers = [
+    { uid: "a", notificationsEnabled: true, fcmInstallationId: id(1),
+      alertFilters: { mode: "custom", diets: ["vegetarian"], places: ["library"] } },
+    { uid: "b", notificationsEnabled: true, fcmInstallationId: id(2),
+      alertFilters: { mode: "custom", places: ["chavez"] } },
+    { uid: "c", notificationsEnabled: true, fcmInstallationId: id(3), alertFilters: { mode: "bogus" } },
+    { uid: "d", notificationsEnabled: true, fcmInstallationId: id(4), quietHoursEnabled: true,
+      alertFilters: { mode: "custom", places: ["chavez"] } },
+    { uid: "author", notificationsEnabled: true, fcmInstallationId: id(5),
+      alertFilters: { mode: "custom", places: ["chavez"] } },
+  ];
+  // Late night: d is muted by quiet hours (not counted as filtered); the author is skipped first.
+  assert.deepEqual(recipientIds(subscribers, post, "author", undefined, lateNight), { ids: [id(1), id(3)], filteredOut: 1 });
+  assert.deepEqual(recipientIds(subscribers, post, "author", undefined, noon), { ids: [id(1), id(3)], filteredOut: 2 });
 });

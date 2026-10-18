@@ -1,16 +1,17 @@
 import Foundation
 import Observation
 
-/// Free food alerts opt-in and quiet hours. The system prompt is shown only after an in-app explanation
-/// (the Settings explainer or the Feed offer), because iOS asks only once.
+/// Free food alerts opt-in and quiet hours. The system prompt fires from the first-run chain on the Map
+/// (`FirstRunPermissions`) or, if the user skipped it, directly from the Settings toggle.
 @MainActor
 @Observable
 final class SettingsViewModel {
     private(set) var alertsEnabled: Bool
     private(set) var quietHoursEnabled: Bool
+    /// Saved "Custom notifications"; nil = all free food.
+    private(set) var alertFilters: AlertFilters?
     private(set) var isUpdating = false
     private(set) var errorMessage: String?
-    var isShowingExplainer = false
 
     @ObservationIgnored private let notifications: any NotificationService
     @ObservationIgnored private let uid: String
@@ -20,6 +21,7 @@ final class SettingsViewModel {
         self.uid = profile.uid
         self.alertsEnabled = profile.notificationsEnabled
         self.quietHoursEnabled = profile.quietHoursEnabled ?? false
+        self.alertFilters = profile.alertFilters
     }
 
     /// True when iOS Settings blocks GatorPlate's notifications.
@@ -27,12 +29,7 @@ final class SettingsViewModel {
         notifications.authorization == .denied
     }
 
-    /// The Feed offers alerts until the user decides, once.
-    var shouldOfferAlerts: Bool {
-        !alertsEnabled && notifications.authorization == .notDetermined
-    }
-
-    static let quietHoursLabel = "Mute alerts 11 PM – 7 AM"
+    static let quietHoursLabel = "Mute notifications 11 PM – 7 AM"
 
     // MARK: Session
 
@@ -56,17 +53,20 @@ final class SettingsViewModel {
         }
         await notifications.refreshAuthorization()
         switch notifications.authorization {
-        case .notDetermined: isShowingExplainer = true
+        case .notDetermined:
+            // Skipped the first-run chain (e.g. opened from a deep link): ask now.
+            if await notifications.requestAuthorization().isAuthorized { await apply(true) }
         case .denied: errorMessage = "Turn on notifications for GatorPlate in iOS Settings first."
         case .authorized: await apply(true)
         }
     }
 
-    /// After the explanation: shows the system prompt, then opts in if allowed.
-    func confirmAlerts() async {
+    /// "Allow" in the first-run chain means opt in (all free food). True when it was saved.
+    func optInFromChain() async -> Bool {
         errorMessage = nil
-        guard await notifications.requestAuthorization().isAuthorized else { return }
+        guard !alertsEnabled else { return true }
         await apply(true)
+        return alertsEnabled
     }
 
     func setQuietHours(_ enabled: Bool) async {
@@ -79,6 +79,21 @@ final class SettingsViewModel {
         } catch {
             errorMessage = Self.message(for: error)
         }
+    }
+
+    /// Saves the filters (10 s deadline). Throws so the filters screen can show the error inline.
+    func saveAlertFilters(_ filters: AlertFilters) async throws {
+        do {
+            try await notifications.setAlertFilters(filters, uid: uid)
+            alertFilters = filters
+        } catch {
+            throw AppError.validation(Self.message(for: error))
+        }
+    }
+
+    /// Account deletion: stop alerts locally; the server removes the profile and registration.
+    func forgetForDeletedAccount() {
+        notifications.resetForDeletedAccount()
     }
 
     private func apply(_ enabled: Bool) async {
