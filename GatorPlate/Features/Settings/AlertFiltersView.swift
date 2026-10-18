@@ -2,12 +2,15 @@ import SwiftUI
 
 /// Settings > Notifications > Custom notifications (reachable only while notifications are on). An "All free food"
 /// switch (on by default) above checklists that are always shown: diet, places, favorite foods (with "+ Custom")
-/// and allergens to avoid. Picking anything turns the switch off. Every change saves on its own a moment later.
+/// and allergens to avoid. Picking anything slides the switch off; it can't be turned off with nothing picked. Every change saves on its own a moment later.
 struct AlertFiltersView: View {
     @State private var viewModel: AlertFiltersViewModel
     @State private var newFood = ""
     @State private var isAddingFood = false
     @State private var isPickingPlaces = false
+    /// Turned off with nothing picked: shown off for a moment, then it springs back on.
+    @State private var isBouncingOff = false
+    @State private var showsPickHint = false
 
     init(settings: SettingsViewModel) {
         _viewModel = State(initialValue: AlertFiltersViewModel(settings: settings))
@@ -18,11 +21,12 @@ struct AlertFiltersView: View {
             Section {
                 Toggle("All free food", isOn: allFoodBinding)
                     .font(.body.weight(.semibold))
-                    // Stays on until something below is picked; then it can be switched back on to clear the picks.
-                    .disabled(!viewModel.isCustom)
+                    // Slides off on its own when something below is picked.
+                    .animation(.default, value: viewModel.isCustom)
                     .accessibilityHint(viewModel.isCustom ? "Clears your picks" : "Pick categories below to customize")
             } footer: {
-                Text(viewModel.summary)
+                Text(showsPickHint ? "Pick a category below to get only those notifications." : viewModel.summary)
+                    .animation(.default, value: showsPickHint)
             }
 
             if let error = viewModel.errorMessage {
@@ -146,8 +150,28 @@ struct AlertFiltersView: View {
 
     // MARK: Actions
 
+    /// Stays on until something is picked: switching it off with nothing picked springs back with a hint.
     private var allFoodBinding: Binding<Bool> {
-        Binding(get: { !viewModel.isCustom }, set: { viewModel.setCustom(!$0) })
+        Binding(get: { !viewModel.isCustom && !isBouncingOff },
+                set: { isOn in
+                    guard !isOn, !viewModel.hasSelections else {
+                        viewModel.setCustom(!isOn)
+                        return
+                    }
+                    bounceBack()
+                })
+    }
+
+    private func bounceBack() {
+        isBouncingOff = true
+        showsPickHint = true
+        AccessibilityNotification.Announcement("Pick a category below to get only those notifications.").post()
+        Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            withAnimation { isBouncingOff = false }
+            try? await Task.sleep(for: .seconds(3))
+            showsPickHint = false
+        }
     }
 
     private func addFood() {
