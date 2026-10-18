@@ -105,6 +105,7 @@ final class MapViewModel {
     func onAppear() {
         isVisible = true
         location.startUpdates()
+        focusOnAlertPost()
     }
 
     func onDisappear() {
@@ -129,6 +130,21 @@ final class MapViewModel {
     }
 
     // MARK: Camera
+
+    /// An alert opened this post: frame it above the sheet. The camera bounds keep it inside the campus lock.
+    func focusOnAlertPost() {
+        guard let id = navigation.cameraFocusPostId else { return }
+        navigation.clearCameraFocus()
+        guard let post = repository.post(id: id) else { return }
+        let span = AppConfig.alertOpenRegionSpanDegrees
+        // The pin sits about a fifth of the way down, clear of the sheet over the lower part of the map.
+        let center = CLLocationCoordinate2D(latitude: post.coordinate.latitude - span * 0.3,
+                                            longitude: post.coordinate.longitude)
+        cameraPosition = .region(MKCoordinateRegion(
+            center: center, span: MKCoordinateSpan(latitudeDelta: span, longitudeDelta: span / 3)))
+    }
+
+    var cameraFocusPostId: String? { navigation.cameraFocusPostId }
 
     func recenter() {
         cameraPosition = canCenterOnUser
