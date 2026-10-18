@@ -1,3 +1,4 @@
+import OSLog
 import SwiftUI
 
 /// Main tabs for guests and accounts. Owns the session (live posts listener, navigation, alerts) for the current
@@ -77,7 +78,7 @@ struct MainTabView: View {
             @unknown default: break
             }
         }
-        .onChange(of: environment.notifications.pendingOpenPostId) {
+        .onChange(of: environment.notifications.pendingAlert) {
             openTappedAlert()
         }
     }
@@ -103,6 +104,9 @@ struct MainTabView: View {
         .onChange(of: session.repository.phase) {
             session.navigation.postsDidChange()
         }
+        .onChange(of: session.repository.serverSnapshotCount) {
+            session.navigation.postsDidChange()
+        }
         .onChange(of: permissionConditions(session), initial: true) { _, conditions in
             session.permissions.update(conditions)
         }
@@ -114,7 +118,7 @@ struct MainTabView: View {
             mapVisible: session.map.isVisible && session.navigation.selectedTab == .map,
             sceneActive: scenePhase == .active,
             coverOrSheetOpen: isPostFlowPresented || accountFlow != nil || session.map.selectedPost != nil,
-            alertPending: environment.notifications.pendingOpenPostId != nil)
+            alertPending: environment.notifications.pendingAlert != nil || session.navigation.hasPendingSelection)
     }
 
     /// Posting needs an account: guests (and unverified accounts) go through the account flow first.
@@ -127,16 +131,25 @@ struct MainTabView: View {
     }
 
     private func continueAfterAccountFlow() {
-        guard opensPostAfterAccountFlow else { return }
+        guard opensPostAfterAccountFlow else {
+            openTappedAlert()
+            return
+        }
         opensPostAfterAccountFlow = false
-        if authSession.canPost { isPostFlowPresented = true }
+        // A tapped alert waits for the post flow too; it opens when that closes.
+        if authSession.canPost { isPostFlowPresented = true } else { openTappedAlert() }
     }
 
-    /// Opens the post from a tapped alert. Waits while the post flow is open so a draft is never discarded.
+    /// Opens the post from a tapped alert. Waits while the post flow or the account flow is open, so a draft or a
+    /// half-typed sign-in is never discarded; their `onDismiss` calls this again. The request stays with the
+    /// notification service until navigation opens the post, so a new session (guest -> account) still gets it.
     private func openTappedAlert() {
-        guard let session, !isPostFlowPresented,
-              let postId = environment.notifications.consumePendingOpen() else { return }
-        session.navigation.selectPost(id: postId, missingNotice: AppNavigation.alertPostUnavailableNotice)
+        guard let session, let request = environment.notifications.pendingAlert else { return }
+        guard !isPostFlowPresented, accountFlow == nil else {
+            Logger.ui.info("Alert open deferred (\(isPostFlowPresented ? "post flow" : "account flow", privacy: .public) open)")
+            return
+        }
+        session.navigation.openAlert(request)
     }
 
     private func showPostAfterFlow() {
