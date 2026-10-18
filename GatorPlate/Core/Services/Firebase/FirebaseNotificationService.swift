@@ -7,13 +7,16 @@ import UserNotifications
 /// Live alerts: UserNotifications for permission and taps, Firebase Messaging registration by Firebase
 /// Installation ID (`FirebaseMessagingInstallationIdEnabled`; FCM tokens are deprecated in SDK 12.19),
 /// Firestore `users/{uid}` for the opt-in, installation ID and quiet hours. Logs never include IDs or post content.
+/// FCM's app-delegate proxy is off (`FirebaseAppDelegateProxyEnabled = NO`): the APNs token and tapped alerts are
+/// handled here by hand, so nothing swizzles this delegate.
 @MainActor
 @Observable
 final class FirebaseNotificationService: NSObject, NotificationService {
     private(set) var authorization = NotificationAuthorization.notDetermined
-    private(set) var pendingOpenPostId: String?
+    private(set) var pendingAlert: AlertOpenRequest?
 
     @ObservationIgnored private let registerForRemoteNotifications: () -> Void
+    @ObservationIgnored private let appState: () -> AlertOpenRequest.AppState
     @ObservationIgnored private var activeUid: String?
     @ObservationIgnored private var alertsEnabled = false
     /// Latest ID from `messaging(_:didReceiveRegistration:)`.
@@ -32,11 +35,14 @@ final class FirebaseNotificationService: NSObject, NotificationService {
     }
 
     /// Create during app launch: the delegate must be set before launch finishes so cold-start taps arrive.
-    init(registerForRemoteNotifications: @escaping () -> Void) {
+    init(registerForRemoteNotifications: @escaping () -> Void,
+         appState: @escaping () -> AlertOpenRequest.AppState) {
         self.registerForRemoteNotifications = registerForRemoteNotifications
+        self.appState = appState
         super.init()
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
+        Logger.services.info("Notification delegate set")
         Task { await refreshAuthorization() }
     }
 
@@ -44,9 +50,9 @@ final class FirebaseNotificationService: NSObject, NotificationService {
 
     // MARK: NotificationService
 
-    func consumePendingOpen() -> String? {
-        defer { pendingOpenPostId = nil }
-        return pendingOpenPostId
+    func alertHandled(_ request: AlertOpenRequest) {
+        if pendingAlert == request { pendingAlert = nil }
+        clearDelivered(postId: request.postId, notificationId: request.notificationId)
     }
 
     func refreshAuthorization() async {
@@ -138,14 +144,13 @@ final class FirebaseNotificationService: NSObject, NotificationService {
         activeUid = nil
         alertsEnabled = false
         savedInstallationId = nil
-        pendingOpenPostId = nil
     }
 
     func deactivate(uid: String) async {
         activeUid = nil
         alertsEnabled = false
         savedInstallationId = nil
-        pendingOpenPostId = nil
+        // A tapped alert stays pending: the app continues as a guest and still opens the post.
         do {
             try await write([Key.fcmInstallationId: FieldValue.delete()], uid: uid,
                             deadlineSeconds: AppConfig.notificationSignOutTimeoutSeconds)
@@ -193,10 +198,44 @@ final class FirebaseNotificationService: NSObject, NotificationService {
         Task { await saveInstallationId(id, uid: activeUid) }
     }
 
-    fileprivate func didOpenNotification(postId: String) {
-        pendingOpenPostId = postId
-        Logger.ui.info("Opened a free food alert")
+    // MARK: Tapped alerts
+
+    fileprivate func didOpenNotification(postId: String?, notificationId: String) {
+        let state = appState()
+        Logger.ui.info("Alert tapped (state: \(state.rawValue, privacy: .public))")
+        guard let postId else { return }
+        pendingAlert = AlertOpenRequest(postId: postId, appState: state, notificationId: notificationId)
     }
+
+    /// Removes the opened alert, and any other delivered alert for the same post, from Notification Center.
+    private func clearDelivered(postId: String, notificationId: String) {
+        let center = UNUserNotificationCenter.current()
+        center.removeDeliveredNotifications(withIdentifiers: [notificationId])
+        center.getDeliveredNotifications { notifications in
+            let ids = notifications
+                .filter { Self.postId(from: $0.request.content.userInfo) == postId }
+                .map(\.request.identifier)
+            if !ids.isEmpty { UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids) }
+        }
+        center.setBadgeCount(0) { error in
+            if error != nil { Logger.services.error("Couldn't clear the app badge") }
+        }
+    }
+
+    #if DEBUG
+    func scheduleTestAlert(postId: String) async throws {
+        let content = UNMutableNotificationContent()
+        content.title = "Free food on campus"
+        content.body = "Test alert"
+        content.sound = .default
+        content.userInfo = [AppConfig.notificationPostIdKey: postId]
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(AppConfig.debugTestAlertDelaySeconds),
+                                                        repeats: false)
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+        try await UNUserNotificationCenter.current().add(request)
+        Logger.services.info("Test alert scheduled")
+    }
+    #endif
 
     private func write(_ fields: [String: Any], uid: String,
                        deadlineSeconds: Int = AppConfig.notificationWriteTimeoutSeconds) async throws {
@@ -213,26 +252,55 @@ final class FirebaseNotificationService: NSObject, NotificationService {
     }
 
     /// Post IDs are 20 alphanumeric characters; anything else in a payload is ignored.
-    fileprivate nonisolated static func postId(from userInfo: [AnyHashable: Any]) -> String? {
+    nonisolated static func postId(from userInfo: [AnyHashable: Any]) -> String? {
         guard let postId = userInfo[AppConfig.notificationPostIdKey] as? String,
               (1...40).contains(postId.count),
               postId.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) }) else { return nil }
         return postId
     }
+
+    /// "present" / "missing" / "rejected", never the ID itself.
+    nonisolated static func postIdCheck(_ userInfo: [AnyHashable: Any]) -> String {
+        guard userInfo[AppConfig.notificationPostIdKey] != nil else { return "missing" }
+        return postId(from: userInfo) == nil ? "rejected" : "present"
+    }
 }
 
+/// Completion-handler variants on purpose: the `async` ones run on the global executor and finish off the main
+/// thread, which iOS 18+ can kill the app for ("Call must be made on main thread"), so a tap looked like the app
+/// never opened. Each handler is called exactly once, on the main actor.
 extension FirebaseNotificationService: UNUserNotificationCenterDelegate {
     /// Alerts show while the app is open too.
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                            willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound]
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        let complete = UncheckedSendable(completionHandler)
+        Task { @MainActor in complete.value([.banner, .list, .sound]) }
     }
 
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                            didReceive response: UNNotificationResponse) async {
-        guard let postId = Self.postId(from: response.notification.request.content.userInfo) else { return }
-        await MainActor.run { didOpenNotification(postId: postId) }
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void) {
+        let request = response.notification.request
+        let userInfo = request.content.userInfo
+        let postId = Self.postId(from: userInfo)
+        let check = Self.postIdCheck(userInfo)
+        let notificationId = request.identifier
+        // With the proxy off, FCM learns about the open from here (delivery metrics only).
+        Messaging.messaging().appDidReceiveMessage(userInfo)
+        let complete = UncheckedSendable(completionHandler)
+        Task { @MainActor in
+            Logger.ui.info("Alert postId \(check, privacy: .public)")
+            didOpenNotification(postId: postId, notificationId: notificationId)
+            complete.value()
+        }
     }
+}
+
+/// UserNotifications' completion handlers aren't marked `Sendable`; each one is called once, on the main actor.
+private nonisolated struct UncheckedSendable<Value>: @unchecked Sendable {
+    let value: Value
+    init(_ value: Value) { self.value = value }
 }
 
 extension FirebaseNotificationService: MessagingDelegate {
