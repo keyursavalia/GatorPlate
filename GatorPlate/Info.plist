@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>GatorPlate shows how far free food is on-campus. Your location stays on your phone and is used only while the app is open.</string>
 	<key>FirebaseMessagingInstallationIdEnabled</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
