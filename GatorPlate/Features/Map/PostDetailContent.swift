@@ -13,6 +13,8 @@ struct PostDetailContent<MenuContent: View, Actions: View>: View {
     let showCalories: Bool
     /// Nil in Review's Preview (nothing to open yet).
     var onOpenInMaps: (() -> Void)?
+    /// "Hidden by your filters": the post was opened on purpose although the Map/Feed filter hides it.
+    var filterNote: String?
     @ViewBuilder var menu: MenuContent
     @ViewBuilder var actions: Actions
 
@@ -26,6 +28,12 @@ struct PostDetailContent<MenuContent: View, Actions: View>: View {
 
             Section {
                 facts
+            }
+
+            if let filterNote {
+                Section {
+                    NoteRow(text: filterNote, systemImage: "line.3.horizontal.decrease")
+                }
             }
 
             if let onOpenInMaps {
