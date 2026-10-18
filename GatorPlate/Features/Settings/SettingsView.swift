@@ -16,9 +16,19 @@ struct SettingsView: View {
     @State private var isConfirmingSignOut = false
     @AppStorage(ReviewViewModel.showCaloriesKey) private var showCalories = true
     @Environment(\.openURL) private var openURL
+    @Environment(\.appEnvironment) private var environment
 
     private var viewModel: SettingsViewModel { session.settings }
     private var profile: UserProfile { authSession.profile }
+
+    @ViewBuilder
+    private var aboutView: some View {
+        #if DEBUG
+        AboutView(testAlert: DebugTestAlertSection(notifications: environment.notifications, posts: session.repository))
+        #else
+        AboutView()
+        #endif
+    }
 
     var body: some View {
         @Bindable var navigation = session.navigation
@@ -50,7 +60,7 @@ struct SettingsView: View {
                     documentRow(.terms, systemImage: "doc.text")
                 }
                 Section("About") {
-                    NavigationLink { AboutView() } label: {
+                    NavigationLink { aboutView } label: {
                         ListRow(title: "About GatorPlate", systemImage: "info.circle")
                     }
                 }
