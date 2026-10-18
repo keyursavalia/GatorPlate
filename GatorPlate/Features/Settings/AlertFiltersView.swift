@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Settings > Alerts > What to alert me about (reachable only while alerts are on). One "All free food" switch;
-/// turning it off shows simple checklists: diet, places, favorite foods (with "+ Custom") and allergens to avoid.
-/// Every change saves on its own a moment later, so there is no Save button or status.
+/// Settings > Notifications > Custom notifications (reachable only while notifications are on). An "All free food"
+/// switch (on by default) above checklists that are always shown: diet, places, favorite foods (with "+ Custom")
+/// and allergens to avoid. Picking anything turns the switch off. Every change saves on its own a moment later.
 struct AlertFiltersView: View {
     @State private var viewModel: AlertFiltersViewModel
     @State private var newFood = ""
@@ -30,23 +30,18 @@ struct AlertFiltersView: View {
                 }
             }
 
-            if viewModel.isCustom {
-                dietSection
-                placesSection
-                foodsSection
-                allergensSection
-            }
+            dietSection
+            placesSection
+            foodsSection
+            allergensSection
 
-            if viewModel.isCustom {
-                Section {
-                    NoteRow(text: "Filters only choose which alerts you get. AI labels can be wrong, so always confirm with the host.",
-                            systemImage: "sparkles")
-                }
+            Section {
+                NoteRow(text: "These only choose which notifications you get. AI labels can be wrong, so always confirm with the host.",
+                        systemImage: "sparkles")
             }
         }
         .environment(\.defaultMinListRowHeight, 48)
-        .animation(.default, value: viewModel.isCustom)
-        .navigationTitle("What to alert me about")
+        .navigationTitle("Custom notifications")
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: viewModel.draft) { viewModel.scheduleSave() }
         .onDisappear { viewModel.flush() }
@@ -59,7 +54,7 @@ struct AlertFiltersView: View {
             Button("Add", action: addFood)
             Button("Cancel", role: .cancel) { newFood = "" }
         } message: {
-            Text("You'll get alerts for posts that mention it.")
+            Text("You'll get notifications for posts that mention it.")
         }
         .onChange(of: viewModel.summary) { _, summary in
             AccessibilityNotification.Announcement(summary).post()
@@ -142,7 +137,7 @@ struct AlertFiltersView: View {
         } header: {
             Text("Avoid allergens")
         } footer: {
-            Text("Posts that may contain these won't alert you.")
+            Text("Posts that may contain these won't notify you.")
         }
     }
 
