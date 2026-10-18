@@ -18,6 +18,9 @@ final class PostsRepository {
     private(set) var phase = Phase.loading
     /// True after the listener failed; the last posts stay visible while it retries.
     private(set) var hasError = false
+    /// Snapshots from the server so far. A post opened from an alert counts as missing only after a server
+    /// result that came in after the tap (a resumed app may still be reconnecting).
+    private(set) var serverSnapshotCount = 0
 
     @ObservationIgnored private let service: any PostService
     @ObservationIgnored private let now: () -> Date
@@ -102,7 +105,10 @@ final class PostsRepository {
             if phase == .loading { scheduleCacheGrace() }
             return
         }
-        if !snapshot.isFromCache { awaitingServer = false }
+        if !snapshot.isFromCache {
+            awaitingServer = false
+            serverSnapshotCount += 1
+        }
         allPosts = snapshot.posts
         graceTask?.cancel()
         graceTask = nil
