@@ -8,7 +8,7 @@ import Observation
 final class SettingsViewModel {
     private(set) var alertsEnabled: Bool
     private(set) var quietHoursEnabled: Bool
-    /// Saved "What to alert me about"; nil = all free food.
+    /// Saved "Custom notifications"; nil = all free food.
     private(set) var alertFilters: AlertFilters?
     private(set) var isUpdating = false
     private(set) var errorMessage: String?
@@ -29,7 +29,7 @@ final class SettingsViewModel {
         notifications.authorization == .denied
     }
 
-    static let quietHoursLabel = "Mute alerts 11 PM – 7 AM"
+    static let quietHoursLabel = "Mute notifications 11 PM – 7 AM"
 
     // MARK: Session
 
