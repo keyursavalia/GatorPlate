@@ -98,6 +98,10 @@ nonisolated enum AppConfig {
     static let postsRetryMaxDelaySeconds = 30
     /// A post opened by ID (deep link, "View on map") waits this long to arrive before it counts as ended.
     static let postSelectionPendingSeconds = 5
+    /// A post opened from an alert waits at most this long for the listener (a resumed app may need to reconnect).
+    static let alertOpenMaxWaitSeconds = 20
+    /// Latitude span of the map region shown when an alert opens a post; the pin sits above the sheet.
+    static let alertOpenRegionSpanDegrees = 0.006
     /// Photos kept in memory for the map card and the feed.
     static let postImageCacheLimit = 60
     /// Info notices on the map (e.g. "That food post has ended.") hide after this long.
@@ -111,6 +115,8 @@ nonisolated enum AppConfig {
     static let notificationWriteTimeoutSeconds = 10
     /// Sign-out waits at most this long to remove the installation ID.
     static let notificationSignOutTimeoutSeconds = 5
+    /// DEBUG "Send test alert" (About): the local alert fires this long after the tap.
+    static let debugTestAlertDelaySeconds = 5
     /// Quiet hours, campus time (America/Los_Angeles). `functions/src/recipients.ts` mirrors these.
     static let quietHoursStartHour = 23
     static let quietHoursEndHour = 7
