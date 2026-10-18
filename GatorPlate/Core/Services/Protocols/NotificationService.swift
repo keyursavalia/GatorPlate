@@ -6,11 +6,12 @@ import Foundation
 @MainActor
 protocol NotificationService: AnyObject {
     var authorization: NotificationAuthorization { get }
-    /// Post ID from a tapped alert, waiting to be opened.
-    var pendingOpenPostId: String? { get }
+    /// A tapped alert whose post hasn't been opened yet. Kept until `alertHandled(_:)`.
+    var pendingAlert: AlertOpenRequest? { get }
 
-    /// Returns and clears `pendingOpenPostId`.
-    func consumePendingOpen() -> String?
+    /// Navigation opened the post or showed "no longer available": forget the request and clear its alert
+    /// from Notification Center.
+    func alertHandled(_ request: AlertOpenRequest)
     func refreshAuthorization() async
     /// Shows the system prompt (iOS shows it once). Call only after explaining the value.
     func requestAuthorization() async -> NotificationAuthorization
@@ -25,4 +26,10 @@ protocol NotificationService: AnyObject {
     func resetForDeletedAccount()
     /// Before sign-out: removes this device's installation ID so a signed-out phone gets no alerts. Never throws.
     func deactivate(uid: String) async
+
+    #if DEBUG
+    /// A local alert with the same payload as the real push, `AppConfig.debugTestAlertDelaySeconds` from now, so
+    /// taps can be tested from a killed, background or foreground app without a second account.
+    func scheduleTestAlert(postId: String) async throws
+    #endif
 }
