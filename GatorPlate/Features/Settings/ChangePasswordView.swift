@@ -1,12 +1,15 @@
 import SwiftUI
 
-/// Current password, then the new one twice. Reauthenticates before changing it.
+/// Current password, then the new one twice. Reauthenticates before changing it. "Forgot your current password?"
+/// sends a reset link to the account's email (no typing) and shows the same "Check your email" as Sign in.
 struct ChangePasswordView: View {
     let viewModel: AccountViewModel
+    let passwordReset: PasswordResetModel
 
     @State private var current = ""
     @State private var new = ""
     @State private var confirm = ""
+    @State private var showsReset = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -20,6 +23,17 @@ struct ChangePasswordView: View {
                     .textContentType(.newPassword)
             } footer: {
                 Text("Use at least \(AppConfig.minPasswordLength) characters.")
+            }
+            if let email = viewModel.profile.email {
+                Section {
+                    Button("Forgot your current password?") { showsReset = true }
+                        .foregroundStyle(Theme.Palette.brandPurple)
+                        .frame(minHeight: Theme.Size.minTapTarget)
+                        .accessibilityHint("Emails a reset link to \(email)")
+                }
+                .sheet(isPresented: $showsReset) {
+                    ForgotPasswordSheet(model: passwordReset, start: .account(email: email))
+                }
             }
             Section {
                 Button {
