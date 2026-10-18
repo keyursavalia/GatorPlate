@@ -1,25 +1,46 @@
 import Foundation
 
-/// Short summary of "Custom notifications" for the Settings row.
+/// The "Custom notifications" row in Settings: which categories are in use, shown as icons. Empty = all free food.
 nonisolated enum AlertFilterSummary {
-    /// Short summary for the Settings row, e.g. "Vegetarian · 2 places" or "All free food".
-    static func short(for filters: AlertFilters?) -> String {
-        guard let filters = AlertFilterMatcher.effective(filters) else { return "All free food" }
-        var parts: [String] = []
-        if filters.diets.contains(.vegetarian) {
-            parts.append("Vegetarian")
-        } else if filters.diets.contains(.vegan) {
-            parts.append("Vegan")
+    enum Category: String, CaseIterable, Sendable {
+        case diet, places, foods, allergens
+
+        /// SF Symbol shown in the Settings row.
+        var symbol: String {
+            switch self {
+            case .diet: "leaf.fill"
+            case .places: "mappin"
+            case .foods: "heart.fill"
+            case .allergens: "exclamationmark.triangle.fill"
+            }
         }
-        if !filters.places.isEmpty {
-            parts.append(filters.places.count == 1 ? "1 place" : "\(filters.places.count) places")
+
+        var name: String {
+            switch self {
+            case .diet: "diet"
+            case .places: "places"
+            case .foods: "favorite foods"
+            case .allergens: "allergens"
+            }
         }
-        if !filters.foods.isEmpty {
-            parts.append(filters.foods.count == 1 ? "1 food" : "\(filters.foods.count) foods")
+    }
+
+    /// Categories the saved filters use, in a fixed order; empty when notifications are for all free food.
+    static func categories(for filters: AlertFilters?) -> [Category] {
+        guard let filters = AlertFilterMatcher.effective(filters) else { return [] }
+        return Category.allCases.filter { category in
+            switch category {
+            case .diet: !filters.diets.isEmpty
+            case .places: !filters.places.isEmpty
+            case .foods: !filters.foods.isEmpty
+            case .allergens: !filters.avoidAllergens.isEmpty || filters.skipUnverifiedAllergens
+            }
         }
-        if !filters.avoidAllergens.isEmpty {
-            parts.append("avoids \(filters.avoidAllergens.count)")
-        }
-        return parts.isEmpty ? "All free food" : parts.joined(separator: " · ")
+    }
+
+    /// "All free food" or "Custom: diet, places", for VoiceOver.
+    static func spoken(for filters: AlertFilters?) -> String {
+        let categories = categories(for: filters)
+        return categories.isEmpty ? "All free food" : "Custom: " + categories.map(\.name).joined(separator: ", ")
     }
 }
