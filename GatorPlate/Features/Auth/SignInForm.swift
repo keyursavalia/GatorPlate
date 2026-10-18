@@ -8,6 +8,8 @@ struct SignInForm: View {
 
     @FocusState private var focus: AuthFocusField?
     @State private var showsPasswordReset = false
+    /// "Back to sign in" from the reset sheet: focus Password once it has closed.
+    @State private var focusesPasswordAfterReset = false
 
     var body: some View {
         VStack(spacing: Theme.Spacing.xl) {
@@ -25,7 +27,13 @@ struct SignInForm: View {
             .onSubmit(handleReturn)
 
             if let formError = viewModel.formError {
-                Banner(style: .error, message: formError)
+                VStack(spacing: Theme.Spacing.xs) {
+                    Banner(style: .error, message: formError)
+                    // A wrong password offers the reset right where the error is.
+                    if viewModel.showsResetHint {
+                        AuthTextButton(title: "Forgot password?") { showsPasswordReset = true }
+                    }
+                }
             }
 
             VStack(spacing: Theme.Spacing.md) {
@@ -39,8 +47,14 @@ struct SignInForm: View {
 
             LegalFootnote(lead: "By signing in, I agree to")
         }
-        .sheet(isPresented: $showsPasswordReset) {
-            ForgotPasswordSheet(viewModel: viewModel)
+        .sheet(isPresented: $showsPasswordReset, onDismiss: {
+            if focusesPasswordAfterReset { focus = .password }
+            focusesPasswordAfterReset = false
+        }) {
+            ForgotPasswordSheet(model: viewModel.passwordReset, start: .signIn(email: viewModel.email)) { email in
+                viewModel.email = email
+                focusesPasswordAfterReset = true
+            }
         }
     }
 
