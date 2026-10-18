@@ -4,6 +4,8 @@
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>GatorPlate shows how far free food is on-campus. Your location stays on your phone and is used only while the app is open.</string>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
 	<key>FirebaseMessagingInstallationIdEnabled</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
