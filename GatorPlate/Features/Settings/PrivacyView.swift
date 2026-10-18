@@ -130,14 +130,19 @@ struct PrivacyView: View {
         .accessibilityLabel("\(entry.title). \(entry.detail) \(entry.keep).")
     }
 
+    /// Every tag is as wide as the longest one, so the capsules line up down the page (and still grow with
+    /// Dynamic Type): the hidden texts size the capsule, the visible one sits centered in it.
     private func tag(_ text: String) -> some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(Theme.Palette.brandPurple)
-            .padding(.horizontal, Theme.Spacing.sm)
-            .padding(.vertical, 3)
-            .background(Theme.Palette.brandPurple.opacity(0.14), in: .capsule)
-            .fixedSize()
+        ZStack {
+            ForEach(Array(Set((kept + notKept).map(\.keep))), id: \.self) { Text($0).hidden() }
+            Text(text)
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(Theme.Palette.brandPurple)
+        .padding(.horizontal, Theme.Spacing.sm)
+        .padding(.vertical, 3)
+        .background(Theme.Palette.brandPurple.opacity(0.14), in: .capsule)
+        .fixedSize()
     }
 }
 
