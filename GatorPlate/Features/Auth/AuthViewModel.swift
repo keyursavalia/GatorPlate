@@ -17,8 +17,10 @@ final class AuthViewModel {
     private(set) var infoMessage: String?
     /// One-time notice for the main UI, e.g. "Your account was deleted." after deletion.
     private(set) var notice: String?
-    /// "Forgot password?" result; the same text whether or not the account exists.
-    private(set) var resetMessage: String?
+    /// The last sign-in failed on the email or password: the error offers "Forgot password?".
+    private(set) var showsResetHint = false
+    /// Forgot password, one per launch so its resend cooldown survives closing the sheet.
+    let passwordReset: PasswordResetModel
 
     // MARK: Form
     var mode: Mode = .logIn
@@ -34,6 +36,8 @@ final class AuthViewModel {
     @ObservationIgnored private let terms: TermsAcceptance
     @ObservationIgnored private var listenTask: Task<Void, Never>?
     @ObservationIgnored private var isStartingGuest = false
+    /// The app asked to sign out (sign-out, deletion, start over), so the session ending isn't a surprise.
+    @ObservationIgnored private var isSigningOutOnPurpose = false
     /// Profiles whose Terms version was already brought up to date this launch.
     @ObservationIgnored private var termsRecordedFor: Set<String> = []
 
@@ -41,6 +45,7 @@ final class AuthViewModel {
         self.auth = auth
         self.account = account
         self.terms = terms
+        self.passwordReset = PasswordResetModel(account: account)
     }
 
     var session: AuthSession? {
@@ -81,7 +86,12 @@ final class AuthViewModel {
         case .failure(let error):
             state = .error(error.userMessage)
         case .success(nil):
-            // Signed out or first launch: browse as a guest.
+            // Signed out or first launch: browse as a guest. An account session that ends without the app asking
+            // (Firebase signs out on an expired or revoked token, e.g. after a password reset elsewhere) says so.
+            if let session, !session.isGuest, !isSigningOutOnPurpose, notice == nil {
+                notice = AccountMessages.signedOut
+            }
+            isSigningOutOnPurpose = false
             state = .loading
             resetTransientInput()
             Task { await startGuest() }
@@ -127,6 +137,7 @@ final class AuthViewModel {
         password = ""
         formError = nil
         infoMessage = nil
+        showsResetHint = false
         hasAttemptedSubmit = false
     }
 
@@ -136,6 +147,7 @@ final class AuthViewModel {
         guard mode != newMode else { return }
         mode = newMode
         formError = nil
+        showsResetHint = false
         hasAttemptedSubmit = false
     }
 
@@ -144,6 +156,7 @@ final class AuthViewModel {
     func submit(prepareSwitch: () async -> Void = {}, restore: () -> Void = {}) async {
         hasAttemptedSubmit = true
         formError = nil
+        showsResetHint = false
         guard isFormValid else { return }
         isSubmitting = true
         defer { isSubmitting = false }
@@ -157,6 +170,7 @@ final class AuthViewModel {
             } catch {
                 if replacesGuest { restore() }
                 formError = message(for: error)
+                showsResetHint = (error as? AppError) == .unauthorized
             }
         case .signUp:
             let isOrg = accountType == .organization
@@ -206,32 +220,10 @@ final class AuthViewModel {
         }
     }
 
-    /// Sends a reset link. Always shows the same message so nobody can learn whether an email has an account.
-    func sendPasswordReset(email rawEmail: String) async {
-        resetMessage = nil
-        let email = Validation.normalizedEmail(rawEmail)
-        guard Validation.emailIssue(email) == nil else {
-            resetMessage = "Enter the email you signed up with."
-            return
-        }
-        do {
-            try await account.sendPasswordReset(email: email)
-        } catch AppError.network {
-            resetMessage = AppError.network.userMessage
-            return
-        } catch {
-            Logger.ui.error("Password reset request failed")
-        }
-        resetMessage = AccountMessages.resetSent
-    }
-
-    func clearResetMessage() {
-        resetMessage = nil
-    }
-
     func clearFormMessages() {
         formError = nil
         infoMessage = nil
+        showsResetHint = false
         hasAttemptedSubmit = false
     }
 
@@ -254,9 +246,11 @@ final class AuthViewModel {
 
     /// Back to browsing as a guest.
     func signOut() {
+        isSigningOutOnPurpose = true
         do {
             try auth.signOut()
         } catch {
+            isSigningOutOnPurpose = false
             Logger.ui.error("Sign out failed")
             formError = message(for: error)
         }
@@ -273,13 +267,7 @@ final class AuthViewModel {
 
     var emailError: String? {
         guard hasAttemptedSubmit else { return nil }
-        if email.trimmingCharacters(in: .whitespaces).isEmpty { return "Email is required." }
-        switch Validation.emailIssue(email) {
-        case .invalidFormat: return "Enter a valid email address."
-        case .domainNotAllowed:
-            return "Use an email ending in \(AppConfig.allowedEmailDomains.joined(separator: ", "))."
-        case nil: return nil
-        }
+        return Validation.emailMessage(email)
     }
 
     var passwordError: String? {
