@@ -13,7 +13,7 @@ struct DeleteAccountView: View {
             Section {
                 VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                     Text("This permanently deletes:").font(.headline)
-                    Label("Your profile, alert settings and this device's alert registration", systemImage: "person.crop.circle")
+                    Label("Your profile, notification settings and this device's notification registration", systemImage: "person.crop.circle")
                     Label("Your posts and their photos (active posts disappear for everyone right away)", systemImage: "fork.knife")
                     Label("Reports you've sent", systemImage: "flag")
                     Text("This can't be undone.").font(.subheadline.weight(.semibold))
