@@ -89,7 +89,7 @@ struct FoodPickSections: View {
                 for id in offsets.map({ picks.places[$0] }) { picks.removePlace(id) }
             }
             Button("Add places", systemImage: "plus") { isPickingPlaces = true }
-                .foregroundStyle(Theme.Palette.brandPurple)
+                .foregroundStyle(Theme.Palette.accent)
         } header: {
             Text("Places")
         } footer: {
@@ -109,7 +109,7 @@ struct FoodPickSections: View {
                 newFood = ""
                 isAddingFood = true
             }
-            .foregroundStyle(Theme.Palette.brandPurple)
+            .foregroundStyle(Theme.Palette.accent)
             .disabled(picks.foods.count >= AppConfig.alertFilterMaxFoods)
         } header: {
             Text("Favorite foods")
