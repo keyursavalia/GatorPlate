@@ -26,10 +26,4 @@ protocol NotificationService: AnyObject {
     func resetForDeletedAccount()
     /// Before sign-out: removes this device's installation ID so a signed-out phone gets no alerts. Never throws.
     func deactivate(uid: String) async
-
-    #if DEBUG
-    /// A local alert with the same payload as the real push, `AppConfig.debugTestAlertDelaySeconds` from now, so
-    /// taps can be tested from a killed, background or foreground app without a second account.
-    func scheduleTestAlert(postId: String) async throws
-    #endif
 }
