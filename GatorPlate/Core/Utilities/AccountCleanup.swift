@@ -4,7 +4,8 @@ import Foundation
 /// dismissals and the Map/Feed filters and sort. Per-install preferences (calorie display, the camera hint) stay.
 nonisolated enum AccountCleanup {
     static let perUserKeys = ["post.lastPublishedAt"]
-    static let perUserKeyPrefixes = [BannerDismissals.keyPrefix, PostFilterStore.filterKeyPrefix,
+    /// `map.dismissedLocationBanner.` is from the old map location banner; still cleared on devices that have it.
+    static let perUserKeyPrefixes = ["map.dismissedLocationBanner.", PostFilterStore.filterKeyPrefix,
                                      PostFilterStore.sortKeyPrefix]
 
     static func clearPerUserDefaults(_ defaults: UserDefaults = .standard) {
