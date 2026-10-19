@@ -4,7 +4,8 @@ import ImageIO
 import OSLog
 
 /// In-memory post photos for the map sheet, the feed and the viewer. Keyed by `"\(postId)#\(slot)"`.
-/// Loads each photo once, even when asked twice at once.
+/// Loads each photo once, even when asked twice at once. Map pins use small square thumbnails made from the same
+/// download, kept apart so a pin never holds a full-size photo.
 @MainActor
 final class PostImageCache {
     private let store: any ImageStore
@@ -12,6 +13,8 @@ final class PostImageCache {
     private var images: [String: CGImage] = [:]
     private var order: [String] = []
     private var inFlight: [String: Task<CGImage?, Never>] = [:]
+    private var thumbnails: [String: CGImage] = [:]
+    private var thumbnailOrder: [String] = []
 
     init(store: any ImageStore, limit: Int = AppConfig.postImageCacheLimit) {
         self.store = store
@@ -48,12 +51,46 @@ final class PostImageCache {
         return image
     }
 
+    func cachedThumbnail(for postId: String, slot: Int) -> CGImage? {
+        thumbnails[Self.key(postId: postId, slot: slot)]
+    }
+
+    /// A square, center-cropped thumbnail `pixels` wide (map pins), made once from the cached photo.
+    func thumbnail(for postId: String, slot: Int, pixels: Int = AppConfig.mapPinThumbnailPixels) async -> CGImage? {
+        let key = Self.key(postId: postId, slot: slot)
+        if let thumbnail = thumbnails[key] { return thumbnail }
+        guard let image = await image(for: postId, slot: slot) else { return nil }
+        let thumbnail = await Task.detached(priority: .utility) { Self.squareThumbnail(of: image, pixels: pixels) }.value
+        guard let thumbnail else { return nil }
+        if thumbnails[key] == nil { thumbnailOrder.append(key) }
+        thumbnails[key] = thumbnail
+        while thumbnailOrder.count > AppConfig.mapPinThumbnailCacheLimit {
+            thumbnails[thumbnailOrder.removeFirst()] = nil
+        }
+        return thumbnail
+    }
+
     private func insert(_ image: CGImage, for key: String) {
         if images[key] == nil { order.append(key) }
         images[key] = image
         while order.count > limit {
             images[order.removeFirst()] = nil
         }
+    }
+
+    /// Aspect-fill into a `pixels` x `pixels` square.
+    nonisolated static func squareThumbnail(of image: CGImage, pixels: Int) -> CGImage? {
+        let side = CGFloat(pixels)
+        guard pixels > 0, image.width > 0, image.height > 0,
+              let context = CGContext(data: nil, width: pixels, height: pixels, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        let scale = max(side / CGFloat(image.width), side / CGFloat(image.height))
+        let width = CGFloat(image.width) * scale
+        let height = CGFloat(image.height) * scale
+        context.interpolationQuality = .high
+        context.draw(image, in: CGRect(x: (side - width) / 2, y: (side - height) / 2, width: width, height: height))
+        return context.makeImage()
     }
 
     private nonisolated static func decode(_ data: Data) -> CGImage? {
