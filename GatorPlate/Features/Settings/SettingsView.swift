@@ -78,7 +78,7 @@ struct SettingsView: View {
             .sheet(item: $openDocument) { kind in
                 LegalDocumentSheet(kind: kind) { openDocument = nil }
             }
-            .confirmationDialog("Sign out of GatorPlate?", isPresented: $isConfirmingSignOut, titleVisibility: .visible) {
+            .alert("Sign out of GatorPlate?", isPresented: $isConfirmingSignOut) {
                 Button("Sign out", role: .destructive, action: onSignOut)
                 Button("Cancel", role: .cancel) {}
             } message: {
