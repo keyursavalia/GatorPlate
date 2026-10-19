@@ -39,6 +39,7 @@ struct LocationPickerSheet: View {
                 }
             }
             .searchable(text: $query, prompt: "Search buildings")
+            .scrollDismissesKeyboard(.interactively)
             .environment(\.listAccent, Theme.Palette.accent)
             .navigationTitle("Where's the food?")
             .navigationBarTitleDisplayMode(.inline)
