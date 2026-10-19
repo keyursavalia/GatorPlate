@@ -4,15 +4,10 @@ import OSLog
 import SwiftUI
 
 /// Drives the campus map: live pins (through the Map/Feed filter), selection, Apple Maps directions, poster/report
-/// actions and location banners.
+/// actions, and asking for location from the location button (`LocationAccess`).
 @MainActor
 @Observable
 final class MapViewModel {
-    /// No "not asked yet" banner: the system prompt fires on its own (`FirstRunPermissions`).
-    enum LocationBanner: String, Hashable {
-        case denied, restricted, reducedAccuracy
-    }
-
     enum ActionStatus: Equatable {
         case idle, working, failed(String)
     }
@@ -25,6 +20,8 @@ final class MapViewModel {
                                                     maximumDistance: SFSUCampus.maxCameraDistance)
 
     let location: any LocationProviding
+    /// Location on/off, shared with Settings > Location.
+    let locationAccess: LocationAccess
     let images: PostImageCache?
     /// The shared Map/Feed filter and the posts it lets through.
     let browse: BrowseResults
@@ -40,10 +37,6 @@ final class MapViewModel {
     /// Posts reported in this session: Report turns into "Thanks, we'll review it."
     private(set) var reportedPostIds: Set<String> = []
 
-    /// Bumped on "Not now" so `locationBanner` re-reads the stored dismissals.
-    private var dismissalCount = 0
-    @ObservationIgnored private let dismissals: BannerDismissals
-
     @ObservationIgnored private let repository: PostsRepository
     @ObservationIgnored private let navigation: AppNavigation
     @ObservationIgnored private let postService: any PostService
@@ -51,14 +44,14 @@ final class MapViewModel {
     @ObservationIgnored private let currentUid: String?
 
     init(repository: PostsRepository, navigation: AppNavigation, postService: any PostService,
-         routing: any RoutingService, location: any LocationProviding, images: PostImageCache?,
-         browse: BrowseResults, currentUid: String?, dismissals: BannerDismissals = BannerDismissals()) {
-        self.dismissals = dismissals
+         routing: any RoutingService, location: any LocationProviding, locationAccess: LocationAccess,
+         images: PostImageCache?, browse: BrowseResults, currentUid: String?) {
         self.repository = repository
         self.navigation = navigation
         self.postService = postService
         self.routing = routing
         self.location = location
+        self.locationAccess = locationAccess
         self.images = images
         self.browse = browse
         self.currentUid = currentUid
@@ -127,17 +120,9 @@ final class MapViewModel {
         navigation.showAvailableFood()
     }
 
-    var locationBanner: LocationBanner? {
-        let banner: LocationBanner? = switch location.authorization {
-        case .notDetermined: nil
-        case .denied: .denied
-        case .restricted: .restricted
-        case .authorized(precise: false): .reducedAccuracy
-        case .authorized(precise: true): nil
-        }
-        _ = dismissalCount
-        guard let banner, !dismissals.isSnoozed(banner.rawValue) else { return nil }
-        return banner
+    /// Denied or restricted: the location button shows "location off" and explains how to turn it on.
+    var isLocationOff: Bool {
+        location.authorization == .denied || location.authorization == .restricted
     }
 
     /// True when recenter goes to the user rather than to the campus.
@@ -245,18 +230,6 @@ final class MapViewModel {
         case .permissionDenied: AppError.permissionDenied.userMessage
         default: AppError.unknown.userMessage
         }
-    }
-
-    // MARK: Location
-
-    func requestPreciseLocation() {
-        location.requestTemporaryPreciseAccuracy()
-    }
-
-    /// "Not now": hidden for `AppConfig.locationBannerSnoozeDays`, across launches.
-    func dismissBanner(_ banner: LocationBanner) {
-        dismissals.dismiss(banner.rawValue)
-        dismissalCount += 1
     }
 
     // MARK: Text
