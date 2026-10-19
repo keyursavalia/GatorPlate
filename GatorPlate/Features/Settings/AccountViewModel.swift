@@ -87,7 +87,7 @@ final class AccountViewModel {
 
     func changePassword(current: String, new: String, confirm: String) async -> Bool {
         guard Validation.isPasswordValid(new) else {
-            passwordStatus = .failed("Use at least \(AppConfig.minPasswordLength) characters.")
+            passwordStatus = .failed(Validation.weakPasswordMessage)
             return false
         }
         guard new == confirm else {
