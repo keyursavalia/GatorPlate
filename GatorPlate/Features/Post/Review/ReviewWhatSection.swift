@@ -107,7 +107,7 @@ struct ReviewWhatSection: View {
     @ViewBuilder
     private var servingsRow: some View {
         if let servings = viewModel.draft.estimatedServings {
-            Stepper(value: servingsBinding(default: servings), in: AppConfig.postServingsRange, step: 5) {
+            Stepper(value: servingsBinding(default: servings), in: AppConfig.postServingsRange) {
                 ListRow(title: "Servings", systemImage: "person.2", value: "~\(servings)")
             }
             .accessibilityLabel("About \(servings) servings")
