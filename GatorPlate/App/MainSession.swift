@@ -22,7 +22,9 @@ final class MainSession {
         self.uid = profile.uid
         let repository = PostsRepository(service: environment.posts)
         let notifications = environment.notifications
-        let navigation = AppNavigation(posts: repository, alertResolved: { notifications.alertHandled($0) })
+        let postService = environment.posts
+        let navigation = AppNavigation(posts: repository, alertResolved: { notifications.alertHandled($0) },
+                                       lookup: { try await postService.fetchPost(id: $0) })
         let images = PostImageCache(store: environment.images)
         let settings = SettingsViewModel(notifications: environment.notifications, profile: profile)
         let filters = PostFilterStore(uid: profile.uid)
