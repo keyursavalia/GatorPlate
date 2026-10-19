@@ -24,11 +24,11 @@ final class AuthViewModel {
 
     // MARK: Form
     var mode: Mode = .logIn
-    var accountType: AccountType = .student
     var name = ""
-    var orgName = ""
     var email = ""
     var password = ""
+    /// Create account only: the password typed again.
+    var confirmPassword = ""
     private var hasAttemptedSubmit = false
 
     @ObservationIgnored private let auth: any AuthService
@@ -103,6 +103,7 @@ final class AuthViewModel {
             recordTermsIfNeeded(for: session.profile)
             state = .ready(session)
             password = ""
+            confirmPassword = ""
         }
     }
 
@@ -135,6 +136,7 @@ final class AuthViewModel {
 
     private func resetTransientInput() {
         password = ""
+        confirmPassword = ""
         formError = nil
         infoMessage = nil
         showsResetHint = false
@@ -173,12 +175,9 @@ final class AuthViewModel {
                 showsResetHint = (error as? AppError) == .unauthorized
             }
         case .signUp:
-            let isOrg = accountType == .organization
-            let org = Validation.trimmedName(orgName)
-            let displayName = isOrg ? org : Validation.trimmedName(name)
             do {
-                try await auth.signUp(email: normalizedEmail, password: password, displayName: displayName,
-                                      accountType: accountType, orgName: isOrg ? org : nil)
+                try await auth.signUp(email: normalizedEmail, password: password,
+                                      displayName: Validation.trimmedName(name))
             } catch {
                 formError = message(for: error)
             }
@@ -260,9 +259,8 @@ final class AuthViewModel {
 
     var nameError: String? {
         guard hasAttemptedSubmit, mode == .signUp else { return nil }
-        let value = accountType == .organization ? orgName : name
-        guard Validation.trimmedName(value).isEmpty else { return nil }
-        return accountType == .organization ? "Organization name is required." : "Name is required."
+        guard Validation.trimmedName(name).isEmpty else { return nil }
+        return "Name is required."
     }
 
     var emailError: String? {
@@ -274,13 +272,19 @@ final class AuthViewModel {
         guard hasAttemptedSubmit else { return nil }
         if password.isEmpty { return "Password is required." }
         if mode == .signUp, !Validation.isPasswordValid(password) {
-            return "Use at least \(AppConfig.minPasswordLength) characters."
+            return Validation.weakPasswordMessage
         }
         return nil
     }
 
+    var confirmPasswordError: String? {
+        guard hasAttemptedSubmit, mode == .signUp else { return nil }
+        if confirmPassword.isEmpty { return "Enter your password again." }
+        return confirmPassword == password ? nil : "Passwords don't match."
+    }
+
     private var isFormValid: Bool {
-        nameError == nil && emailError == nil && passwordError == nil
+        nameError == nil && emailError == nil && passwordError == nil && confirmPasswordError == nil
     }
 
     private func message(for error: Error) -> String {
