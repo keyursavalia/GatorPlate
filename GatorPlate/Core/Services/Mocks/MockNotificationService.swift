@@ -60,11 +60,4 @@ final class MockNotificationService: NotificationService {
         activeUid = nil
         alertsEnabled = false
     }
-
-    #if DEBUG
-    func scheduleTestAlert(postId: String) async throws {
-        if let setError { throw setError }
-        pendingAlert = AlertOpenRequest(postId: postId, appState: .foreground, notificationId: UUID().uuidString)
-    }
-    #endif
 }
