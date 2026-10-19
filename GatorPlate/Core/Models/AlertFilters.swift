@@ -11,11 +11,19 @@ nonisolated struct AlertFilters: Codable, Equatable, Sendable {
     }
 
     enum Diet: String, Codable, CaseIterable, Sendable {
-        case vegan, vegetarian
+        case vegan, vegetarian, nonVegetarian
+
+        var displayName: String {
+            switch self {
+            case .vegan: "Vegan"
+            case .vegetarian: "Vegetarian"
+            case .nonVegetarian: "Non-vegetarian"
+            }
+        }
     }
 
     var mode = Mode.all
-    /// Empty = any diet. `vegetarian` also allows vegan items.
+    /// Empty = any diet. `vegetarian` also allows vegan items; `nonVegetarian` also allows mixed posts.
     var diets: [Diet] = []
     var includeUnknownDiet = false
     /// Catalog building IDs; empty = anywhere on campus.
