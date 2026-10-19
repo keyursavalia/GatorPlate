@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Settings: profile card (opens Account) or, for guests, a Join / Sign in card; notifications (custom notifications
-/// and quiet hours only while notifications are on); display; privacy and legal; about; sign out for accounts.
+/// and quiet hours only while notifications are on); location; display; privacy and legal; about; sign out for accounts.
 struct SettingsView: View {
     let session: MainSession
     let authSession: AuthSession
@@ -22,7 +22,6 @@ struct SettingsView: View {
     private var viewModel: SettingsViewModel { session.settings }
     private var profile: UserProfile { authSession.profile }
 
-
     var body: some View {
         @Bindable var navigation = session.navigation
         NavigationStack(path: $navigation.settingsPath) {
@@ -40,6 +39,7 @@ struct SettingsView: View {
                     }
                 }
                 alertsSection
+                LocationSection(access: session.locationAccess)
                 Section("Display") {
                     Toggle(isOn: $showCalories) {
                         ListRow(title: "Show calorie estimates", systemImage: "flame")
