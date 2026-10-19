@@ -58,7 +58,6 @@ struct SettingsView: View {
                     NavigationLink { PrivacyView() } label: {
                         ListRow(title: "Your privacy", systemImage: "hand.raised")
                     }
-                    documentRow(.privacy, systemImage: "lock.doc")
                     documentRow(.terms, systemImage: "doc.text")
                 }
                 Section("About") {
