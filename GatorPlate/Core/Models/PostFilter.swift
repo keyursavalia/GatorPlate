@@ -5,7 +5,7 @@ import Foundation
 /// distance are browse-only. Kept on this phone only (`PostFilterStore`): never written to Firestore, never logged,
 /// never sent to the Cloud Function, removed when the account is deleted.
 nonisolated struct PostFilter: Codable, Equatable, Sendable {
-    /// Empty = any diet. `vegetarian` also allows vegan items.
+    /// Empty = any diet. `vegetarian` also allows vegan items; `nonVegetarian` also allows mixed posts.
     var diets: [AlertFilters.Diet] = []
     var includeUnknownDiet = false
     /// Catalog building IDs; empty = anywhere on campus.
