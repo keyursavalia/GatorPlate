@@ -11,9 +11,8 @@ protocol AuthService {
     /// Signs in anonymously and creates the guest profile with the Terms version accepted on this device.
     func signInAsGuest(acceptedTermsVersion: String, acceptedTermsAt: Date) async throws
     /// A guest is upgraded in place (same uid, so alert settings carry over); otherwise a new account is created.
-    /// Success is observed through `currentUser`, not returned.
-    func signUp(email: String, password: String, displayName: String,
-                accountType: AccountType, orgName: String?) async throws
+    /// Success is observed through `currentUser`, not returned. New accounts are students (no organization accounts).
+    func signUp(email: String, password: String, displayName: String) async throws
     /// Replaces a guest session with an existing account; the old anonymous user is deleted (best effort).
     func signIn(email: String, password: String) async throws
     func signOut() throws
