@@ -42,7 +42,7 @@ enum FoodAnalysisSchema {
             "allergens": .array(items: .enumeration(values: allergenValues),
                                 description: "Likely present, not guaranteed"),
             "cautions": .array(items: .string(), maxItems: 3),
-            "title": .string(description: "At most 60 characters, starts with FREE: "),
+            "title": .string(description: "At most 60 characters, just the food; no FREE prefix"),
             "description": .string(description: "100 to 150 characters"),
             "notes": .string(description: "Why you were unsure about anything"),
         ],
