@@ -72,7 +72,13 @@ struct MainTabView: View {
             switch phase {
             case .active:
                 session?.repository.didBecomeActive()
-                Task { await environment.notifications.refreshAuthorization() }
+                Task {
+                    await environment.notifications.refreshAuthorization()
+                    // Back from iOS Settings after "Turn on notifications in Settings".
+                    if await session?.settings.resumeAfterSystemSettings() == true {
+                        notice = "Notifications on for all free food."
+                    }
+                }
             case .background: session?.repository.didEnterBackground()
             case .inactive: break
             @unknown default: break
