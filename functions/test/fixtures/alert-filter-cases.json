@@ -1086,5 +1086,113 @@
       "foods": []
     },
     "expected": true
+  },
+  {
+    "name": "non-vegetarian diet matches a meat item",
+    "post": {
+      "title": "Leftovers",
+      "description": "",
+      "items": [
+        {
+          "name": "Chicken wings",
+          "dietary": "nonVegetarian"
+        }
+      ],
+      "overallDietary": "nonVegetarian",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "nonVegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "non-vegetarian diet skips a vegan-only post",
+    "post": {
+      "title": "Leftovers",
+      "description": "",
+      "items": [
+        {
+          "name": "Hummus",
+          "dietary": "vegan"
+        }
+      ],
+      "overallDietary": "vegan",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "nonVegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": false
+  },
+  {
+    "name": "non-vegetarian diet matches a mixed post with no items",
+    "post": {
+      "title": "Leftovers",
+      "description": "",
+      "items": [],
+      "overallDietary": "mixed",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "nonVegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "vegan or non-vegetarian matches either",
+    "post": {
+      "title": "Leftovers",
+      "description": "",
+      "items": [
+        {
+          "name": "Salad",
+          "dietary": "vegan"
+        }
+      ],
+      "overallDietary": "vegan",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegan",
+        "nonVegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
   }
 ]
