@@ -12,7 +12,7 @@ struct MapScreen: View {
     @State private var detent: PresentationDetent = Self.peekDetent
     /// The map's full drawn area in its own coordinates, safe areas included (the map draws under the bars).
     @State private var drawnRect = CGRect.zero
-    @Environment(\.openURL) private var openURL
+    @State private var locationPrompt: LocationPrompt?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Opens here: photo, title, the three facts and Open in Apple Maps. Pull up (or scroll) for the rest; the
@@ -169,20 +169,12 @@ struct MapScreen: View {
                     .frame(maxWidth: .infinity)
                     .transition(.opacity)
             }
-            if let banner = viewModel.locationBanner {
-                locationBanner(banner)
-            }
             VStack(spacing: Theme.Spacing.sm) {
                 // One sheet at a time: hidden while a post's sheet is open.
                 if viewModel.selectedPost == nil {
                     FilterButton(activeCount: viewModel.filterCount, action: viewModel.openFilters)
                 }
-                GlassIconButton(
-                    systemImage: viewModel.canCenterOnUser ? "location.fill" : "building.columns",
-                    accessibilityLabel: viewModel.canCenterOnUser ? "Center on my location" : "Show whole campus",
-                    accessibilityHint: "Moves the map") {
-                        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.6)) { viewModel.recenter() }
-                    }
+                locationButton
                 MapCompass(scope: mapScope)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
@@ -197,26 +189,22 @@ struct MapScreen: View {
         }
     }
 
-    @ViewBuilder
-    private func locationBanner(_ banner: MapViewModel.LocationBanner) -> some View {
-        let notNow = Banner.Action(title: "Not now", isPrimary: false) { viewModel.dismissBanner(banner) }
-        switch banner {
-        case .denied:
-            solidBanner(Banner(
-                style: .warning,
-                message: "Location is off. The map still works, but distances are hidden.",
-                actions: [Banner.Action(title: "Open Settings") { openSettings() }, notNow]))
-        case .restricted:
-            solidBanner(Banner(
-                style: .warning,
-                message: "Location is restricted on this device. The map still works, but distances are hidden.",
-                actions: [notNow]))
-        case .reducedAccuracy:
-            solidBanner(Banner(
-                style: .warning,
-                message: "Precise location is off, directions may be less accurate.",
-                actions: [Banner.Action(title: "Use precise location") { viewModel.requestPreciseLocation() }, notNow]))
-        }
+    /// Centers on the student, or on campus. With location off it shows a slashed arrow and asks to turn it on.
+    private var locationButton: some View {
+        let label = viewModel.canCenterOnUser ? "Center on my location"
+            : viewModel.isLocationOff ? "Location is off" : "Show whole campus"
+        return GlassIconButton(
+            systemImage: viewModel.canCenterOnUser ? "location.fill"
+                : viewModel.isLocationOff ? "location.slash" : "building.columns",
+            accessibilityLabel: label,
+            accessibilityHint: viewModel.isLocationOff ? "Shows the whole campus and how to turn on location"
+                                                       : "Moves the map") {
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.6)) { viewModel.recenter() }
+                if viewModel.isLocationOff {
+                    Task { locationPrompt = await viewModel.locationAccess.promptFromMap() }
+                }
+            }
+            .locationPromptAlert($locationPrompt, access: viewModel.locationAccess)
     }
 
     private var alertsToast: some View {
@@ -249,11 +237,6 @@ struct MapScreen: View {
             set: { isPresented in
                 if !isPresented { viewModel.selectedPostId = nil }
             })
-    }
-
-    private func openSettings() {
-        guard let url = AppSettingsURL.url else { return }
-        openURL(url)
     }
 }
 
