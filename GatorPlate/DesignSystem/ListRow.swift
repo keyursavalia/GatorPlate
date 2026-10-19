@@ -7,21 +7,24 @@ struct ListRow: View {
     let systemImage: String
     var subtitle: String?
     var value: String?
-    var iconTint: Color = Theme.Palette.brandPurple
+    /// Nil uses the screen's `listAccent`.
+    var iconTint: Color?
     /// For buttons that open a sheet, so they look like the navigation rows.
     var showsDisclosure = false
 
     @ScaledMetric(relativeTo: .body) private var iconWidth: CGFloat = 28
+    @Environment(\.listAccent) private var listAccent
 
     var body: some View {
         HStack(spacing: Theme.Spacing.md) {
             Image(systemName: systemImage)
-                .foregroundStyle(iconTint)
+                .foregroundStyle(iconTint ?? listAccent)
                 .frame(width: iconWidth)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
+                // `Color.primary`, not `.primary`: inside a Button the hierarchical style resolves to the tint.
                 Text(title)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color.primary)
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
                         .font(.subheadline)
@@ -51,14 +54,17 @@ struct CheckRow: View {
     let isSelected: Bool
     let action: () -> Void
 
+    @Environment(\.listAccent) private var listAccent
+
     var body: some View {
         Button(action: action) {
             HStack {
-                Text(title).foregroundStyle(.primary)
+                // Primary text (white in Dark mode), never the button tint.
+                Text(title).foregroundStyle(Color.primary)
                 Spacer()
                 Image(systemName: "checkmark")
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(Theme.Palette.brandPurple)
+                    .foregroundStyle(listAccent)
                     .opacity(isSelected ? 1 : 0)
                     .accessibilityHidden(true)
             }
@@ -74,15 +80,17 @@ struct NoteRow: View {
     let text: String
     let systemImage: String
 
+    @Environment(\.listAccent) private var listAccent
+
     var body: some View {
         Label {
             Text(text)
         } icon: {
-            Image(systemName: systemImage).foregroundStyle(Theme.Palette.brandPurple)
+            Image(systemName: systemImage).foregroundStyle(listAccent)
         }
         .font(.footnote)
         .foregroundStyle(.secondary)
-        .listRowBackground(Theme.Palette.brandPurple.opacity(0.08))
+        .listRowBackground(listAccent.opacity(0.08))
     }
 }
 
