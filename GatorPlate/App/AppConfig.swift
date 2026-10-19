@@ -100,6 +100,10 @@ nonisolated enum AppConfig {
     static let postSelectionPendingSeconds = 5
     /// A post opened from an alert waits at most this long for the listener (a resumed app may need to reconnect).
     static let alertOpenMaxWaitSeconds = 20
+    /// A tapped alert's post is looked up once on the server (so "no longer available" shows at once).
+    static let alertLookupTimeoutSeconds = 5
+    /// The "no longer available" card hides after this long (not while VoiceOver is on it).
+    static let alertUnavailableCardSeconds = 10.0
     /// Latitude span of the map region shown when an alert opens a post; the pin sits above the sheet.
     static let alertOpenRegionSpanDegrees = 0.006
     /// Photos kept in memory for the map card and the feed.
