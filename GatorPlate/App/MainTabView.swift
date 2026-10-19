@@ -87,6 +87,12 @@ struct MainTabView: View {
         .onChange(of: environment.notifications.pendingAlert) {
             openTappedAlert()
         }
+        .onChange(of: environment.location.authorization) {
+            // Back from iOS Settings after "Turn on location in Settings".
+            if session?.locationAccess.authorizationDidChange() == true {
+                notice = "Location on. Distances and walking times are back."
+            }
+        }
     }
 
     private func tabs(_ session: MainSession) -> some View {
