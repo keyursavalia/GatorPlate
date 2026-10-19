@@ -39,6 +39,7 @@ struct PlacesPickerSheet: View {
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
             .searchable(text: $query, prompt: "Search buildings")
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Places")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
