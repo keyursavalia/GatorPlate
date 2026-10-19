@@ -21,7 +21,7 @@ struct PostFilterSheet: View {
                         Button("Use my notification filters", systemImage: "bell.badge") {
                             store.filter.copyPicks(from: notificationPicks)
                         }
-                        .foregroundStyle(Theme.Palette.brandPurple)
+                        .foregroundStyle(Theme.Palette.accent)
                     } footer: {
                         Text("Copies your Custom notifications picks. Changing one never changes the other.")
                     }
@@ -35,6 +35,7 @@ struct PostFilterSheet: View {
                 }
             }
             .environment(\.defaultMinListRowHeight, 48)
+            .environment(\.listAccent, Theme.Palette.accent)
             .safeAreaInset(edge: .bottom) { resultLine }
             .navigationTitle("Filters")
             .navigationBarTitleDisplayMode(.inline)
