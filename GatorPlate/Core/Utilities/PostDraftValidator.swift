@@ -23,8 +23,6 @@ nonisolated enum PostDraftValidator {
             block(.title, "Add a title.")
         } else if title.count > AppConfig.postTitleMaxLength {
             block(.title, "Keep the title under \(AppConfig.postTitleMaxLength) characters.")
-        } else if !title.lowercased().hasPrefix("free") {
-            warn(.title, "Titles that start with \"FREE\" get noticed faster.")
         }
 
         let description = PostText.clean(draft.description)
