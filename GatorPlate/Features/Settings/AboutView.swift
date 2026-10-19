@@ -12,17 +12,12 @@ struct AboutView: View {
 
     private let steps = [
         Step(id: "snap", icon: "camera", title: "Snap the leftovers",
-             detail: "Orgs photograph extra food after an event."),
+             detail: "Students photograph extra food after an event."),
         Step(id: "draft", icon: "sparkles", title: "AI drafts the post",
              detail: "Items, diet and allergens, reviewed by the poster."),
         Step(id: "find", icon: "map", title: "Students find it",
              detail: "Live on the map, with notifications and Apple Maps directions."),
     ]
-
-    #if DEBUG
-    /// "Send test alert", DEBUG builds only.
-    var testAlert: DebugTestAlertSection?
-    #endif
 
     var body: some View {
         ScrollView {
@@ -52,9 +47,6 @@ struct AboutView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                #if DEBUG
-                if let testAlert { testAlert }
-                #endif
             }
             .padding(.horizontal, Theme.Spacing.xl)
             .padding(.vertical, Theme.Spacing.lg)
