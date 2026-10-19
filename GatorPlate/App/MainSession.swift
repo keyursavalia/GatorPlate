@@ -1,8 +1,8 @@
 import Foundation
 
 /// Everything the main UI shares for one guest or account session: the live posts listener, navigation, photo cache,
-/// alerts settings, the Map/Feed filter and its results, the first-run permission prompts and the Map/Feed view models. Created when the main UI appears; `prepareSignOut()` runs
-/// before sign-out.
+/// alerts settings, location access, the Map/Feed filter and its results, the first-run permission prompts and the
+/// Map/Feed view models. Created when the main UI appears; `prepareSignOut()` runs before sign-out.
 @MainActor
 final class MainSession {
     /// The guest or account this session belongs to.
@@ -16,6 +16,8 @@ final class MainSession {
     let map: MapViewModel
     let feed: FeedViewModel
     let settings: SettingsViewModel
+    /// Location on/off for Settings > Location and the map's location button.
+    let locationAccess: LocationAccess
     let permissions: FirstRunPermissions
 
     init(environment: AppEnvironment, profile: UserProfile) {
@@ -28,6 +30,7 @@ final class MainSession {
         let images = PostImageCache(store: environment.images)
         let settings = SettingsViewModel(notifications: environment.notifications, profile: profile)
         let filters = PostFilterStore(uid: profile.uid)
+        let locationAccess = LocationAccess(location: environment.location)
         let browse = BrowseResults(filters: filters, repository: repository, navigation: navigation,
                                    location: environment.location, notificationPicks: {
                                        // "Use my notification filters" shows only while Custom notifications are on.
@@ -39,11 +42,13 @@ final class MainSession {
         self.filters = filters
         self.browse = browse
         self.map = MapViewModel(repository: repository, navigation: navigation, postService: environment.posts,
-                                routing: environment.routing, location: environment.location, images: images,
-                                browse: browse, currentUid: profile.uid)
+                                routing: environment.routing, location: environment.location,
+                                locationAccess: locationAccess, images: images, browse: browse,
+                                currentUid: profile.uid)
         self.feed = FeedViewModel(repository: repository, navigation: navigation, location: environment.location,
                                   images: images, browse: browse)
         self.settings = settings
+        self.locationAccess = locationAccess
         self.permissions = FirstRunPermissions(location: environment.location,
                                                notifications: environment.notifications,
                                                optIn: { await settings.optInFromChain() })
