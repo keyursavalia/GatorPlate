@@ -72,10 +72,10 @@ struct ReviewWhatSection: View {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
                     Text(viewModel.draft.title)
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(Color.primary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Image(systemName: "pencil")
-                        .foregroundStyle(Theme.Palette.brandPurple)
+                        .foregroundStyle(Theme.Palette.accent)
                         .accessibilityHidden(true)
                 }
                 .contentShape(.rect)
