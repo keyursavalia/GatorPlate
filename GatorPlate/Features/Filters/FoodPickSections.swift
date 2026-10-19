@@ -35,23 +35,23 @@ struct FoodPickSections: View {
     @State private var foodError: String?
 
     var body: some View {
-        Group {
-            dietSection
-            placesSection
-            foodsSection
-            allergensSection
-        }
-        .sheet(isPresented: $isPickingPlaces) {
-            PlacesPickerSheet(selected: picks.places) { picks.setPlaces($0) }
-        }
-        .alert("Add a food", isPresented: $isAddingFood) {
-            TextField("e.g. tacos", text: $newFood)
-                .textInputAutocapitalization(.never)
-            Button("Add", action: addFood)
-            Button("Cancel", role: .cancel) { newFood = "" }
-        } message: {
-            Text(wording.addFoodMessage)
-        }
+        // The sheet and the alert sit on one section each: on the `Group` they'd be copied to every section, and
+        // the extra copies dismissed the places sheet the first time it opened.
+        dietSection
+        placesSection
+            .sheet(isPresented: $isPickingPlaces) {
+                PlacesPickerSheet(selected: picks.places) { picks.setPlaces($0) }
+            }
+        foodsSection
+            .alert("Add a food", isPresented: $isAddingFood) {
+                TextField("e.g. tacos", text: $newFood)
+                    .textInputAutocapitalization(.never)
+                Button("Add", action: addFood)
+                Button("Cancel", role: .cancel) { newFood = "" }
+            } message: {
+                Text(wording.addFoodMessage)
+            }
+        allergensSection
     }
 
     // MARK: Sections
@@ -59,7 +59,7 @@ struct FoodPickSections: View {
     private var dietSection: some View {
         Section {
             ForEach(AlertFilters.Diet.allCases, id: \.self) { diet in
-                CheckRow(title: diet == .vegan ? "Vegan" : "Vegetarian",
+                CheckRow(title: diet.displayName,
                          isSelected: picks.diets.contains(diet)) { picks.toggle(diet) }
             }
             if !picks.diets.isEmpty {
