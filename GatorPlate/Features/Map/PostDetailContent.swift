@@ -64,6 +64,7 @@ struct PostDetailContent<MenuContent: View, Actions: View>: View {
         }
         .listSectionSpacing(.compact)
         .environment(\.defaultMinListRowHeight, 48)
+        .environment(\.listAccent, Theme.Palette.accent)
     }
 
     // MARK: Header
@@ -105,7 +106,7 @@ struct PostDetailContent<MenuContent: View, Actions: View>: View {
     @ViewBuilder
     private func factViews(minutes: Int) -> some View {
         Fact(value: "\(minutes) min", caption: "left", systemImage: "clock",
-             tint: minutes < 10 ? Theme.Palette.warning : Theme.Palette.brandPurple)
+             tint: minutes < 10 ? Theme.Palette.warning : Theme.Palette.accent)
         if let walk = distanceMeters.map(DistanceText.walkMinutes(meters:)) {
             Fact(value: "\(walk) min", caption: "walk", systemImage: "figure.walk")
         }
@@ -176,7 +177,7 @@ private struct Fact: View {
     let value: String
     let caption: String
     let systemImage: String
-    var tint: Color = Theme.Palette.brandPurple
+    var tint: Color = Theme.Palette.accent
 
     var body: some View {
         VStack(spacing: 2) {
