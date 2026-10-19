@@ -98,8 +98,21 @@ nonisolated enum AppConfig {
     static let postsRetryMaxDelaySeconds = 30
     /// A post opened by ID (deep link, "View on map") waits this long to arrive before it counts as ended.
     static let postSelectionPendingSeconds = 5
+    /// A post opened from an alert waits at most this long for the listener (a resumed app may need to reconnect).
+    static let alertOpenMaxWaitSeconds = 20
+    /// A tapped alert's post is looked up once on the server (so "no longer available" shows at once).
+    static let alertLookupTimeoutSeconds = 5
+    /// The "no longer available" card hides after this long (not while VoiceOver is on it).
+    static let alertUnavailableCardSeconds = 10.0
+    /// Latitude span of the map region shown when an alert opens a post; the pin sits above the sheet.
+    static let alertOpenRegionSpanDegrees = 0.006
     /// Photos kept in memory for the map card and the feed.
     static let postImageCacheLimit = 60
+    /// Map pins show the post's cover photo (diet ring + badge); false keeps the glyph pins.
+    static let mapPhotoPins = true
+    /// 44 pt @3x.
+    static let mapPinThumbnailPixels = 132
+    static let mapPinThumbnailCacheLimit = 120
     /// Info notices on the map (e.g. "That food post has ended.") hide after this long.
     static let mapNoticeSeconds = 4
 
@@ -120,7 +133,19 @@ nonisolated enum AppConfig {
     static let alertFilterMaxFoods = 10
     static let alertFilterFoodMaxLength = 30
 
+    // Map/Feed filter (device only: `PostFilterStore`, UserDefaults per uid)
+    /// "Time left" choices besides Any: at least this many minutes left.
+    static let browseFilterMinutesLeftOptions = [10, 20]
+    /// "Distance" choices besides Any: at most this many minutes' walk.
+    static let browseFilterWalkMinutesOptions = [5, 10, 15]
+    /// A new location fix re-filters only after moving this far (no work on every fix).
+    static let browseLocationChangeMeters = 25.0
+    /// "Showing 3 of 7 posts" is announced this long after the last change.
+    static let browseAnnouncementDelaySeconds = 1.0
+
     // Account
+    /// "Resend link" in Forgot password is disabled this long after each send.
+    static let passwordResetResendSeconds = 60
     /// The server requires a sign-in this recent to delete an account (`auth_time`).
     static let accountRecentLoginSeconds = 300
     /// Deadline for the delete-account callable.
@@ -138,8 +163,6 @@ nonisolated enum AppConfig {
     static let cameraPromptDelaySeconds = 0.35
     /// "Starting camera" shows only if the session takes longer than this.
     static let cameraSpinnerDelaySeconds = 0.3
-    /// A dismissed location banner comes back after this long.
-    static let locationBannerSnoozeDays = 7
     /// Map toasts (e.g. "Alerts on for all free food") hide after this long.
     static let toastSeconds = 6.0
 

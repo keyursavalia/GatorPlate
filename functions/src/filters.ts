@@ -11,7 +11,7 @@ export const MAX_FOODS = 10;
 export const MAX_FOOD_LENGTH = 30;
 export const MAX_PLACE_ID_LENGTH = 40;
 
-export const DIETS = ["vegan", "vegetarian"] as const;
+export const DIETS = ["vegan", "vegetarian", "nonVegetarian"] as const;
 export const ALLERGENS = ["milk", "eggs", "fish", "shellfish", "treeNuts", "peanuts", "wheat", "soy", "sesame"];
 
 export type Diet = (typeof DIETS)[number];
@@ -152,6 +152,10 @@ export function matchesFilters(post: FilterablePost, rawFilters: unknown): boole
     if (filters.diets.includes("vegetarian")) {
       allowed.add("vegan");
       allowed.add("vegetarian");
+    }
+    if (filters.diets.includes("nonVegetarian")) {
+      allowed.add("nonVegetarian");
+      allowed.add("mixed");
     }
     if (filters.includeUnknownDiet) allowed.add("unknown");
     if (!items.some((item) => allowed.has(item.dietary))) return false;

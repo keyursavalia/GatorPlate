@@ -17,8 +17,18 @@ final class MockAccountService: AccountService {
         password = new
     }
 
+    private(set) var resetRequests: [String] = []
+    /// The signed-in account's email for `sendPasswordResetToCurrentUser`.
+    var currentEmail: String? = "mock@gmail.com"
+
     func sendPasswordReset(email: String) async throws {
         if let error { throw error }
+        resetRequests.append(email)
+    }
+
+    func sendPasswordResetToCurrentUser() async throws {
+        guard let currentEmail else { throw AppError.unauthorized }
+        try await sendPasswordReset(email: currentEmail)
     }
 
     func deleteAccount(password: String, prepare: () async -> Void) async throws {

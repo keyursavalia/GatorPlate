@@ -12,8 +12,12 @@ final class SettingsViewModel {
     private(set) var alertFilters: AlertFilters?
     private(set) var isUpdating = false
     private(set) var errorMessage: String?
+    /// "Turn on notifications in Settings": the toggle was switched on while iOS blocks GatorPlate's notifications.
+    var showsSettingsPrompt = false
 
     @ObservationIgnored private let notifications: any NotificationService
+    /// The student went to iOS Settings to allow notifications; coming back allowed turns them on (in memory only).
+    @ObservationIgnored private var pendingSystemOptIn = false
     @ObservationIgnored private let uid: String
 
     init(notifications: any NotificationService, profile: UserProfile) {
@@ -56,9 +60,26 @@ final class SettingsViewModel {
         case .notDetermined:
             // Skipped the first-run chain (e.g. opened from a deep link): ask now.
             if await notifications.requestAuthorization().isAuthorized { await apply(true) }
-        case .denied: errorMessage = "Turn on notifications for GatorPlate in iOS Settings first."
+        case .denied: showsSettingsPrompt = true
         case .authorized: await apply(true)
         }
+    }
+
+    /// "Open Settings" in the prompt: remember that the student wants notifications on.
+    func willOpenSystemSettings() {
+        pendingSystemOptIn = true
+    }
+
+    /// Back from iOS Settings: if notifications are now allowed, turn them on (all free food) without another tap.
+    /// True when they were turned on; a still-denied return just forgets the intent.
+    func resumeAfterSystemSettings() async -> Bool {
+        guard pendingSystemOptIn else { return false }
+        pendingSystemOptIn = false
+        await notifications.refreshAuthorization()
+        guard notifications.authorization.isAuthorized, !alertsEnabled else { return false }
+        errorMessage = nil
+        await apply(true)
+        return alertsEnabled
     }
 
     /// "Allow" in the first-run chain means opt in (all free food). True when it was saved.

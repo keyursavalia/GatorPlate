@@ -3,15 +3,11 @@ import Observation
 import OSLog
 import SwiftUI
 
-/// Drives the campus map: live pins, selection, Apple Maps directions, poster/report actions and location banners.
+/// Drives the campus map: live pins (through the Map/Feed filter), selection, Apple Maps directions, poster/report
+/// actions, and asking for location from the location button (`LocationAccess`).
 @MainActor
 @Observable
 final class MapViewModel {
-    /// No "not asked yet" banner: the system prompt fires on its own (`FirstRunPermissions`).
-    enum LocationBanner: String, Hashable {
-        case denied, restricted, reducedAccuracy
-    }
-
     enum ActionStatus: Equatable {
         case idle, working, failed(String)
     }
@@ -24,7 +20,11 @@ final class MapViewModel {
                                                     maximumDistance: SFSUCampus.maxCameraDistance)
 
     let location: any LocationProviding
+    /// Location on/off, shared with Settings > Location.
+    let locationAccess: LocationAccess
     let images: PostImageCache?
+    /// The shared Map/Feed filter and the posts it lets through.
+    let browse: BrowseResults
     var cameraPosition: MapCameraPosition = .camera(MapViewModel.homeCamera)
     /// The Map tab is on screen (drives the first-run permission prompts).
     private(set) var isVisible = false
@@ -37,10 +37,6 @@ final class MapViewModel {
     /// Posts reported in this session: Report turns into "Thanks, we'll review it."
     private(set) var reportedPostIds: Set<String> = []
 
-    /// Bumped on "Not now" so `locationBanner` re-reads the stored dismissals.
-    private var dismissalCount = 0
-    @ObservationIgnored private let dismissals: BannerDismissals
-
     @ObservationIgnored private let repository: PostsRepository
     @ObservationIgnored private let navigation: AppNavigation
     @ObservationIgnored private let postService: any PostService
@@ -48,19 +44,51 @@ final class MapViewModel {
     @ObservationIgnored private let currentUid: String?
 
     init(repository: PostsRepository, navigation: AppNavigation, postService: any PostService,
-         routing: any RoutingService, location: any LocationProviding, images: PostImageCache?,
-         currentUid: String?, dismissals: BannerDismissals = BannerDismissals()) {
-        self.dismissals = dismissals
+         routing: any RoutingService, location: any LocationProviding, locationAccess: LocationAccess,
+         images: PostImageCache?, browse: BrowseResults, currentUid: String?) {
         self.repository = repository
         self.navigation = navigation
         self.postService = postService
         self.routing = routing
         self.location = location
+        self.locationAccess = locationAccess
         self.images = images
+        self.browse = browse
         self.currentUid = currentUid
     }
 
-    var posts: [FoodPost] { repository.activePosts }
+    /// Pins: the posts the filter lets through, plus the open post even when the filter would hide it.
+    var posts: [FoodPost] { browse.posts }
+
+    // MARK: Filters
+
+    var filterCount: Int { browse.filters.filter.activeCount }
+
+    /// The filter sheet (closed by a tapped alert before its post opens).
+    var isFilterSheetPresented: Bool {
+        get { navigation.filterSheetTab == .map }
+        set { navigation.filterSheetTab = newValue ? .map : nil }
+    }
+
+    /// "Filtered · 3 of 7" over the map: only while the filter hides something.
+    var showsFilterPill: Bool { browse.hiddenCount > 0 }
+
+    func openFilters() {
+        isFilterSheetPresented = true
+    }
+
+    func clearFilters() {
+        browse.filters.clear()
+    }
+
+    func filterSheetDidDismiss() {
+        navigation.filterSheetDidDismiss()
+    }
+
+    /// "Hidden by your filters" in the sheet of a post that was opened on purpose.
+    func isHiddenByFilters(_ post: FoodPost) -> Bool {
+        browse.isHiddenByFilters(post)
+    }
 
     var selectedPostId: String? {
         get { navigation.selectedPostId }
@@ -78,17 +106,23 @@ final class MapViewModel {
     /// "That food post has ended." and similar, shown briefly over the map.
     var notice: String? { navigation.notice }
 
-    var locationBanner: LocationBanner? {
-        let banner: LocationBanner? = switch location.authorization {
-        case .notDetermined: nil
-        case .denied: .denied
-        case .restricted: .restricted
-        case .authorized(precise: false): .reducedAccuracy
-        case .authorized(precise: true): nil
-        }
-        _ = dismissalCount
-        guard let banner, !dismissals.isSnoozed(banner.rawValue) else { return nil }
-        return banner
+    /// A tapped alert's post is being looked up ("Opening post…").
+    var isOpeningAlert: Bool { navigation.isOpeningAlert }
+
+    /// A tapped alert's post is gone: the centered "no longer available" card.
+    var showsAlertUnavailable: Bool { navigation.showsAlertUnavailable }
+
+    func dismissAlertUnavailable() {
+        navigation.dismissAlertUnavailable()
+    }
+
+    func showAvailableFood() {
+        navigation.showAvailableFood()
+    }
+
+    /// Denied or restricted: the location button shows "location off" and explains how to turn it on.
+    var isLocationOff: Bool {
+        location.authorization == .denied || location.authorization == .restricted
     }
 
     /// True when recenter goes to the user rather than to the campus.
@@ -105,6 +139,7 @@ final class MapViewModel {
     func onAppear() {
         isVisible = true
         location.startUpdates()
+        focusOnAlertPost()
     }
 
     func onDisappear() {
@@ -129,6 +164,21 @@ final class MapViewModel {
     }
 
     // MARK: Camera
+
+    /// An alert opened this post: frame it above the sheet. The camera bounds keep it inside the campus lock.
+    func focusOnAlertPost() {
+        guard let id = navigation.cameraFocusPostId else { return }
+        navigation.clearCameraFocus()
+        guard let post = repository.post(id: id) else { return }
+        let span = AppConfig.alertOpenRegionSpanDegrees
+        // The pin sits about a fifth of the way down, clear of the sheet over the lower part of the map.
+        let center = CLLocationCoordinate2D(latitude: post.coordinate.latitude - span * 0.3,
+                                            longitude: post.coordinate.longitude)
+        cameraPosition = .region(MKCoordinateRegion(
+            center: center, span: MKCoordinateSpan(latitudeDelta: span, longitudeDelta: span / 3)))
+    }
+
+    var cameraFocusPostId: String? { navigation.cameraFocusPostId }
 
     func recenter() {
         cameraPosition = canCenterOnUser
@@ -180,18 +230,6 @@ final class MapViewModel {
         case .permissionDenied: AppError.permissionDenied.userMessage
         default: AppError.unknown.userMessage
         }
-    }
-
-    // MARK: Location
-
-    func requestPreciseLocation() {
-        location.requestTemporaryPreciseAccuracy()
-    }
-
-    /// "Not now": hidden for `AppConfig.locationBannerSnoozeDays`, across launches.
-    func dismissBanner(_ banner: LocationBanner) {
-        dismissals.dismiss(banner.rawValue)
-        dismissalCount += 1
     }
 
     // MARK: Text

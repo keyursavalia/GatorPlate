@@ -12,8 +12,8 @@ nonisolated enum FirebaseErrorMapper {
             switch code {
             case .emailAlreadyInUse, .credentialAlreadyInUse:
                 return .validation("That email already has an account. Try signing in.")
-            case .weakPassword:
-                return .validation("Use at least \(AppConfig.minPasswordLength) characters.")
+            case .weakPassword, .passwordDoesNotMeetRequirements:
+                return .validation(Validation.weakPasswordMessage)
             case .wrongPassword, .invalidCredential, .userNotFound, .invalidEmail, .userDisabled:
                 return .unauthorized
             case .tooManyRequests:

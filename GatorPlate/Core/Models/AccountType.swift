@@ -1,5 +1,6 @@
 import Foundation
 
+/// New accounts are always `student`; `organization` remains only for accounts created before sign-up dropped it.
 nonisolated enum AccountType: String, Codable, Sendable {
     case student, organization
     /// Browsing without an account (Firebase anonymous user). Can't post; can get alerts and report.

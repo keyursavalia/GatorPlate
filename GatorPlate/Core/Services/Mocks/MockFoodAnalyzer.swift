@@ -34,7 +34,7 @@ final class MockFoodAnalyzer: FoodAnalyzing {
 extension FoodAnalysisResult {
     nonisolated static var sample: FoodAnalysisResult {
         FoodAnalysisResult(
-            title: "FREE: Vegetable pad thai and spring rolls",
+            title: "Vegetable pad thai and spring rolls",
             description: "Pad thai noodles with tofu, vegetable spring rolls and cut fruit. May contain soy, peanuts and wheat.",
             items: [
                 FoodItem(name: "Vegetable pad thai", dietary: .vegetarian, calories: CalorieRange(low: 380, high: 520)),

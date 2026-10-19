@@ -36,7 +36,7 @@ struct ReviewSafetySection: View {
             }
             if viewModel.draft.cautions.count < AppConfig.postMaxCautions {
                 Button("Add a note", systemImage: "plus") { viewModel.addCaution() }
-                    .foregroundStyle(Theme.Palette.brandPurple)
+                    .foregroundStyle(Theme.Palette.accent)
             }
         } header: {
             ReviewSectionHeader(title: "Heads up",

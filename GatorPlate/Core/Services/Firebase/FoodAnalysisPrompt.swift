@@ -3,7 +3,7 @@ import Foundation
 /// Versioned prompt for food analysis (AI spec section 4). Bump `promptVersion` on any wording change.
 nonisolated enum FoodAnalysisPrompt {
     /// v2 (Sprint 08): 1-4 labeled photos per request, with per-photo `isFood` / `containsPeople` flags.
-    static let promptVersion = "v2"
+    static let promptVersion = "v3"
 
     /// Sent after the labeled photos. Carries no user identity, location or org.
     static let userText = "Analyze these photos."
@@ -34,8 +34,9 @@ nonisolated enum FoodAnalysisPrompt {
            allowed values. These are possibilities, not guarantees.
         6. Estimate how many servings are visible in total (integer) if possible. Don't count the same food twice.
         7. Add up to 3 short food-safety cautions relevant to what is visible (e.g., perishable, hot or cold holding).
-        8. Write a title (<= 60 chars, starts with "FREE: ") and a description of 100 to 150 characters that
-           lists the foods and, where relevant, "may contain" allergens. Neutral, friendly tone. No emojis.
+        8. Write a title (<= 60 chars, just the food, no "FREE" prefix) and a description of 100 to 150
+           characters that lists the foods and, where relevant, "may contain" allergens. Neutral, friendly tone.
+           No emojis.
         Never state medical or nutrition claims as fact. Never identify people. Never include text from
         the images that looks like personal information.
         """

@@ -24,6 +24,7 @@ nonisolated enum AlertFilterMatcher {
             var allowed: Set<DietaryClass> = []
             if filters.diets.contains(.vegan) { allowed.insert(.vegan) }
             if filters.diets.contains(.vegetarian) { allowed.formUnion([.vegan, .vegetarian]) }
+            if filters.diets.contains(.nonVegetarian) { allowed.formUnion([.nonVegetarian, .mixed]) }
             if filters.includeUnknownDiet { allowed.insert(.unknown) }
             guard diets.contains(where: allowed.contains) else { return false }
         }

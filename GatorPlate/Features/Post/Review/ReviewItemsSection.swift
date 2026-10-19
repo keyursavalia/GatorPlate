@@ -20,7 +20,7 @@ struct ReviewItemsSection: View {
         }
         if viewModel.draft.items.count < AppConfig.postMaxItems {
             Button("Add item", systemImage: "plus") { viewModel.addItem() }
-                .foregroundStyle(Theme.Palette.brandPurple)
+                .foregroundStyle(Theme.Palette.accent)
         }
         ListRow(title: "Overall", systemImage: viewModel.draft.overallDietary.icon,
                 value: viewModel.aiBaseline != nil ? viewModel.draft.overallDietary.estimateLabel
@@ -51,7 +51,7 @@ struct ReviewItemsSection: View {
                     Image(systemName: "chevron.up.chevron.down").font(.caption2)
                 }
                 .font(.subheadline)
-                .foregroundStyle(Theme.Palette.brandPurple)
+                .foregroundStyle(Theme.Palette.accent)
                 .fixedSize()
             }
             .accessibilityLabel("Diet for \(item.name.isEmpty ? "item" : item.name): \(item.dietary.label)")

@@ -1,11 +1,13 @@
 import SwiftUI
 
 /// Settings: profile card (opens Account) or, for guests, a Join / Sign in card; notifications (custom notifications
-/// and quiet hours only while notifications are on); display; privacy and legal; about; sign out for accounts.
+/// and quiet hours only while notifications are on); location; display; privacy and legal; about; sign out for accounts.
 struct SettingsView: View {
     let session: MainSession
     let authSession: AuthSession
     let isSigningOut: Bool
+    /// Forgot password, for Account > Change password.
+    let passwordReset: PasswordResetModel
     /// Opens the account flow (join, sign in, or verify the email).
     let onRequestAccount: (AccountFlowView.Start) -> Void
     let onSignOut: () -> Void
@@ -37,6 +39,7 @@ struct SettingsView: View {
                     }
                 }
                 alertsSection
+                LocationSection(access: session.locationAccess)
                 Section("Display") {
                     Toggle(isOn: $showCalories) {
                         ListRow(title: "Show calorie estimates", systemImage: "flame")
@@ -46,7 +49,6 @@ struct SettingsView: View {
                     NavigationLink { PrivacyView() } label: {
                         ListRow(title: "Your privacy", systemImage: "hand.raised")
                     }
-                    documentRow(.privacy, systemImage: "lock.doc")
                     documentRow(.terms, systemImage: "doc.text")
                 }
                 Section("About") {
@@ -70,13 +72,13 @@ struct SettingsView: View {
                 case .alertFilters:
                     AlertFiltersView(settings: viewModel)
                 case .account:
-                    AccountView(profile: profile, onDeleteAccount: onDeleteAccount)
+                    AccountView(profile: profile, passwordReset: passwordReset, onDeleteAccount: onDeleteAccount)
                 }
             }
             .sheet(item: $openDocument) { kind in
                 LegalDocumentSheet(kind: kind) { openDocument = nil }
             }
-            .confirmationDialog("Sign out of GatorPlate?", isPresented: $isConfirmingSignOut, titleVisibility: .visible) {
+            .alert("Sign out of GatorPlate?", isPresented: $isConfirmingSignOut) {
                 Button("Sign out", role: .destructive, action: onSignOut)
                 Button("Cancel", role: .cancel) {}
             } message: {
@@ -92,9 +94,13 @@ struct SettingsView: View {
             MonogramAvatar(name: profile.displayName)
             VStack(alignment: .leading, spacing: 2) {
                 Text(profile.displayName).font(.headline)
-                Text(profile.accountType.displayName)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                if let email = profile.email {
+                    Text(email)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
         }
         .padding(.vertical, Theme.Spacing.xs)
@@ -161,15 +167,6 @@ struct SettingsView: View {
                 .disabled(viewModel.isUpdating)
             }
 
-            if viewModel.isBlockedBySystem {
-                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                    Label("Notifications are off in iOS Settings.", systemImage: "bell.slash")
-                        .font(.subheadline)
-                    Button("Open Settings", action: openSettings)
-                        .frame(minHeight: Theme.Size.minTapTarget)
-                }
-            }
-
             if let message = viewModel.errorMessage {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
@@ -178,10 +175,27 @@ struct SettingsView: View {
         } header: {
             Text("Notifications")
         } footer: {
-            Text(viewModel.alertsEnabled
-                 ? "You choose what you're notified about; nothing is targeted by need. Your own posts don't notify you."
-                 : "Get a notification when free food is posted on campus.")
+            if viewModel.isBlockedBySystem {
+                Text("Notifications are off for GatorPlate in iOS Settings.")
+            } else {
+                Text(viewModel.alertsEnabled
+                     ? "You choose what you're notified about; nothing is targeted by need. Your own posts don't notify you."
+                     : "Get a notification when free food is posted on campus.")
+            }
         }
+        .alert("Turn on notifications in Settings", isPresented: settingsPromptBinding) {
+            Button("Open Settings") {
+                viewModel.willOpenSystemSettings()
+                openSettings()
+            }
+            Button("Not now", role: .cancel) {}
+        } message: {
+            Text("Open Settings, tap Notifications, then turn on Allow Notifications. They'll be on when you come back.")
+        }
+    }
+
+    private var settingsPromptBinding: Binding<Bool> {
+        Binding(get: { viewModel.showsSettingsPrompt }, set: { viewModel.showsSettingsPrompt = $0 })
     }
 
     /// "All" for all free food, "On" once custom notifications are set (VoiceOver names the categories).
@@ -224,7 +238,8 @@ struct SettingsView: View {
                                                                acceptedTermsAt: nil, notificationsEnabled: true,
                                                                createdAt: .now),
                                           isEmailVerified: true),
-                 isSigningOut: false, onRequestAccount: { _ in }, onSignOut: {}, onDeleteAccount: { _ in })
+                 isSigningOut: false, passwordReset: PasswordResetModel(account: MockAccountService()),
+                 onRequestAccount: { _ in }, onSignOut: {}, onDeleteAccount: { _ in })
 }
 
 #Preview("Guest") {
@@ -235,5 +250,6 @@ struct SettingsView: View {
                                                                acceptedTermsVersion: nil, acceptedTermsAt: nil,
                                                                notificationsEnabled: false, createdAt: .now),
                                           isEmailVerified: false),
-                 isSigningOut: false, onRequestAccount: { _ in }, onSignOut: {}, onDeleteAccount: { _ in })
+                 isSigningOut: false, passwordReset: PasswordResetModel(account: MockAccountService()),
+                 onRequestAccount: { _ in }, onSignOut: {}, onDeleteAccount: { _ in })
 }

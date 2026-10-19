@@ -4,7 +4,8 @@ import Observation
 /// "Custom notifications": edits a copy of the saved filters and saves automatically shortly after each change.
 /// The categories are always shown. Picking anything switches "All free food" off; clearing every pick (or
 /// switching "All free food" back on) returns to all. Filters only choose which notifications this student gets;
-/// they're never shown to anyone.
+/// they're never shown to anyone. Editing the picks themselves lives in `AlertFilters+Picks` (shared with the
+/// Map/Feed filter).
 @MainActor
 @Observable
 final class AlertFiltersViewModel {
@@ -13,10 +14,6 @@ final class AlertFiltersViewModel {
     }
     private(set) var isSaving = false
     private(set) var errorMessage: String?
-    /// Inline message for the "add a food" field.
-    private(set) var foodError: String?
-
-    static let foodSuggestions = ["Pizza", "Boba", "Coffee", "Dessert", "Snacks", "Fruit"]
 
     @ObservationIgnored private let settings: SettingsViewModel
     @ObservationIgnored private var saveTask: Task<Void, Never>?
@@ -75,76 +72,12 @@ final class AlertFiltersViewModel {
     }
 
     private static func hasSelections(_ filters: AlertFilters) -> Bool {
-        !filters.diets.isEmpty || !filters.places.isEmpty || !filters.foods.isEmpty
-            || !filters.avoidAllergens.isEmpty || filters.skipUnverifiedAllergens
+        filters.hasPicks
     }
 
     private static func clearSelections(_ filters: inout AlertFilters) {
         filters.mode = .all
-        filters.diets = []
-        filters.includeUnknownDiet = false
-        filters.places = []
-        filters.foods = []
-        filters.avoidAllergens = []
-        filters.skipUnverifiedAllergens = false
-    }
-
-    func toggle(_ diet: AlertFilters.Diet) {
-        toggle(diet, in: &draft.diets)
-    }
-
-    func toggle(_ allergen: Allergen) {
-        let wasEmpty = draft.avoidAllergens.isEmpty
-        toggle(allergen, in: &draft.avoidAllergens)
-        // Suggested on when the student starts avoiding something; they can turn it off.
-        if wasEmpty, !draft.avoidAllergens.isEmpty { draft.skipUnverifiedAllergens = true }
-    }
-
-    func setPlaces(_ ids: [String]) {
-        draft.places = Array(ids.prefix(AppConfig.alertFilterMaxPlaces))
-    }
-
-    func removePlace(_ id: String) {
-        draft.places.removeAll { $0 == id }
-    }
-
-    /// True when added. Trimmed, 1-30 characters, at most 10, no duplicates.
-    @discardableResult
-    func addFood(_ raw: String) -> Bool {
-        foodError = nil
-        let food = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !food.isEmpty else { return false }
-        guard food.count <= AppConfig.alertFilterFoodMaxLength else {
-            foodError = "Keep it under \(AppConfig.alertFilterFoodMaxLength) characters."
-            return false
-        }
-        guard draft.foods.count < AppConfig.alertFilterMaxFoods else {
-            foodError = "Up to \(AppConfig.alertFilterMaxFoods) foods."
-            return false
-        }
-        guard !draft.foods.contains(where: { $0.caseInsensitiveCompare(food) == .orderedSame }) else { return false }
-        draft.foods.append(food)
-        return true
-    }
-
-    func removeFood(_ food: String) {
-        draft.foods.removeAll { $0.caseInsensitiveCompare(food) == .orderedSame }
-    }
-
-    func isFoodSelected(_ food: String) -> Bool {
-        draft.foods.contains { $0.caseInsensitiveCompare(food) == .orderedSame }
-    }
-
-    func toggleFood(_ food: String) {
-        if isFoodSelected(food) { removeFood(food) } else { addFood(food) }
-    }
-
-    /// Suggestions first, then the student's own foods, each once.
-    var foodRows: [String] {
-        let custom = draft.foods.filter { food in
-            !Self.foodSuggestions.contains { $0.caseInsensitiveCompare(food) == .orderedSame }
-        }
-        return Self.foodSuggestions + custom
+        filters.clearPicks()
     }
 
     // MARK: Saving
@@ -180,14 +113,6 @@ final class AlertFiltersViewModel {
             try await settings.saveAlertFilters(draft)
         } catch {
             errorMessage = (error as? AppError)?.userMessage ?? AppError.unknown.userMessage
-        }
-    }
-
-    private func toggle<T: Equatable>(_ value: T, in list: inout [T]) {
-        if let index = list.firstIndex(of: value) {
-            list.remove(at: index)
-        } else {
-            list.append(value)
         }
     }
 

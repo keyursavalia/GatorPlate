@@ -1,9 +1,8 @@
 import Foundation
 
-/// Builds the suggested title: `FREE: <food> - <building room> - until <time>` (school posting best practice).
+/// Builds the suggested title: `<food> - <building room> - until <time>`. No "FREE" prefix: everything on
+/// GatorPlate is free (S09).
 nonisolated enum PostTitleFormatter {
-    static let freePrefix = "FREE: "
-
     static func title(food: String, location: PostLocation?, detail: String, until: Date) -> String {
         let place = [location?.shortName, PostText.clean(detail)]
             .compactMap { $0 }
@@ -14,19 +13,17 @@ nonisolated enum PostTitleFormatter {
         let suffix = tail.map { " - " + $0 }.joined()
 
         // The food part gives way first so the place and time always fit.
-        let foodBudget = max(0, AppConfig.postTitleMaxLength - freePrefix.count - suffix.count)
+        let foodBudget = max(0, AppConfig.postTitleMaxLength - suffix.count)
         var foodPart = FoodAnalysisSanitizer.truncated(PostText.clean(food), to: foodBudget)
         if foodPart.isEmpty { foodPart = "Food" }
-        let title = freePrefix + foodPart + suffix
+        let title = foodPart + suffix
         return String(title.prefix(AppConfig.postTitleMaxLength))
     }
 
-    /// The food words: the AI title without "FREE: ", else up to two item names.
+    /// The food words: the AI title (minus any "FREE" prefix), else up to two item names.
     static func food(aiTitle: String?, items: [FoodItem]) -> String {
         if let aiTitle {
-            var body = aiTitle
-            if body.hasPrefix(freePrefix) { body.removeFirst(freePrefix.count) }
-            body = PostText.clean(body)
+            let body = PostText.clean(FoodAnalysisSanitizer.strippingFreePrefix(PostText.clean(aiTitle)))
             if !body.isEmpty { return body }
         }
         let names = items.prefix(2).map(\.name)

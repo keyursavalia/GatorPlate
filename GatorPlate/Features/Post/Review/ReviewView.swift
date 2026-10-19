@@ -32,6 +32,7 @@ struct ReviewView: View {
                 }
                 .listSectionSpacing(.compact)
                 .environment(\.defaultMinListRowHeight, 48)
+                .environment(\.listAccent, Theme.Palette.accent)
                 .scrollDismissesKeyboard(.interactively)
                 .safeAreaInset(edge: .bottom) {
                     ReviewPublishBar(viewModel: viewModel, onShowIssue: { showFirstIssue(proxy) }, onPublish: publish)

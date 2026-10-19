@@ -50,17 +50,14 @@ final class FirebaseAuthService: AuthService {
         await emit(to: Array(continuations.values))
     }
 
-    func signUp(email: String, password: String, displayName: String,
-                accountType: AccountType, orgName: String?) async throws {
+    func signUp(email: String, password: String, displayName: String) async throws {
         isSigningUp = true
         defer { isSigningUp = false }
         do {
             if let guest = Auth.auth().currentUser, guest.isAnonymous {
-                try await upgradeGuest(guest, email: email, password: password, displayName: displayName,
-                                       accountType: accountType, orgName: orgName)
+                try await upgradeGuest(guest, email: email, password: password, displayName: displayName)
             } else {
-                try await createAccount(email: email, password: password, displayName: displayName,
-                                        accountType: accountType, orgName: orgName)
+                try await createAccount(email: email, password: password, displayName: displayName)
             }
         } catch {
             throw FirebaseErrorMapper.map(error)
@@ -130,11 +127,10 @@ final class FirebaseAuthService: AuthService {
 
     // MARK: Accounts
 
-    private func createAccount(email: String, password: String, displayName: String,
-                               accountType: AccountType, orgName: String?) async throws {
+    private func createAccount(email: String, password: String, displayName: String) async throws {
         let result = try await Auth.auth().createUser(withEmail: email, password: password)
         let profile = UserProfile(uid: result.user.uid, displayName: displayName, email: email,
-                                  accountType: accountType, orgName: orgName,
+                                  accountType: .student, orgName: nil,
                                   acceptedTermsVersion: nil, acceptedTermsAt: nil,
                                   notificationsEnabled: false, createdAt: .now)
         do {
@@ -148,8 +144,7 @@ final class FirebaseAuthService: AuthService {
 
     /// Links the email credential to the anonymous user (same uid), then turns the guest profile into an account.
     /// Alert settings and the accepted Terms stay. If the profile can't be updated, the link is undone.
-    private func upgradeGuest(_ guest: User, email: String, password: String, displayName: String,
-                              accountType: AccountType, orgName: String?) async throws {
+    private func upgradeGuest(_ guest: User, email: String, password: String, displayName: String) async throws {
         let credential = EmailAuthProvider.credential(withEmail: email, password: password)
         // Completion-handler APIs: the async overloads send the non-Sendable `User` off the main actor.
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -164,13 +159,12 @@ final class FirebaseAuthService: AuthService {
                     if let error { continuation.resume(throwing: error) } else { continuation.resume() }
                 }
             }
-            var fields: [String: Any] = [
+            let fields: [String: Any] = [
                 "displayName": displayName,
                 "email": email,
-                "accountType": accountType.rawValue,
+                "accountType": AccountType.student.rawValue,
                 "createdAt": FieldValue.serverTimestamp(),
             ]
-            if let orgName { fields["orgName"] = orgName }
             let document = users.document(guest.uid)
             try await confirmed { completion in document.updateData(fields) { completion($0) } }
             Logger.services.info("Guest upgraded to an account")

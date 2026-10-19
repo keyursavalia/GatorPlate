@@ -58,7 +58,7 @@ struct ReviewWhatSection: View {
     @ViewBuilder
     private var titleRow: some View {
         if viewModel.draft.titleIsCustom || isWritingTitle {
-            TextField("FREE: food - place - until time", text: $viewModel.title, axis: .vertical)
+            TextField("Food - place - until time", text: $viewModel.title, axis: .vertical)
                 .lineLimit(1...3)
                 .font(.body.weight(.semibold))
                 .focused(focus, equals: .title)
@@ -72,10 +72,10 @@ struct ReviewWhatSection: View {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
                     Text(viewModel.draft.title)
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(Color.primary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Image(systemName: "pencil")
-                        .foregroundStyle(Theme.Palette.brandPurple)
+                        .foregroundStyle(Theme.Palette.accent)
                         .accessibilityHidden(true)
                 }
                 .contentShape(.rect)
@@ -107,7 +107,7 @@ struct ReviewWhatSection: View {
     @ViewBuilder
     private var servingsRow: some View {
         if let servings = viewModel.draft.estimatedServings {
-            Stepper(value: servingsBinding(default: servings), in: AppConfig.postServingsRange, step: 5) {
+            Stepper(value: servingsBinding(default: servings), in: AppConfig.postServingsRange) {
                 ListRow(title: "Servings", systemImage: "person.2", value: "~\(servings)")
             }
             .accessibilityLabel("About \(servings) servings")

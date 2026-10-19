@@ -2,6 +2,7 @@ import FirebaseAuth
 import FirebaseFirestore
 import Foundation
 import OSLog
+import Synchronization
 
 /// Live posts in Firestore `posts/{postId}`, photos through `ImageStore`, reports in `reports/{reportId}`.
 @MainActor
@@ -37,6 +38,26 @@ final class FirestorePostService: PostService {
             let listener = ListenerHandle(registration)
             continuation.onTermination = { _ in listener.remove() }
         }
+    }
+
+    func fetchPost(id: String) async throws -> FoodPost? {
+        let document = posts.document(id)
+        let found = FetchedPost()
+        do {
+            try await awaitCompletion(deadlineSeconds: AppConfig.alertLookupTimeoutSeconds) { completion in
+                document.getDocument(source: .server) { snapshot, error in
+                    if let snapshot, snapshot.exists, let data = snapshot.data() {
+                        found.set(FoodPostDocument.post(id: snapshot.documentID, data: data))
+                    }
+                    completion(error)
+                }
+            }
+        } catch is DeadlineExceeded {
+            throw AppError.network
+        } catch {
+            throw FirebaseErrorMapper.map(error)
+        }
+        return found.value
     }
 
     func makePostId() -> String {
@@ -151,5 +172,16 @@ private nonisolated final class ListenerHandle: @unchecked Sendable {
 
     func remove() {
         registration.remove()
+    }
+}
+
+/// Carries `fetchPost`'s result out of the Firestore callback.
+private nonisolated final class FetchedPost: Sendable {
+    private let post = Mutex<FoodPost?>(nil)
+
+    var value: FoodPost? { post.withLock { $0 } }
+
+    func set(_ value: FoodPost?) {
+        post.withLock { $0 = value }
     }
 }

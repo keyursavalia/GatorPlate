@@ -1,7 +1,7 @@
 import MapKit
 import SwiftUI
 
-/// Campus map locked to SFSU with rotation, live post pins and a non-modal post sheet.
+/// Campus map locked to SFSU with rotation, live post pins (filtered like the Feed) and a non-modal post sheet.
 struct MapScreen: View {
     @Bindable var viewModel: MapViewModel
     /// First-run location and notification prompts; owns the "Notifications on" toast.
@@ -12,7 +12,7 @@ struct MapScreen: View {
     @State private var detent: PresentationDetent = Self.peekDetent
     /// The map's full drawn area in its own coordinates, safe areas included (the map draws under the bars).
     @State private var drawnRect = CGRect.zero
-    @Environment(\.openURL) private var openURL
+    @State private var locationPrompt: LocationPrompt?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Opens here: photo, title, the three facts and Open in Apple Maps. Pull up (or scroll) for the rest; the
@@ -39,6 +39,15 @@ struct MapScreen: View {
             drawnRect = rect
         }
         .overlay(alignment: .top) { topOverlay }
+        .overlay {
+            if viewModel.showsAlertUnavailable {
+                UnavailableCard(onShowAvailable: viewModel.showAvailableFood,
+                                onDismiss: viewModel.dismissAlertUnavailable)
+                    .transition(reduceMotion ? .opacity : .scale(scale: 0.9).combined(with: .opacity))
+            }
+        }
+        .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35),
+                   value: viewModel.showsAlertUnavailable)
         .overlay(alignment: .bottomTrailing) {
             // Hidden while the bottom card is up: the cover can't present over the sheet.
             if viewModel.selectedPost == nil {
@@ -57,6 +66,10 @@ struct MapScreen: View {
         .onChange(of: viewModel.selectedPostId) { _, new in
             if new != nil { detent = Self.peekDetent }
             viewModel.selectionDidChange()
+        }
+        .onChange(of: viewModel.cameraFocusPostId) { _, id in
+            guard id != nil else { return }
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.6)) { viewModel.focusOnAlertPost() }
         }
         .onChange(of: permissions.announcement) { _, announcement in
             guard let announcement else { return }
@@ -85,7 +98,9 @@ struct MapScreen: View {
 
             ForEach(viewModel.posts) { post in
                 Annotation(post.title, coordinate: post.coordinate.clLocationCoordinate) {
-                    PostPin(dietary: post.overallDietary, isSelected: post.id == viewModel.selectedPostId)
+                    PostMapPin(post: post, isSelected: post.id == viewModel.selectedPostId, images: viewModel.images)
+                        // Filter changes fade pins in and out; the camera never moves for them.
+                        .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
                         .accessibilityLabel(viewModel.accessibilityLabel(for: post))
                         .accessibilityHint("Shows details")
                         .accessibilityAddTraits(.isButton)
@@ -96,6 +111,7 @@ struct MapScreen: View {
         }
         .mapStyle(.standard(emphasis: .muted, pointsOfInterest: .including(Self.pointsOfInterest)))
         .mapControls {}
+        .animation(reduceMotion ? .easeOut(duration: 0.2) : .snappy, value: viewModel.posts.map(\.id))
     }
 
     /// Reads the real visible north edge from the 4 drawn corners (exact for any heading, device or orientation)
@@ -137,44 +153,58 @@ struct MapScreen: View {
                 solidBanner(Banner(style: .info, message: notice))
                     .transition(.opacity)
             }
-            if let banner = viewModel.locationBanner {
-                locationBanner(banner)
+            if viewModel.isOpeningAlert {
+                Label("Opening post…", systemImage: "bell.badge")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, Theme.Spacing.lg)
+                    .frame(minHeight: Theme.Size.minTapTarget)
+                    .glassEffect(.regular, in: .capsule)
+                    .frame(maxWidth: .infinity)
+                    .transition(.opacity)
+                    .accessibilityLabel("Opening the post from your notification")
+            }
+            if viewModel.showsFilterPill {
+                FilterPill(shown: viewModel.posts.count, total: viewModel.browse.totalCount,
+                           onOpen: viewModel.openFilters, onClear: viewModel.clearFilters)
+                    .frame(maxWidth: .infinity)
+                    .transition(.opacity)
             }
             VStack(spacing: Theme.Spacing.sm) {
-                GlassIconButton(
-                    systemImage: viewModel.canCenterOnUser ? "location.fill" : "building.columns",
-                    accessibilityLabel: viewModel.canCenterOnUser ? "Center on my location" : "Show whole campus",
-                    accessibilityHint: "Moves the map") {
-                        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.6)) { viewModel.recenter() }
-                    }
+                // One sheet at a time: hidden while a post's sheet is open.
+                if viewModel.selectedPost == nil {
+                    FilterButton(activeCount: viewModel.filterCount, action: viewModel.openFilters)
+                }
+                locationButton
                 MapCompass(scope: mapScope)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(.horizontal, Theme.Spacing.lg)
         .padding(.top, Theme.Spacing.sm)
+        .animation(reduceMotion ? nil : .easeInOut, value: viewModel.showsFilterPill)
+        .animation(reduceMotion ? nil : .easeInOut, value: viewModel.isOpeningAlert)
+        .sheet(isPresented: $viewModel.isFilterSheetPresented, onDismiss: viewModel.filterSheetDidDismiss) {
+            PostFilterSheet(store: viewModel.browse.filters, browse: viewModel.browse, showsSort: false,
+                            notificationPicks: viewModel.browse.notificationPicks)
+        }
     }
 
-    @ViewBuilder
-    private func locationBanner(_ banner: MapViewModel.LocationBanner) -> some View {
-        let notNow = Banner.Action(title: "Not now", isPrimary: false) { viewModel.dismissBanner(banner) }
-        switch banner {
-        case .denied:
-            solidBanner(Banner(
-                style: .warning,
-                message: "Location is off. The map still works, but distances are hidden.",
-                actions: [Banner.Action(title: "Open Settings") { openSettings() }, notNow]))
-        case .restricted:
-            solidBanner(Banner(
-                style: .warning,
-                message: "Location is restricted on this device. The map still works, but distances are hidden.",
-                actions: [notNow]))
-        case .reducedAccuracy:
-            solidBanner(Banner(
-                style: .warning,
-                message: "Precise location is off, directions may be less accurate.",
-                actions: [Banner.Action(title: "Use precise location") { viewModel.requestPreciseLocation() }, notNow]))
-        }
+    /// Centers on the student, or on campus. With location off it shows a slashed arrow and asks to turn it on.
+    private var locationButton: some View {
+        let label = viewModel.canCenterOnUser ? "Center on my location"
+            : viewModel.isLocationOff ? "Location is off" : "Show whole campus"
+        return GlassIconButton(
+            systemImage: viewModel.canCenterOnUser ? "location.fill"
+                : viewModel.isLocationOff ? "location.slash" : "building.columns",
+            accessibilityLabel: label,
+            accessibilityHint: viewModel.isLocationOff ? "Shows the whole campus and how to turn on location"
+                                                       : "Moves the map") {
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.6)) { viewModel.recenter() }
+                if viewModel.isLocationOff {
+                    Task { locationPrompt = await viewModel.locationAccess.promptFromMap() }
+                }
+            }
+            .locationPromptAlert($locationPrompt, access: viewModel.locationAccess)
     }
 
     private var alertsToast: some View {
@@ -192,6 +222,8 @@ struct MapScreen: View {
     private var bottomCard: some View {
         if let post = viewModel.selectedPost {
             PostBottomCard(post: post, viewModel: viewModel)
+                // A new post (e.g. from an alert) resets the card, closing a Report sheet left open for the old one.
+                .id(post.id)
                 .presentationDetents([Self.peekDetent, .large], selection: $detent)
                 .presentationBackgroundInteraction(.enabled(upThrough: Self.peekDetent))
                 .presentationDragIndicator(.visible)
@@ -205,11 +237,6 @@ struct MapScreen: View {
             set: { isPresented in
                 if !isPresented { viewModel.selectedPostId = nil }
             })
-    }
-
-    private func openSettings() {
-        guard let url = AppSettingsURL.url else { return }
-        openURL(url)
     }
 }
 

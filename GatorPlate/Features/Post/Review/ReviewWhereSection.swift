@@ -22,7 +22,7 @@ struct ReviewWhereSection: View {
 
             HStack(spacing: Theme.Spacing.md) {
                 Image(systemName: "door.left.hand.open")
-                    .foregroundStyle(Theme.Palette.brandPurple)
+                    .foregroundStyle(Theme.Palette.accent)
                     .frame(width: iconWidth)
                     .accessibilityHidden(true)
                 TextField("Room, floor or entrance", text: $viewModel.locationDetail)

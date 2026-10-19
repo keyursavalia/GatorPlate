@@ -12,7 +12,8 @@ struct PostBottomCard: View {
     var body: some View {
         PostDetailContent(post: post, photoSources: PostPhotoSource.sources(for: post), images: viewModel.images,
                           distanceMeters: viewModel.location.distance(to: post.coordinate),
-                          showCalories: showCalories, onOpenInMaps: { viewModel.openInAppleMaps(post) }) {
+                          showCalories: showCalories, onOpenInMaps: { viewModel.openInAppleMaps(post) },
+                          filterNote: viewModel.isHiddenByFilters(post) ? "Hidden by your filters" : nil) {
             menu
         } actions: {
             PostActionsSection(post: post, viewModel: viewModel)

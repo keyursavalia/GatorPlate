@@ -28,6 +28,8 @@ struct PrivacyView: View {
     private let notKept = [
         Entry(id: "location", icon: "location", title: "Your location",
               detail: "Distances and routes, only while the app is open.", keep: "On device"),
+        Entry(id: "filters", icon: "line.3.horizontal.decrease", title: "Map and Feed filters",
+              detail: "Stay on this phone. Never sent anywhere; removed if you delete your account.", keep: "On device"),
         Entry(id: "ai", icon: "sparkles", title: "AI drafts",
               detail: "Food photos only. No location, name or account.", keep: "Not stored"),
     ]

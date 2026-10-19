@@ -6,11 +6,12 @@ import Foundation
 @MainActor
 protocol NotificationService: AnyObject {
     var authorization: NotificationAuthorization { get }
-    /// Post ID from a tapped alert, waiting to be opened.
-    var pendingOpenPostId: String? { get }
+    /// A tapped alert whose post hasn't been opened yet. Kept until `alertHandled(_:)`.
+    var pendingAlert: AlertOpenRequest? { get }
 
-    /// Returns and clears `pendingOpenPostId`.
-    func consumePendingOpen() -> String?
+    /// Navigation opened the post or showed "no longer available": forget the request and clear its alert
+    /// from Notification Center.
+    func alertHandled(_ request: AlertOpenRequest)
     func refreshAuthorization() async
     /// Shows the system prompt (iOS shows it once). Call only after explaining the value.
     func requestAuthorization() async -> NotificationAuthorization

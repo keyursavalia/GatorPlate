@@ -13,6 +13,8 @@ struct PostDetailContent<MenuContent: View, Actions: View>: View {
     let showCalories: Bool
     /// Nil in Review's Preview (nothing to open yet).
     var onOpenInMaps: (() -> Void)?
+    /// "Hidden by your filters": the post was opened on purpose although the Map/Feed filter hides it.
+    var filterNote: String?
     @ViewBuilder var menu: MenuContent
     @ViewBuilder var actions: Actions
 
@@ -26,6 +28,12 @@ struct PostDetailContent<MenuContent: View, Actions: View>: View {
 
             Section {
                 facts
+            }
+
+            if let filterNote {
+                Section {
+                    NoteRow(text: filterNote, systemImage: "line.3.horizontal.decrease")
+                }
             }
 
             if let onOpenInMaps {
@@ -56,6 +64,7 @@ struct PostDetailContent<MenuContent: View, Actions: View>: View {
         }
         .listSectionSpacing(.compact)
         .environment(\.defaultMinListRowHeight, 48)
+        .environment(\.listAccent, Theme.Palette.accent)
     }
 
     // MARK: Header
@@ -77,9 +86,11 @@ struct PostDetailContent<MenuContent: View, Actions: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 menu
             }
-            .padding(.horizontal, Theme.Spacing.xs)
+            .padding(.horizontal, Theme.Spacing.md)
         }
         .padding(.top, Theme.Spacing.sm)
+        // The row's rounded corners clip its content: keep the poster's name clear of the bottom-leading curve.
+        .padding(.bottom, Theme.Spacing.md)
     }
 
     /// Time left, walk and servings side by side, like the Privacy summary. Stacks at large text sizes.
@@ -97,7 +108,7 @@ struct PostDetailContent<MenuContent: View, Actions: View>: View {
     @ViewBuilder
     private func factViews(minutes: Int) -> some View {
         Fact(value: "\(minutes) min", caption: "left", systemImage: "clock",
-             tint: minutes < 10 ? Theme.Palette.warning : Theme.Palette.brandPurple)
+             tint: minutes < 10 ? Theme.Palette.warning : Theme.Palette.accent)
         if let walk = distanceMeters.map(DistanceText.walkMinutes(meters:)) {
             Fact(value: "\(walk) min", caption: "walk", systemImage: "figure.walk")
         }
@@ -168,7 +179,7 @@ private struct Fact: View {
     let value: String
     let caption: String
     let systemImage: String
-    var tint: Color = Theme.Palette.brandPurple
+    var tint: Color = Theme.Palette.accent
 
     var body: some View {
         VStack(spacing: 2) {

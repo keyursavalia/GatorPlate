@@ -25,11 +25,11 @@ struct PlacesPickerSheet: View {
                     }
                 } label: {
                     HStack {
-                        Text(building.name).foregroundStyle(.primary)
+                        Text(building.name).foregroundStyle(Color.primary)
                         Spacer()
                         if isSelected {
                             Image(systemName: "checkmark")
-                                .foregroundStyle(Theme.Palette.brandPurple)
+                                .foregroundStyle(Theme.Palette.accent)
                                 .accessibilityHidden(true)
                         }
                     }
@@ -39,6 +39,7 @@ struct PlacesPickerSheet: View {
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
             .searchable(text: $query, prompt: "Search buildings")
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Places")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -12,7 +12,7 @@ struct AboutView: View {
 
     private let steps = [
         Step(id: "snap", icon: "camera", title: "Snap the leftovers",
-             detail: "Orgs photograph extra food after an event."),
+             detail: "Students photograph extra food after an event."),
         Step(id: "draft", icon: "sparkles", title: "AI drafts the post",
              detail: "Items, diet and allergens, reviewed by the poster."),
         Step(id: "find", icon: "map", title: "Students find it",

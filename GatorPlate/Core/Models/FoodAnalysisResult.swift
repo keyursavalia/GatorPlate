@@ -2,7 +2,7 @@ import Foundation
 
 /// Sanitized output of `FoodAnalyzing`. Every field has passed `FoodAnalysisSanitizer`; nothing here is raw model output.
 nonisolated struct FoodAnalysisResult: Codable, Equatable, Sendable {
-    /// Starts with "FREE: ". The location is appended after the user picks it (Sprint 05).
+    /// Just the food (no "FREE" prefix since S09). The place and time are added after the user picks them.
     var title: String
     var description: String
     var items: [FoodItem]

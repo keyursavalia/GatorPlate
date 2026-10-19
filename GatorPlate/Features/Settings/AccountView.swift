@@ -3,6 +3,8 @@ import SwiftUI
 /// Account: name (applies to new posts), email, type and member since; change password; delete account.
 struct AccountView: View {
     let profile: UserProfile
+    /// Forgot password (shared with Sign in, so its resend cooldown is the same).
+    let passwordReset: PasswordResetModel
     let onDeleteAccount: (String) async throws -> Void
 
     @Environment(\.appEnvironment) private var environment
@@ -11,7 +13,7 @@ struct AccountView: View {
     var body: some View {
         Group {
             if let viewModel {
-                AccountForm(viewModel: viewModel)
+                AccountForm(viewModel: viewModel, passwordReset: passwordReset)
             } else {
                 ProgressView()
             }
@@ -28,6 +30,7 @@ struct AccountView: View {
 
 private struct AccountForm: View {
     @Bindable var viewModel: AccountViewModel
+    let passwordReset: PasswordResetModel
 
     @FocusState private var isNameFocused: Bool
     @State private var isDeleting = false
@@ -63,13 +66,12 @@ private struct AccountForm: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
-                LabeledContent("Account type", value: viewModel.profile.accountType.displayName)
                 LabeledContent("Member since", value: viewModel.memberSince)
             }
 
             Section("Security") {
                 NavigationLink {
-                    ChangePasswordView(viewModel: viewModel)
+                    ChangePasswordView(viewModel: viewModel, passwordReset: passwordReset)
                 } label: {
                     ListRow(title: "Change password", systemImage: "key")
                 }
