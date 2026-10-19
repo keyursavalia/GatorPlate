@@ -172,15 +172,6 @@ struct SettingsView: View {
                 .disabled(viewModel.isUpdating)
             }
 
-            if viewModel.isBlockedBySystem {
-                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                    Label("Notifications are off in iOS Settings.", systemImage: "bell.slash")
-                        .font(.subheadline)
-                    Button("Open Settings", action: openSettings)
-                        .frame(minHeight: Theme.Size.minTapTarget)
-                }
-            }
-
             if let message = viewModel.errorMessage {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
@@ -189,10 +180,27 @@ struct SettingsView: View {
         } header: {
             Text("Notifications")
         } footer: {
-            Text(viewModel.alertsEnabled
-                 ? "You choose what you're notified about; nothing is targeted by need. Your own posts don't notify you."
-                 : "Get a notification when free food is posted on campus.")
+            if viewModel.isBlockedBySystem {
+                Text("Notifications are off for GatorPlate in iOS Settings.")
+            } else {
+                Text(viewModel.alertsEnabled
+                     ? "You choose what you're notified about; nothing is targeted by need. Your own posts don't notify you."
+                     : "Get a notification when free food is posted on campus.")
+            }
         }
+        .alert("Turn on notifications in Settings", isPresented: settingsPromptBinding) {
+            Button("Open Settings") {
+                viewModel.willOpenSystemSettings()
+                openSettings()
+            }
+            Button("Not now", role: .cancel) {}
+        } message: {
+            Text("Open Settings, tap Notifications, then turn on Allow Notifications. They'll be on when you come back.")
+        }
+    }
+
+    private var settingsPromptBinding: Binding<Bool> {
+        Binding(get: { viewModel.showsSettingsPrompt }, set: { viewModel.showsSettingsPrompt = $0 })
     }
 
     /// "All" for all free food, "On" once custom notifications are set (VoiceOver names the categories).
