@@ -58,7 +58,7 @@ struct ReviewWhatSection: View {
     @ViewBuilder
     private var titleRow: some View {
         if viewModel.draft.titleIsCustom || isWritingTitle {
-            TextField("FREE: food - place - until time", text: $viewModel.title, axis: .vertical)
+            TextField("Food - place - until time", text: $viewModel.title, axis: .vertical)
                 .lineLimit(1...3)
                 .font(.body.weight(.semibold))
                 .focused(focus, equals: .title)
