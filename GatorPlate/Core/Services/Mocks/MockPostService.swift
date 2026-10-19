@@ -42,6 +42,10 @@ final class MockPostService: PostService {
         send(PostsSnapshot(posts: posts, isFromCache: false))
     }
 
+    func fetchPost(id: String) async throws -> FoodPost? {
+        posts.first { $0.id == id }
+    }
+
     func makePostId() -> String { Self.randomPostId() }
 
     func publish(_ submission: PostSubmission, photos: [Data?]) async throws -> PublishResult {
