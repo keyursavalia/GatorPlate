@@ -22,11 +22,13 @@ extension DietaryClass {
         }
     }
 
+    /// Vegan keeps the leaf; vegetarian and non-veg use the familiar food-label mark (a dot in a square),
+    /// green and red. Always shown next to `label`, so the color is never the only signal.
     var icon: String {
         switch self {
         case .vegan: "leaf.fill"
-        case .vegetarian: "carrot.fill"
-        case .nonVegetarian: "fork.knife"
+        case .vegetarian: "dot.square"
+        case .nonVegetarian: "dot.square"
         case .mixed: "square.split.2x1.fill"
         case .unknown: "questionmark.circle.fill"
         }
@@ -35,7 +37,7 @@ extension DietaryClass {
     var tint: Color {
         switch self {
         case .vegan, .vegetarian: Theme.Palette.success
-        case .nonVegetarian: Theme.Palette.brandPurple
+        case .nonVegetarian: Theme.Palette.danger
         case .mixed: .teal
         case .unknown: .gray
         }
