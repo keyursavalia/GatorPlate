@@ -39,6 +39,15 @@ struct MapScreen: View {
             drawnRect = rect
         }
         .overlay(alignment: .top) { topOverlay }
+        .overlay {
+            if viewModel.showsAlertUnavailable {
+                UnavailableCard(onShowAvailable: viewModel.showAvailableFood,
+                                onDismiss: viewModel.dismissAlertUnavailable)
+                    .transition(reduceMotion ? .opacity : .scale(scale: 0.9).combined(with: .opacity))
+            }
+        }
+        .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35),
+                   value: viewModel.showsAlertUnavailable)
         .overlay(alignment: .bottomTrailing) {
             // Hidden while the bottom card is up: the cover can't present over the sheet.
             if viewModel.selectedPost == nil {
@@ -144,6 +153,16 @@ struct MapScreen: View {
                 solidBanner(Banner(style: .info, message: notice))
                     .transition(.opacity)
             }
+            if viewModel.isOpeningAlert {
+                Label("Opening post…", systemImage: "bell.badge")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, Theme.Spacing.lg)
+                    .frame(minHeight: Theme.Size.minTapTarget)
+                    .glassEffect(.regular, in: .capsule)
+                    .frame(maxWidth: .infinity)
+                    .transition(.opacity)
+                    .accessibilityLabel("Opening the post from your notification")
+            }
             if viewModel.showsFilterPill {
                 FilterPill(shown: viewModel.posts.count, total: viewModel.browse.totalCount,
                            onOpen: viewModel.openFilters, onClear: viewModel.clearFilters)
@@ -171,6 +190,7 @@ struct MapScreen: View {
         .padding(.horizontal, Theme.Spacing.lg)
         .padding(.top, Theme.Spacing.sm)
         .animation(reduceMotion ? nil : .easeInOut, value: viewModel.showsFilterPill)
+        .animation(reduceMotion ? nil : .easeInOut, value: viewModel.isOpeningAlert)
         .sheet(isPresented: $viewModel.isFilterSheetPresented, onDismiss: viewModel.filterSheetDidDismiss) {
             PostFilterSheet(store: viewModel.browse.filters, browse: viewModel.browse, showsSort: false,
                             notificationPicks: viewModel.browse.notificationPicks)
