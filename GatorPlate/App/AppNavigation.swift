@@ -31,12 +31,19 @@ final class AppNavigation {
     private(set) var notice: String?
     /// A post opened by ID that hasn't arrived yet.
     private(set) var pendingPostId: String?
+    /// A tapped alert's post is being looked up ("Opening post…" on the map).
+    private(set) var isOpeningAlert = false
+    /// The tapped alert's post is gone, expired or missing: the map shows the "no longer available" card.
+    private(set) var showsAlertUnavailable = false
 
     @ObservationIgnored private let posts: PostsRepository
     @ObservationIgnored private let pendingWait: Duration
     @ObservationIgnored private let alertMaxWait: Duration
     /// Tells the notification service an alert was opened (or shown as missing).
     @ObservationIgnored private let alertResolved: (AlertOpenRequest) -> Void
+    /// One server read of a post by ID (`PostService.fetchPost`), so a missing alert post is known at once.
+    @ObservationIgnored private let lookup: ((String) async throws -> FoodPost?)?
+    @ObservationIgnored private var lookupTask: Task<Void, Never>?
     @ObservationIgnored private var pendingNotice = AppNavigation.postEndedNotice
     @ObservationIgnored private var pendingTask: Task<Void, Never>?
     @ObservationIgnored private var capTask: Task<Void, Never>?
@@ -52,11 +59,13 @@ final class AppNavigation {
 
     init(posts: PostsRepository, pendingWait: Duration = .seconds(AppConfig.postSelectionPendingSeconds),
          alertMaxWait: Duration = .seconds(AppConfig.alertOpenMaxWaitSeconds),
-         alertResolved: @escaping (AlertOpenRequest) -> Void = { _ in }) {
+         alertResolved: @escaping (AlertOpenRequest) -> Void = { _ in },
+         lookup: ((String) async throws -> FoodPost?)? = nil) {
         self.posts = posts
         self.pendingWait = pendingWait
         self.alertMaxWait = alertMaxWait
         self.alertResolved = alertResolved
+        self.lookup = lookup
     }
 
     var hasPendingSelection: Bool {
@@ -124,6 +133,16 @@ final class AppNavigation {
         notice = nil
     }
 
+    func dismissAlertUnavailable() {
+        showsAlertUnavailable = false
+    }
+
+    /// "See what's available" on the card: the Feed lists everything that's still out.
+    func showAvailableFood() {
+        showsAlertUnavailable = false
+        selectedTab = .feed
+    }
+
     /// Settings > Notifications > Custom notifications (the "Customize" toast action).
     func openAlertFilters() {
         selectedPostId = nil
@@ -135,6 +154,7 @@ final class AppNavigation {
 
     private func select(id: String, missingNotice: String, alert: AlertOpenRequest?) {
         selectedTab = .map
+        showsAlertUnavailable = false
         // A newer selection replaces a waiting alert; it counts as handled so nothing waits on it forever.
         if let waiting = pendingAlert, waiting != alert { alertResolved(waiting) }
         cancelPending()
@@ -147,8 +167,28 @@ final class AppNavigation {
         pendingNotice = missingNotice
         pendingAlert = alert
         pendingSnapshotMark = posts.serverSnapshotCount
-        if alert != nil { startCapTimer(for: id) }
+        if alert != nil {
+            isOpeningAlert = true
+            startCapTimer(for: id)
+            startLookup(for: id)
+        }
         startPendingTimerIfReady()
+    }
+
+    /// Asks the server once: a missing, gone or expired post shows the card right away; an active one waits for
+    /// the listener (it opens from there). A failed read falls back to the listener wait and the cap.
+    private func startLookup(for id: String) {
+        guard let lookup else { return }
+        lookupTask = Task { [weak self] in
+            let found: FoodPost?
+            do {
+                found = try await lookup(id)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled, let self, self.pendingPostId == id else { return }
+            if found?.isActive() != true { self.showMissing() }
+        }
     }
 
     private func show(_ id: String, alert: AlertOpenRequest?) {
@@ -161,9 +201,13 @@ final class AppNavigation {
 
     private func showMissing() {
         let alert = pendingAlert
+        let missingNotice = pendingNotice
         cancelPending()
-        notice = pendingNotice
-        guard let alert else { return }
+        guard let alert else {
+            notice = missingNotice
+            return
+        }
+        showsAlertUnavailable = true
         Logger.ui.info("Alert post missing")
         alertResolved(alert)
     }
@@ -195,7 +239,10 @@ final class AppNavigation {
         pendingTask = nil
         capTask?.cancel()
         capTask = nil
+        lookupTask?.cancel()
+        lookupTask = nil
         pendingPostId = nil
         pendingAlert = nil
+        isOpeningAlert = false
     }
 }
