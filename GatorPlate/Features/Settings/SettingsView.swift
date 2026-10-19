@@ -94,9 +94,13 @@ struct SettingsView: View {
             MonogramAvatar(name: profile.displayName)
             VStack(alignment: .leading, spacing: 2) {
                 Text(profile.displayName).font(.headline)
-                Text(profile.accountType.displayName)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                if let email = profile.email {
+                    Text(email)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
         }
         .padding(.vertical, Theme.Spacing.xs)
