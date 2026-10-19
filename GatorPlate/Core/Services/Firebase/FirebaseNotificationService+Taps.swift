@@ -2,7 +2,7 @@ import FirebaseMessaging
 import OSLog
 import UserNotifications
 
-/// Tapped alerts: the `UNUserNotificationCenterDelegate` methods, clearing opened alerts, and the DEBUG test alert.
+/// Tapped alerts: the `UNUserNotificationCenterDelegate` methods, and clearing opened alerts.
 extension FirebaseNotificationService {
     /// Removes the opened alert, and any other delivered alert for the same post, from Notification Center.
     func clearDelivered(postId: String, notificationId: String) {
@@ -18,21 +18,6 @@ extension FirebaseNotificationService {
             if error != nil { Logger.services.error("Couldn't clear the app badge") }
         }
     }
-
-    #if DEBUG
-    func scheduleTestAlert(postId: String) async throws {
-        let content = UNMutableNotificationContent()
-        content.title = "Free food on campus"
-        content.body = "Test alert"
-        content.sound = .default
-        content.userInfo = [AppConfig.notificationPostIdKey: postId]
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(AppConfig.debugTestAlertDelaySeconds),
-                                                        repeats: false)
-        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
-        try await UNUserNotificationCenter.current().add(request)
-        Logger.services.info("Test alert scheduled")
-    }
-    #endif
 
     /// "present" / "missing" / "rejected", never the ID itself.
     nonisolated static func postIdCheck(_ userInfo: [AnyHashable: Any]) -> String {
