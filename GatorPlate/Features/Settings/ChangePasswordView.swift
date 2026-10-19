@@ -49,12 +49,8 @@ struct ChangePasswordView: View {
             } header: {
                 Text("New password")
             } footer: {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    RuleLine(text: "At least \(AppConfig.minPasswordLength) characters",
-                             isMet: Validation.isPasswordValid(new))
-                    RuleLine(text: "Passwords match", isMet: !confirm.isEmpty && new == confirm)
-                }
-                .padding(.top, Theme.Spacing.xs)
+                PasswordChecklist(password: new, confirm: confirm)
+                    .padding(.top, Theme.Spacing.xs)
             }
 
             Section {
@@ -135,19 +131,5 @@ private struct PasswordRow: View {
                 .buttonStyle(.borderless)
                 .frame(minWidth: Theme.Size.minTapTarget, minHeight: Theme.Size.minTapTarget)
         }
-    }
-}
-
-/// "✓ At least 8 characters": gray until met, then green with a filled check.
-private struct RuleLine: View {
-    let text: String
-    let isMet: Bool
-
-    var body: some View {
-        Label(text, systemImage: isMet ? "checkmark.circle.fill" : "circle")
-            .font(.footnote)
-            .foregroundStyle(isMet ? Theme.Palette.success : .secondary)
-            .accessibilityLabel(text)
-            .accessibilityValue(isMet ? "Done" : "Not yet")
     }
 }
