@@ -23,7 +23,7 @@ nonisolated enum PostFilterChip: Hashable, Sendable {
 
     var title: String {
         switch self {
-        case .diet(let diet): diet == .vegan ? "Vegan" : "Vegetarian"
+        case .diet(let diet): diet.displayName
         case .place(let id): CampusBuilding.byId(id)?.shortName ?? id
         case .food(let food): food
         case .allergen(let allergen): "No \(allergen.displayName.lowercased())"
