@@ -3,7 +3,7 @@ import Foundation
 /// Editing the diet, place, allergen and food picks. Shared by Custom notifications and the Map/Feed filter (which
 /// edits its picks through `PostFilter.picks`), so both behave the same way.
 nonisolated extension AlertFilters {
-    static let foodSuggestions = ["Pizza", "Boba", "Coffee", "Dessert", "Snacks", "Fruit"]
+    static let foodSuggestions = ["Pizza", "Boba", "Coffee", "Snacks"]
 
     /// Why a food couldn't be added.
     enum FoodError: Error, Equatable {
