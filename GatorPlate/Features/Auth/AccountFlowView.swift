@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum AuthFocusField: Hashable {
-    case name, email, password
+    case name, email, password, confirmPassword
 }
 
 /// Sign in, create an account, or verify the email, full screen with a close button. Shown only when an account
