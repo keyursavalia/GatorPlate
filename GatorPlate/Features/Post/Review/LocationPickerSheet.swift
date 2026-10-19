@@ -39,6 +39,7 @@ struct LocationPickerSheet: View {
                 }
             }
             .searchable(text: $query, prompt: "Search buildings")
+            .environment(\.listAccent, Theme.Palette.accent)
             .navigationTitle("Where's the food?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -56,7 +57,7 @@ struct LocationPickerSheet: View {
         } label: {
             row(for: building)
         }
-        .foregroundStyle(.primary)
+        .foregroundStyle(Color.primary)
     }
 
     private func row(for building: CampusBuilding) -> some View {
@@ -70,7 +71,7 @@ struct LocationPickerSheet: View {
             Spacer()
             if case .building(let current) = selected, current == building {
                 Image(systemName: "checkmark")
-                    .foregroundStyle(Theme.Palette.brandPurple)
+                    .foregroundStyle(Theme.Palette.accent)
                     .accessibilityHidden(true)
             }
         }
