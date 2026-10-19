@@ -23,10 +23,11 @@ struct FeedScreen: View {
                     }
                 }
                 .toolbar {
+                    // The same glass circle as the Map's; the toolbar's own capsule is hidden.
                     ToolbarItem(placement: .topBarTrailing) {
-                        FilterButton(activeCount: viewModel.filterCount, isFloating: false,
-                                     action: viewModel.openFilters)
+                        FilterButton(activeCount: viewModel.filterCount, action: viewModel.openFilters)
                     }
+                    .sharedBackgroundVisibility(.hidden)
                 }
                 .overlay(alignment: .bottomTrailing) {
                     PostFAB(action: onPostFood)
