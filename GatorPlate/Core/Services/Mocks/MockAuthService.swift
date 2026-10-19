@@ -30,16 +30,15 @@ final class MockAuthService: AuthService {
     }
 
     /// A guest keeps its uid and alert settings, like the live upgrade.
-    func signUp(email: String, password: String, displayName: String,
-                accountType: AccountType, orgName: String?) async throws {
+    func signUp(email: String, password: String, displayName: String) async throws {
         var profile = session?.profile ?? UserProfile(uid: "mock-uid", displayName: displayName, email: email,
-                                                      accountType: accountType, orgName: orgName,
+                                                      accountType: .student, orgName: nil,
                                                       acceptedTermsVersion: nil, acceptedTermsAt: nil,
                                                       notificationsEnabled: false, createdAt: .now)
         profile.displayName = displayName
         profile.email = email
-        profile.accountType = accountType
-        profile.orgName = orgName
+        profile.accountType = .student
+        profile.orgName = nil
         profile.createdAt = .now
         set(AuthSession(profile: profile, isEmailVerified: !AppConfig.requireEmailVerification))
     }
