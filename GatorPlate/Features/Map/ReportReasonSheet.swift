@@ -46,6 +46,7 @@ struct ReportReasonSheet: View {
                     }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Report post")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
