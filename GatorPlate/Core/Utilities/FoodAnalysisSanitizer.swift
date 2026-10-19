@@ -3,8 +3,6 @@ import Foundation
 /// Turns raw model JSON into a trusted `FoodAnalysisOutcome` (AI spec section 3, rules 1-7).
 /// Pure functions: no I/O, no logging, never throws, never trusts the model.
 nonisolated enum FoodAnalysisSanitizer {
-    private static let freePrefix = "FREE: "
-
     // MARK: Decoding
 
     /// Lenient decode. Returns nil only when the text holds no JSON object at all.
@@ -120,14 +118,18 @@ nonisolated enum FoodAnalysisSanitizer {
             .map { $0 }
     }
 
-    /// Rule 7: exactly one "FREE: " prefix, at most `aiTitleMaxLength`, built from the items when empty.
+    /// Rule 7: no "FREE" prefix (everything on GatorPlate is free; S09), at most `aiTitleMaxLength`, built from
+    /// the items when empty.
     private static func sanitizedTitle(_ raw: String?, items: [FoodItem]) -> String {
-        var body = cleanText(raw)
-        if let match = body.prefixMatch(of: #/(?i)^free\b\s*[:!\-–—]*\s*/#) {
-            body = String(body[match.range.upperBound...])
-        }
+        var body = strippingFreePrefix(cleanText(raw))
         if body.isEmpty { body = items.first?.name ?? "Food" }
-        return freePrefix + truncated(body, to: AppConfig.aiTitleMaxLength - freePrefix.count)
+        return truncated(body, to: AppConfig.aiTitleMaxLength)
+    }
+
+    /// Drops a leading "FREE:", "Free -", "FREE!" and the like (older prompts and the model's habits).
+    static func strippingFreePrefix(_ text: String) -> String {
+        guard let match = text.prefixMatch(of: #/(?i)^free\b\s*[:!\-–—]*\s*/#) else { return text }
+        return String(text[match.range.upperBound...])
     }
 
     /// Target 100-150 characters: longer text is cut at a word boundary; shorter text is kept as is.
