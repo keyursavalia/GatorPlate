@@ -24,7 +24,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         activeObserver = NotificationCenter.default.addObserver(
             forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
-                MainActor.assumeIsolated { Self.hasBecomeActive = true }
+                MainActor.assumeIsolated {
+                    Self.hasBecomeActive = true
+                    KeyboardDismissal.shared.install()
+                }
             }
         Logger.app.info("App launched")
         return true
