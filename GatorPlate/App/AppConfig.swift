@@ -108,6 +108,11 @@ nonisolated enum AppConfig {
     static let alertOpenRegionSpanDegrees = 0.006
     /// Photos kept in memory for the map card and the feed.
     static let postImageCacheLimit = 60
+    /// Map pins show the post's cover photo (diet ring + badge); false keeps the glyph pins.
+    static let mapPhotoPins = true
+    /// 44 pt @3x.
+    static let mapPinThumbnailPixels = 132
+    static let mapPinThumbnailCacheLimit = 120
     /// Info notices on the map (e.g. "That food post has ended.") hide after this long.
     static let mapNoticeSeconds = 4
 
