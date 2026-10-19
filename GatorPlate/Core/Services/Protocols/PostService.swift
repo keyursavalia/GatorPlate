@@ -5,6 +5,9 @@ protocol PostService {
     /// Emits the current set of posts on every change, cache first, then server. Cancel the consuming task
     /// to unsubscribe.
     func observeActivePosts() -> AsyncThrowingStream<PostsSnapshot, Error>
+    /// One read of `posts/{id}` from the server (a tapped alert's post that the listener doesn't have yet).
+    /// Nil when the document doesn't exist; throws `.network` when the server can't be reached in time.
+    func fetchPost(id: String) async throws -> FoodPost?
     /// A new post ID. Create it once per draft and reuse it when retrying, so a retry never duplicates a post.
     func makePostId() -> String
     /// Uploads the photos in parallel (index = slot; nil = couldn't be encoded), then writes the post with the
