@@ -34,8 +34,8 @@ service cloud.firestore {
           && filters.keys().hasOnly(['mode', 'diets', 'includeUnknownDiet', 'places', 'avoidAllergens',
                                      'skipUnverifiedAllergens', 'foods', 'updatedAt'])
           && filters.mode in ['all', 'custom']
-          && filters.diets is list && filters.diets.size() <= 2
-          && filters.diets.hasOnly(['vegan', 'vegetarian'])
+          && filters.diets is list && filters.diets.size() <= 3
+          && filters.diets.hasOnly(['vegan', 'vegetarian', 'nonVegetarian'])
           && filters.includeUnknownDiet is bool
           && filters.places is list && filters.places.size() <= 15
           && filters.avoidAllergens is list && filters.avoidAllergens.size() <= 9
