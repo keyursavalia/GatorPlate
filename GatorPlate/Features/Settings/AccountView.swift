@@ -66,7 +66,6 @@ private struct AccountForm: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
-                LabeledContent("Account type", value: viewModel.profile.accountType.displayName)
                 LabeledContent("Member since", value: viewModel.memberSince)
             }
 
