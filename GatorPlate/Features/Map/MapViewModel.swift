@@ -113,6 +113,20 @@ final class MapViewModel {
     /// "That food post has ended." and similar, shown briefly over the map.
     var notice: String? { navigation.notice }
 
+    /// A tapped alert's post is being looked up ("Opening post…").
+    var isOpeningAlert: Bool { navigation.isOpeningAlert }
+
+    /// A tapped alert's post is gone: the centered "no longer available" card.
+    var showsAlertUnavailable: Bool { navigation.showsAlertUnavailable }
+
+    func dismissAlertUnavailable() {
+        navigation.dismissAlertUnavailable()
+    }
+
+    func showAvailableFood() {
+        navigation.showAvailableFood()
+    }
+
     var locationBanner: LocationBanner? {
         let banner: LocationBanner? = switch location.authorization {
         case .notDetermined: nil
