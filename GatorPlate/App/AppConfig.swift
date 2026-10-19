@@ -124,8 +124,6 @@ nonisolated enum AppConfig {
     static let notificationWriteTimeoutSeconds = 10
     /// Sign-out waits at most this long to remove the installation ID.
     static let notificationSignOutTimeoutSeconds = 5
-    /// DEBUG "Send test alert" (About): the local alert fires this long after the tap.
-    static let debugTestAlertDelaySeconds = 5
     /// Quiet hours, campus time (America/Los_Angeles). `functions/src/recipients.ts` mirrors these.
     static let quietHoursStartHour = 23
     static let quietHoursEndHour = 7
