@@ -15,11 +15,11 @@ struct WelcomeTermsView: View {
 
     private let features = [
         Feature(id: "browse", icon: "map.fill", title: "Live campus map",
-                detail: "See free food right now. No account needed.", tint: Theme.Palette.brandPurple),
+                detail: "See free food right now. No account needed.", tint: Theme.Palette.success),
         Feature(id: "alerts", icon: "bell.badge.fill", title: "Alerts you choose",
                 detail: "Get notified only for the food you care about.", tint: Theme.Palette.brandPurple),
         Feature(id: "safety", icon: "exclamationmark.shield.fill", title: "Eat smart",
-                detail: "Food is shared by students. Eat at your own risk and confirm allergens with the host.",
+                detail: "Eat at your own risk; ask about allergens.",
                 tint: Theme.Palette.warning),
     ]
 
