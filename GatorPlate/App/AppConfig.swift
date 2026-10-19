@@ -163,8 +163,6 @@ nonisolated enum AppConfig {
     static let cameraPromptDelaySeconds = 0.35
     /// "Starting camera" shows only if the session takes longer than this.
     static let cameraSpinnerDelaySeconds = 0.3
-    /// A dismissed location banner comes back after this long.
-    static let locationBannerSnoozeDays = 7
     /// Map toasts (e.g. "Alerts on for all free food") hide after this long.
     static let toastSeconds = 6.0
 
