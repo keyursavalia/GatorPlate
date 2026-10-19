@@ -98,7 +98,7 @@ struct MapScreen: View {
 
             ForEach(viewModel.posts) { post in
                 Annotation(post.title, coordinate: post.coordinate.clLocationCoordinate) {
-                    PostPin(dietary: post.overallDietary, isSelected: post.id == viewModel.selectedPostId)
+                    PostMapPin(post: post, isSelected: post.id == viewModel.selectedPostId, images: viewModel.images)
                         // Filter changes fade pins in and out; the camera never moves for them.
                         .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
                         .accessibilityLabel(viewModel.accessibilityLabel(for: post))
