@@ -42,6 +42,7 @@ struct AlertFiltersView: View {
             }
         }
         .environment(\.defaultMinListRowHeight, 48)
+        .environment(\.listAccent, Theme.Palette.accent)
         .navigationTitle("Custom notifications")
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: viewModel.draft) { viewModel.scheduleSave() }
