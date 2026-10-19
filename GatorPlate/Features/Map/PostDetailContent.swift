@@ -86,9 +86,11 @@ struct PostDetailContent<MenuContent: View, Actions: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 menu
             }
-            .padding(.horizontal, Theme.Spacing.xs)
+            .padding(.horizontal, Theme.Spacing.md)
         }
         .padding(.top, Theme.Spacing.sm)
+        // The row's rounded corners clip its content: keep the poster's name clear of the bottom-leading curve.
+        .padding(.bottom, Theme.Spacing.md)
     }
 
     /// Time left, walk and servings side by side, like the Privacy summary. Stacks at large text sizes.
