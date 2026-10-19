@@ -76,7 +76,7 @@ final class MockPostService: PostService {
 extension FoodPost {
     /// Sample data for mocks and previews.
     nonisolated static var sample: FoodPost {
-        mock(id: "sample-post", title: "FREE: Pad Thai - SSB 201",
+        mock(id: "sample-post", title: "Pad Thai - SSB 201",
              description: "Leftover pad thai from the club meeting.", buildingId: "ssb", room: "Room 201",
              items: [FoodItem(name: "Pad Thai", dietary: .vegan, calories: CalorieRange(low: 420, high: 520))],
              dietary: .vegan, allergens: [.soy, .peanuts], minutesLeft: 30)
@@ -86,13 +86,13 @@ extension FoodPost {
     nonisolated static var mockCampus: [FoodPost] {
         [
             sample,
-            mock(id: "mock-pizza", title: "FREE: Veggie pizza - Library lobby",
+            mock(id: "mock-pizza", title: "Veggie pizza - Library lobby",
                  description: "Six boxes of veggie pizza from a study night. Grab a slice before the final.",
                  buildingId: "library", room: "1st floor lobby",
                  items: [FoodItem(name: "Veggie pizza", dietary: .vegetarian,
                                   calories: CalorieRange(low: 250, high: 300))],
                  dietary: .vegetarian, allergens: [.wheat, .milk], minutesLeft: 8),
-            mock(id: "mock-burritos", title: "FREE: Burritos - Chavez Center",
+            mock(id: "mock-burritos", title: "Burritos - Chavez Center",
                  description: "Chicken and bean burritos left over from the welcome mixer.",
                  buildingId: "chavez", room: "Jack Adams Hall",
                  items: [FoodItem(name: "Chicken burrito", dietary: .nonVegetarian,
@@ -100,12 +100,12 @@ extension FoodPost {
                          FoodItem(name: "Bean burrito", dietary: .vegetarian,
                                   calories: CalorieRange(low: 500, high: 650))],
                  dietary: .mixed, allergens: [.wheat, .milk], minutesLeft: 4),
-            mock(id: "mock-fruit", title: "FREE: Fruit cups - Science 101",
+            mock(id: "mock-fruit", title: "Fruit cups - Science 101",
                  description: "Fresh fruit cups from the department seminar, still cold.",
                  buildingId: "science", room: "Room 101",
                  items: [FoodItem(name: "Fruit cup", dietary: .vegan, calories: CalorieRange(low: 80, high: 120))],
                  dietary: .vegan, allergens: [], minutesLeft: 45),
-            mock(id: "mock-cookies", title: "FREE: Cookies - The Village",
+            mock(id: "mock-cookies", title: "Cookies - The Village",
                  description: "Assorted cookies from the residence hall event.",
                  buildingId: "village", room: nil,
                  items: [FoodItem(name: "Assorted cookies", dietary: .unknown, calories: nil)],
