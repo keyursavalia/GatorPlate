@@ -61,7 +61,7 @@ struct SignInForm: View {
     private func handleReturn() {
         switch focus {
         case .name, .email: focus = .password
-        case .password, nil:
+        case .password, .confirmPassword, nil:
             focus = nil
             submit()
         }
