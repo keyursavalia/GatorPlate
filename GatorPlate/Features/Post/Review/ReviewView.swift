@@ -112,8 +112,11 @@ struct ReviewView: View {
 
     @ViewBuilder
     private var notesSection: some View {
-        if viewModel.aiBaseline != nil || viewModel.removedPhotosNotice != nil {
+        if viewModel.aiBaseline != nil || viewModel.removedPhotosNotice != nil || viewModel.showsAIDisabledNote {
             Section {
+                if viewModel.showsAIDisabledNote {
+                    NoteRow(text: "AI drafting is off right now. Fill in the details yourself.", systemImage: "info.circle")
+                }
                 if viewModel.aiBaseline != nil {
                     NoteRow(text: "AI drafted this post. Give it a quick check, then publish.", systemImage: "sparkles")
                 }
