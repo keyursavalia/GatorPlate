@@ -30,9 +30,10 @@ final class MainSession {
         let images = PostImageCache(store: environment.images)
         let settings = SettingsViewModel(notifications: environment.notifications, profile: profile)
         let filters = PostFilterStore(uid: profile.uid)
+        let reported = ReportedPosts(uid: profile.uid)
         let locationAccess = LocationAccess(location: environment.location)
         let browse = BrowseResults(filters: filters, repository: repository, navigation: navigation,
-                                   location: environment.location, notificationPicks: {
+                                   location: environment.location, reported: reported, notificationPicks: {
                                        // "Use my notification filters" shows only while Custom notifications are on.
                                        settings.alertsEnabled ? AlertFilterMatcher.effective(settings.alertFilters) : nil
                                    })
@@ -44,7 +45,7 @@ final class MainSession {
         self.map = MapViewModel(repository: repository, navigation: navigation, postService: environment.posts,
                                 routing: environment.routing, location: environment.location,
                                 locationAccess: locationAccess, images: images, browse: browse,
-                                currentUid: profile.uid)
+                                reportedPosts: reported, currentUid: profile.uid)
         self.feed = FeedViewModel(repository: repository, navigation: navigation, location: environment.location,
                                   images: images, browse: browse)
         self.settings = settings
