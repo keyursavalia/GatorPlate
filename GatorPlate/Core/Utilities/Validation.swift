@@ -43,6 +43,9 @@ nonisolated enum Validation {
     static let weakPasswordMessage = "Use at least \(AppConfig.minPasswordLength) characters with an uppercase letter, "
         + "a lowercase letter, a number and a symbol."
 
+    /// A display or organization name with a word the content filter blocks (names are public on every post).
+    static let blockedNameMessage = "Choose a different name."
+
     static func trimmedName(_ raw: String) -> String {
         raw.trimmingCharacters(in: .whitespacesAndNewlines)
     }
