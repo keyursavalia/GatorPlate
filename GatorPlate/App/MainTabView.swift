@@ -72,6 +72,7 @@ struct MainTabView: View {
             self.session = session
             session.start()
             openTappedAlert()
+            showAppealResult()
             if let message = auth.consumeNotice() { notice = message }
         }
         .onDisappear { session?.stop() }
@@ -98,6 +99,9 @@ struct MainTabView: View {
         }
         .onChange(of: environment.notifications.pendingAlert) {
             openTappedAlert()
+        }
+        .onChange(of: environment.notifications.hasPendingAppealResult) {
+            showAppealResult()
         }
         .onChange(of: environment.location.authorization) {
             // Back from iOS Settings after "Turn on location in Settings".
@@ -200,6 +204,17 @@ struct MainTabView: View {
             return
         }
         session.navigation.openAlert(request)
+    }
+
+    /// A tapped "appeal reviewed" notification: shows Posting paused (with the decision) only while a ban is still
+    /// running; an upheld appeal has nothing to show.
+    private func showAppealResult() {
+        guard environment.notifications.hasPendingAppealResult, session != nil else { return }
+        environment.notifications.appealResultHandled()
+        guard !authSession.isGuest else { return }
+        Task {
+            if let ban = await environment.posts.postingBan(), ban.isActive() { postingBan = ban }
+        }
     }
 
     private func showPostAfterFlow() {
