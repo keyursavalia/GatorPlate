@@ -190,7 +190,8 @@ final class PostFlowModel {
     }
 
     private func makeReview(analysis: FoodAnalysisResult?) -> ReviewViewModel {
-        ReviewViewModel(photos: tray.photos, analysis: analysis, author: author, posts: posts, location: location)
+        ReviewViewModel(photos: tray.photos, analysis: analysis, author: author, posts: posts, location: location,
+                        contentFilter: runtime.current.contentFilter)
     }
 
     private func finishEditingPhotos() {
