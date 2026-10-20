@@ -20,6 +20,8 @@ struct MainTabView: View {
     @State private var notice: String?
     /// An active posting ban found when Post food was tapped: the "Posting paused" sheet instead of the flow.
     @State private var postingBan: PostingBan?
+    /// Remote Config `posting_enabled` is off: "Posting is paused right now" instead of the flow.
+    @State private var isPostingUnavailable = false
 
     private var profile: UserProfile { authSession.profile }
 
@@ -33,10 +35,13 @@ struct MainTabView: View {
         }
         .fullScreenCover(isPresented: $isPostFlowPresented, onDismiss: showPostAfterFlow) {
             PostFlowCoordinator(camera: environment.camera, analyzer: environment.analyzer,
-                                posts: environment.posts, location: environment.location,
+                                runtime: environment.runtime, posts: environment.posts, location: environment.location,
                                 author: PostAuthor(profile: profile)) { postId in
                 postToShowAfterFlow = postId
             }
+        }
+        .sheet(isPresented: $isPostingUnavailable) {
+            PostingUnavailableSheet(notice: environment.runtime.current.serviceNotice)
         }
         .sheet(item: $postingBan) { ban in
             PostingPausedSheet(ban: ban) { message in
@@ -156,9 +161,15 @@ struct MainTabView: View {
         }
     }
 
-    /// Reads the ban fresh (it can start mid-session) and shows "Posting paused" instead of the camera when one is
-    /// running. If it can't be read, the flow opens; rules still refuse a banned post.
+    /// Checks the owner's posting switch first, then reads the ban fresh (it can start mid-session) and shows
+    /// "Posting paused" instead of the camera when one is running. If the ban can't be read, the flow opens; rules
+    /// still refuse a banned post.
     private func openPostFlowUnlessBanned() {
+        guard environment.runtime.current.postingEnabled else {
+            Logger.ui.info("Post food blocked: posting is paused in Remote Config")
+            isPostingUnavailable = true
+            return
+        }
         Task {
             if let ban = await environment.posts.postingBan(), ban.isActive() {
                 Logger.ui.info("Post food blocked by a posting ban")
