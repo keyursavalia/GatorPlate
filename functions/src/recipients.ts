@@ -47,8 +47,9 @@ export function isQuietHours(date: Date, timeZone: string = CAMPUS_TIME_ZONE): b
 }
 
 /**
- * Installation IDs to alert: opted in, valid ID, not the author (nor any device the author uses),
- * not muted by quiet hours, then matching the student's filters, each device once.
+ * Installation IDs to alert: opted in, valid ID, not the author (nor any device the author uses), not someone who
+ * blocked the author (`excludedUids`), not muted by quiet hours, then matching the student's filters, each device
+ * once.
  */
 export function recipientIds(
   subscribers: Subscriber[],
@@ -56,6 +57,7 @@ export function recipientIds(
   authorUid: string,
   authorInstallationId: unknown,
   now: Date,
+  excludedUids: ReadonlySet<string> = new Set(),
 ): Recipients {
   const authorIds = new Set<string>();
   if (isInstallationId(authorInstallationId)) authorIds.add(authorInstallationId);
@@ -70,6 +72,7 @@ export function recipientIds(
   let filteredOut = 0;
   for (const subscriber of subscribers) {
     if (subscriber.uid === authorUid) continue;
+    if (excludedUids.has(subscriber.uid)) continue;
     if (subscriber.notificationsEnabled !== true) continue;
     if (!isInstallationId(subscriber.fcmInstallationId)) continue;
     if (authorIds.has(subscriber.fcmInstallationId)) continue;
