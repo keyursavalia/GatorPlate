@@ -24,7 +24,9 @@ struct PostingPausedSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                     header
-                    if hasAppealed {
+                    if ban.appealResolution == .denied {
+                        appealDenied
+                    } else if hasAppealed {
                         appealSent
                     } else {
                         appealForm
@@ -110,6 +112,30 @@ struct PostingPausedSheet: View {
         .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
     }
 
+    private var appealDenied: some View {
+        Label {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                Text("Your appeal was reviewed").font(.headline)
+                Text("Posting stays paused until \(ban.bannedUntil.formatted(date: .long, time: .shortened)).")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if let note = ban.resolutionNote {
+                    Text(note)
+                        .font(.subheadline)
+                        .padding(.top, Theme.Spacing.xs)
+                        .accessibilityLabel("Note from the reviewer: \(note)")
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: "person.badge.shield.checkmark.fill").foregroundStyle(Theme.Palette.warning)
+        }
+        .padding(Theme.Spacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
+        .accessibilityElement(children: .combine)
+    }
+
     private var trimmed: String {
         message.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -134,6 +160,18 @@ struct PostingPausedSheet: View {
     Color.clear.sheet(isPresented: .constant(true)) {
         PostingPausedSheet(ban: PostingBan(bannedUntil: .now.addingTimeInterval(5 * 86_400), hasAppealed: false)) { _ in }
     }
+}
+
+#Preview("Denied") {
+    PostingPausedSheet(ban: PostingBan(bannedUntil: .now.addingTimeInterval(3 * 86_400), hasAppealed: true,
+                                       appealResolution: .denied,
+                                       resolutionNote: "Two of the removed posts showed people.")) { _ in }
+}
+
+#Preview("Denied, AX5") {
+    PostingPausedSheet(ban: PostingBan(bannedUntil: .now.addingTimeInterval(3 * 86_400), hasAppealed: true,
+                                       appealResolution: .denied, resolutionNote: nil)) { _ in }
+        .dynamicTypeSize(.accessibility5)
 }
 
 #Preview("Appealed") {
