@@ -27,6 +27,8 @@ final class ReviewViewModel {
     var photos: [CapturedPhoto]
     /// "We left out 1 photo that showed people." Dismissible.
     var removedPhotosNotice: String?
+    /// Remote Config turned AI drafting off, so this manual draft says why.
+    var showsAIDisabledNote = false
 
     /// Settings > Display > Show calorie estimates (`@AppStorage` in the views).
     static let showCaloriesKey = "display.showCalories"
