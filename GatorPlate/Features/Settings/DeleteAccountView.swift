@@ -16,6 +16,7 @@ struct DeleteAccountView: View {
                     Label("Your profile, notification settings and this device's notification registration", systemImage: "person.crop.circle")
                     Label("Your posts and their photos (active posts disappear for everyone right away)", systemImage: "fork.knife")
                     Label("Reports you've sent", systemImage: "flag")
+                    Label("Your blocks and appeals, and your moderation history", systemImage: "hand.raised")
                     Text("This can't be undone.").font(.subheadline.weight(.semibold))
                 }
                 .font(.subheadline)
