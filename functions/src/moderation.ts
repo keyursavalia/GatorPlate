@@ -5,9 +5,10 @@ import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { type ServerConfig, modelChain } from "./config-logic.js";
 import { isPostId } from "./deleteAccount.js";
 import { generateWithFallback } from "./genai.js";
-import { removePost } from "./moderation-actions.js";
+import { pushToAdmins, removePost } from "./moderation-actions.js";
 import {
   type UnsafeVerdict,
+  CATEGORY_LABELS,
   UNSAFE_PUSH_BODY,
   UNSAFE_PUSH_TITLE,
   UNSAFE_VERDICT_SCHEMA,
@@ -18,6 +19,8 @@ import {
   parseUnsafeVerdict,
   postFacts,
   reachesRemovalThreshold,
+  reportDeleteAtMs,
+  reportPostSnapshot,
   unsafeCheckPrompt,
 } from "./moderation-logic.js";
 import { errorCode } from "./recipients.js";
@@ -33,7 +36,9 @@ function photoPath(postId: string, slot: number): string {
  * removes it and tells the poster. Otherwise (and for spam/misleading and trading) the report counts toward the
  * pooled threshold of distinct reporters (`report_removal_threshold`, default 3), which removes the post silently.
  * Each removal is a strike; enough strikes in the window pause posting (`ban_after_removals`, `ban_days`).
- * Thresholds and the model chain come from the server Remote Config template. Logs counts and verdicts only.
+ * Offensive reports also push the admins for human review within 24 hours. Every report gets a `postSnapshot` for
+ * review and a `deleteAt` 90 days out (TTL). Thresholds and the model chain come from the server Remote Config
+ * template. Logs counts and verdicts only.
  */
 export const onReportCreated = onDocumentCreated(
   { document: "reports/{reportId}", region: "us-central1", retry: false, memory: "512MiB", timeoutSeconds: 60 },
@@ -47,39 +52,47 @@ export const onReportCreated = onDocumentCreated(
       return;
     }
 
+    const createdAtMs = report.createdAt instanceof Timestamp ? report.createdAt.toMillis() : Date.now();
+    const deleteAt = Timestamp.fromMillis(reportDeleteAtMs(createdAtMs));
     const db = getFirestore();
-    const postSnapshot = await db.collection("posts").doc(postId).get();
-    const post = postSnapshot.data();
+    const postDoc = await db.collection("posts").doc(postId).get();
+    const post = postDoc.data();
     if (!post) {
+      await event.data.ref.update({ deleteAt });
       logger.info("Reported post already gone", { category });
       return;
     }
+    const postSnapshot = reportPostSnapshot(post);
     const expiresAt = post.expiresAt instanceof Timestamp ? post.expiresAt.toMillis() : 0;
     if (expiresAt <= Date.now() || post.status !== "active") {
+      await event.data.ref.update({ deleteAt, postSnapshot });
       logger.info("Reported post no longer active", { category });
       return;
     }
 
     const config = await serverConfig();
     let unsafeCredible: boolean | null = null;
+    let verdictFields: Record<string, unknown> = {};
     if (category === "unsafe") {
       const { verdict, model } = config.moderationAiEnabled
         ? await checkUnsafe(postId, post, cleanReason(report.reason), config)
         : { verdict: null, model: null };
       unsafeCredible = isCredibleUnsafe(verdict, config.unsafeConfidenceMin);
-      await event.data.ref.update({
-        aiVerdict: verdict ? (unsafeCredible ? "credible" : "notCredible") : "unavailable",
+      verdictFields = {
+        aiVerdict: !config.moderationAiEnabled ? "disabled"
+          : verdict ? (unsafeCredible ? "credible" : "notCredible") : "unavailable",
         aiConfidence: verdict?.confidence ?? null,
         aiConcern: verdict?.concern ?? null,
         aiRationale: verdict?.rationale ?? null,
         aiModel: model,
-      });
+      };
       logger.info("Unsafe report checked", {
         verdict: verdict ? (unsafeCredible ? "credible" : "notCredible") : "unavailable",
         confidence: verdict?.confidence ?? null,
         concern: verdict?.concern ?? null,
       });
       if (unsafeCredible) {
+        await event.data.ref.update({ ...verdictFields, deleteAt, postSnapshot, countsTowardThreshold: false });
         await removePost(postId, post, {
           category: "unsafe",
           strike: true,
@@ -90,7 +103,14 @@ export const onReportCreated = onDocumentCreated(
     }
 
     const counts = countsTowardThreshold(category, unsafeCredible);
-    await event.data.ref.update({ countsTowardThreshold: counts });
+    await event.data.ref.update({ ...verdictFields, deleteAt, postSnapshot, countsTowardThreshold: counts });
+    if (category === "offensive") {
+      await pushToAdmins(config, {
+        title: "New report to review",
+        body: `${CATEGORY_LABELS[category]} report on a live post.`,
+        kind: "adminReview",
+      });
+    }
     if (!counts) return;
 
     const countingReports = await db.collection("reports")
