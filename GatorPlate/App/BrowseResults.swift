@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 /// The filtered posts both tabs show (one filter for Map and Feed). `PostsRepository` stays unfiltered; posts this
-/// account reported are left out (unless open). This re-filters when the posts, the filter, the reported posts or
+/// account reported are left out (unless open), and posts by people this user blocked are always left out. This re-filters when the posts, the filter, the reported posts or
 /// the open post change, every expiry tick while "Time left" is on, and
 /// after the student moves `AppConfig.browseLocationChangeMeters` while distance matters. `result` is reassigned
 /// only when it really changes, so nothing re-renders per location fix or per frame.
@@ -16,6 +16,8 @@ final class BrowseResults {
     let filters: PostFilterStore
     /// Posts this account reported, hidden from both tabs.
     let reported: ReportedPosts?
+    /// People this user blocked: their posts are hidden, even an open one (blocking closes the sheet first).
+    let blocked: BlockedUsers?
 
     @ObservationIgnored private let repository: PostsRepository
     @ObservationIgnored private let navigation: AppNavigation
@@ -27,12 +29,13 @@ final class BrowseResults {
     @ObservationIgnored private var isObserving = false
 
     init(filters: PostFilterStore, repository: PostsRepository, navigation: AppNavigation,
-         location: any LocationProviding, reported: ReportedPosts? = nil,
+         location: any LocationProviding, reported: ReportedPosts? = nil, blocked: BlockedUsers? = nil,
          notificationPicks: @escaping () -> AlertFilters? = { nil },
          now: @escaping () -> Date = { .now },
          tickInterval: Duration = .seconds(AppConfig.postsExpiryTickSeconds)) {
         self.filters = filters
         self.reported = reported
+        self.blocked = blocked
         self.repository = repository
         self.navigation = navigation
         self.location = location
@@ -86,11 +89,15 @@ final class BrowseResults {
 
     // MARK: Private
 
-    /// Active posts minus the ones this account reported, except the open post.
+    /// Active posts minus blocked posters' and the ones this account reported (except the open post).
     private var candidates: [FoodPost] {
-        guard let reported, !reported.ids.isEmpty else { return repository.activePosts }
+        var posts = repository.activePosts
+        if let blocked, !blocked.uids.isEmpty {
+            posts = posts.filter { !blocked.contains($0.authorUid) }
+        }
+        guard let reported, !reported.ids.isEmpty else { return posts }
         let selected = navigation.selectedPostId
-        return repository.activePosts.filter { !reported.contains($0.id) || $0.id == selected }
+        return posts.filter { !reported.contains($0.id) || $0.id == selected }
     }
 
     /// Keeps the previous fix until the student has moved far enough, so GPS jitter changes nothing.
@@ -112,6 +119,7 @@ final class BrowseResults {
             _ = repository.activePosts
             _ = filters.filter
             _ = reported?.ids
+            _ = blocked?.uids
             _ = navigation.selectedPostId
             _ = location.lastCoordinate
         } onChange: { [weak self] in
