@@ -139,7 +139,10 @@ struct ReviewView: View {
             .listRowBackground(rowHighlight(highlighted == .attestation))
             .id(PostDraftValidator.Field.attestation)
         } footer: {
-            Text("Required to publish.")
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                Text("Required to publish.")
+                Text("Photos you post are checked by Google's Gemini AI for safety, including if someone reports your post.")
+            }
         }
     }
 
