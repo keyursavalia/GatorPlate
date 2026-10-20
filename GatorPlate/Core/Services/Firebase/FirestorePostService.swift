@@ -189,7 +189,12 @@ final class FirestorePostService: PostService {
               bannedUntil > .now else { return nil }
         let appeal = try? await database.collection("appeals").document(uid).getDocument()
         let appealedFor = (appeal?.get("bannedUntil") as? Timestamp)?.dateValue()
-        return PostingBan(bannedUntil: bannedUntil, hasAppealed: appealedFor == bannedUntil)
+        let hasAppealed = appealedFor == bannedUntil
+        // A decision on an older ban's appeal doesn't apply to this one.
+        let resolution = hasAppealed ? (appeal?.get("resolution") as? String).flatMap(AppealResolution.init) : nil
+        let note = hasAppealed ? (appeal?.get("resolutionNote") as? String).map { String($0.prefix(200)) } : nil
+        return PostingBan(bannedUntil: bannedUntil, hasAppealed: hasAppealed, appealResolution: resolution,
+                          resolutionNote: note?.isEmpty == true ? nil : note)
     }
 
     // MARK: Helpers
