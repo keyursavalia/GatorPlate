@@ -4,7 +4,7 @@
  * parameters: their values come from Remote Config (`serverConfig()`), with defaults in `SERVER_DEFAULTS`.
  */
 
-export const REPORT_CATEGORIES = ["unsafe", "misleading", "trading"] as const;
+export const REPORT_CATEGORIES = ["unsafe", "offensive", "misleading", "trading"] as const;
 export type ReportCategory = (typeof REPORT_CATEGORIES)[number];
 
 /** Why a post was removed. Report categories and `admin` are strikes; `screened` and `filtered` are not. */
@@ -16,6 +16,17 @@ export type StrikeCategory = (typeof STRIKE_CATEGORIES)[number];
 export const REASON_MIN_LENGTH = 20;
 export const REASON_MAX_LENGTH = 280;
 export const RATIONALE_MAX_LENGTH = 140;
+
+/** Reports (with their post snapshot) are deleted this long after they're filed (TTL on `reports.deleteAt`). */
+export const REPORT_RETENTION_DAYS = 90;
+
+/** The app's `ReportCategory.label`, for admin pushes. */
+export const CATEGORY_LABELS: Readonly<Record<ReportCategory, string>> = {
+  unsafe: "Unsafe to eat",
+  offensive: "Offensive or inappropriate",
+  misleading: "Spam or misleading",
+  trading: "Selling or trading",
+};
 
 export const UNSAFE_PUSH_TITLE = "Your post was reported: Unsafe";
 export const UNSAFE_PUSH_BODY = "It was removed. Thanks for keeping campus food safe.";
@@ -40,6 +51,37 @@ export interface Removal {
 
 export function isReportCategory(value: unknown): value is ReportCategory {
   return typeof value === "string" && (REPORT_CATEGORIES as readonly string[]).includes(value);
+}
+
+/** When a report filed at `createdAtMs` is deleted by TTL. */
+export function reportDeleteAtMs(createdAtMs: number): number {
+  return createdAtMs + REPORT_RETENTION_DAYS * DAY_MS;
+}
+
+export interface ReportPostSnapshot {
+  title: string;
+  description: string;
+  locationName: string;
+  authorUid: string;
+  authorName: string;
+  orgName: string | null;
+}
+
+/**
+ * What a reviewer needs after the post has ended: text and who posted it, never photos. Stored on the report
+ * (admin-only) and deleted with it after `REPORT_RETENTION_DAYS`.
+ */
+export function reportPostSnapshot(post: Record<string, unknown>): ReportPostSnapshot {
+  const text = (value: unknown, max: number) => (typeof value === "string" ? value.slice(0, max) : "");
+  const org = text(post.orgName, 60);
+  return {
+    title: text(post.title, 140),
+    description: text(post.description, 170),
+    locationName: text(post.locationName, 120),
+    authorUid: text(post.authorUid, 128),
+    authorName: text(post.authorName, 60),
+    orgName: org.length > 0 ? org : null,
+  };
 }
 
 /**
