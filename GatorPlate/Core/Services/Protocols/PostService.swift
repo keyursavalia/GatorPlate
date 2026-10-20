@@ -19,6 +19,9 @@ protocol PostService {
     func report(postId: String, category: ReportCategory, reason: String) async throws
     /// A banned poster's appeal for the ban ending `bannedUntil` (`appeals/{uid}`).
     func appeal(message: String, bannedUntil: Date) async throws
+    /// The signed-in account's active posting ban, read fresh when Post food is tapped (a ban can start
+    /// mid-session). Nil when there's none or it can't be read: rules still refuse a banned post.
+    func postingBan() async -> PostingBan?
 }
 
 extension PostService {
