@@ -5,23 +5,29 @@ nonisolated enum AppConfig {
     static let appName = "GatorPlate"
 
     // Auth
-    static let allowedEmailDomains = ["gmail.com", "outlook.com", "icloud.com"]
     static let requireEmailVerification = true
     static let termsVersion = "2026-10-demo-1"
     static let minPasswordLength = 8
     static let maxNameLength = 60
     static let maxEmailLength = 254
-    /// Substituted for [TEAM NAME] / [CONTACT EMAIL] in the Terms. Empty keeps the bracketed placeholder visible.
-    static let teamName = ""
-    static let contactEmail = ""
+    /// Substituted for [TEAM NAME] in the Terms and Privacy Policy.
+    static let teamName = "KEYUR DIPAKBHAI SAVALIA"
+    /// In-app default for Remote Config `support_email` (Help & support, [CONTACT EMAIL] in the legal text).
+    static let supportEmail = "contact@keyursavalia.com"
 
-    // AI (Firebase AI Logic)
-    /// 2026-10-14: switched from gemini-3.5-flash, which Google deprecated; 3.6 Flash is active.
-    /// Never hardcode the model name elsewhere.
-    static let geminiModelName = "gemini-3.6-flash"
-    /// `true` uses thinking level `.minimal` (faster; not supported on 3.7/3.8 Flash), `false` the default `.low`.
-    static let aiThinkingMinimal = false
-    static let aiTemperature: Float = 0.2
+    // Safety
+    /// Blocked people per user (`blocks` docs where `blockerUid` is the user).
+    static let maxBlockedUsers = 500
+
+    // AI (Firebase AI Logic). Every value below is the in-app default of a Remote Config key; what runs is
+    // `RuntimeConfig` (see `RuntimeConfig.Key` and docs/06-OPERATIONS.md).
+    /// In-app default only; `RuntimeConfig.aiModelName` is what runs. Never hardcode the model name elsewhere.
+    static let defaultGeminiModelName = "gemini-3.6-flash"
+    /// Tried in order when a model is retired or unavailable (`ai_fallback_model_names`).
+    static let defaultGeminiFallbackModelNames = ["gemini-3.8-flash"]
+    /// `.minimal` is faster but rejected by 3.7/3.8 Flash; `.off` sends no thinking config.
+    static let defaultAIThinkingLevel = AIThinkingLevel.low
+    static let aiTemperature = 0.2
     /// Covers thinking tokens plus the JSON answer.
     static let aiMaxOutputTokens = 2048
     static let aiTimeoutSeconds = 25
@@ -187,6 +193,12 @@ nonisolated enum AppConfig {
     // Location
     /// Key in `NSLocationTemporaryUsageDescriptionDictionary` (Info.plist).
     static let preciseLocationPurposeKey = "FoodNearby"
+
+    // Runtime config (Firebase Remote Config)
+    /// The launch fetch gives up after this long; the UI never waits for it (cached or default values show first).
+    static let runtimeConfigFetchTimeoutSeconds = 5
+    /// Release builds fetch at most this often; realtime updates arrive sooner anyway. DEBUG uses 0.
+    static let runtimeConfigMinimumFetchIntervalSeconds = 3600.0
 
     // Feature flags
     /// Sprint 08: canned AI result if network/AI is down.
