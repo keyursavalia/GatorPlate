@@ -1,19 +1,18 @@
 import SwiftUI
 
-/// Bottom of the post sheet. Poster: a filled red Mark as gone (with confirmation). Others: "Reported" once they
-/// report from the ⋯ menu. No pickup or claim tracking (R6).
+/// Bottom of the post sheet. Poster: a filled red Mark as gone (`onMarkGone` asks to confirm with a system alert,
+/// held by `PostBottomCard` outside the list). Others: "Reported" once they report from the ⋯ menu. No pickup or
+/// claim tracking (R6).
 struct PostActionsSection: View {
     let post: FoodPost
     let viewModel: MapViewModel
-
-    @State private var isConfirmingGone = false
+    let onMarkGone: () -> Void
 
     var body: some View {
         if viewModel.isOwnPost(post) {
             Section {
-                DestructiveButton(title: "Mark as gone", isLoading: viewModel.markGoneStatus == .working) {
-                    isConfirmingGone = true
-                }
+                DestructiveButton(title: "Mark as gone", isLoading: viewModel.markGoneStatus == .working,
+                                  action: onMarkGone)
                 .accessibilityHint("Removes this post for everyone")
             } footer: {
                 if case .failed(let message) = viewModel.markGoneStatus {
@@ -23,14 +22,6 @@ struct PostActionsSection: View {
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
-            .confirmationDialog("Mark this food as gone?", isPresented: $isConfirmingGone, titleVisibility: .visible) {
-                Button("Mark as gone", role: .destructive) {
-                    Task { await viewModel.markGone(post) }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("It disappears from the map and feed for everyone.")
-            }
         } else if viewModel.reportedPostIds.contains(post.id) {
             Section {
                 NoteRow(text: "Reported. Thanks, we'll review it.", systemImage: "checkmark.seal")
