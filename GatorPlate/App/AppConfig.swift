@@ -68,7 +68,13 @@ nonisolated enum AppConfig {
     static let postMaxCautions = 4
     static let postLocationDetailMaxLength = 80
     static let postServingsRange = 1...500
-    static let postReportReasonMaxLength = 200
+    /// Report reason (required for "Unsafe to eat", one or two sentences). `firestore.rules` and the
+    /// `onReportCreated` function mirror these.
+    static let reportReasonMinLength = 20
+    static let reportReasonMaxLength = 280
+    /// A banned poster's appeal (`appeals/{uid}`).
+    static let appealMinLength = 20
+    static let appealMaxLength = 500
     /// Total deadline for the post write to be confirmed by the server.
     static let postPublishTimeoutSeconds = 15
     static let postImageUploadTimeoutSeconds = 10
