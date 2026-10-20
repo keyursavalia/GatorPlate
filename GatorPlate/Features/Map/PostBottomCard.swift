@@ -35,7 +35,7 @@ struct PostBottomCard: View {
 
     @ViewBuilder
     private var menu: some View {
-        if !viewModel.isOwnPost(post), !viewModel.reportedPostIds.contains(post.id) {
+        if !viewModel.isOwnPost(post), !viewModel.reportedPosts.contains(post.id) {
             Menu {
                 Button("Report", systemImage: "flag") { isReporting = true }
             } label: {
