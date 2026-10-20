@@ -6,7 +6,8 @@ nonisolated enum AppConfig {
 
     // Auth
     static let requireEmailVerification = true
-    static let termsVersion = "2026-10-demo-1"
+    /// Terms of Use and Privacy Policy version (both files carry it). A bump shows the Terms gate to everyone once.
+    static let termsVersion = "2026-11-1"
     static let minPasswordLength = 8
     static let maxNameLength = 60
     static let maxEmailLength = 254
