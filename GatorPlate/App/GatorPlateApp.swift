@@ -17,7 +17,9 @@ struct GatorPlateApp: App {
         self.environment = environment
         // Cached or default values apply at once; the fetch and realtime listener never block launch.
         environment.runtime.start()
-        _authViewModel = State(initialValue: AuthViewModel(auth: environment.auth, account: environment.account))
+        let runtime = environment.runtime
+        _authViewModel = State(initialValue: AuthViewModel(auth: environment.auth, account: environment.account,
+                                                           nameFilter: { runtime.current.contentFilter }))
     }
 
     var body: some Scene {
