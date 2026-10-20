@@ -32,11 +32,17 @@ export function photoPrefix(postId: unknown): string | null {
   return isPostId(postId) ? `postImages/${postId}` : null;
 }
 
+/** Docs keyed by the user's uid besides the profile: their appeal and their moderation record (strikes, bans). */
+export function uidKeyedDocPaths(uid: string): string[] {
+  return [`appeals/${uid}`, `moderation/${uid}`];
+}
+
 /**
  * Deletes the caller's account (App Store Guideline 5.1.1(v)). Data goes before the Auth user, so a run that
  * fails halfway can be retried by the same signed-in user; every step is idempotent. Order: each post's photos
- * then the post, the user's reports, the profile (with alert filters and device registration), the Auth user.
- * Logs carry counts only.
+ * then the post; the user's reports, appeal, moderation record, and every block they made or received (one bulk
+ * writer, so deleting resets strikes); the profile (with alert filters and device registration); the Auth user.
+ * Reports other people filed about the user's posts stay until their 90-day TTL. Logs carry counts only.
  */
 export const deleteAccount = onCall({ region: "us-central1", enforceAppCheck: true }, async (request) => {
   const uid = request.auth?.uid;
@@ -54,9 +60,17 @@ export const deleteAccount = onCall({ region: "us-central1", enforceAppCheck: tr
     await Promise.all(batch.map((prefix) => bucket.deleteFiles({ prefix })));
   }
 
-  const reports = await db.collection("reports").where("reporterUid", "==", uid).select().get();
+  const [reports, blocksMade, blocksReceived] = await Promise.all([
+    db.collection("reports").where("reporterUid", "==", uid).select().get(),
+    db.collection("blocks").where("blockerUid", "==", uid).select().get(),
+    db.collection("blocks").where("blockedUid", "==", uid).select().get(),
+  ]);
   const writer = db.bulkWriter();
-  for (const doc of [...posts.docs, ...reports.docs]) void writer.delete(doc.ref);
+  for (const doc of [...posts.docs, ...reports.docs, ...blocksMade.docs, ...blocksReceived.docs]) {
+    void writer.delete(doc.ref);
+  }
+  // Deleting a missing doc succeeds, so these are safe on a retry.
+  for (const path of uidKeyedDocPaths(uid)) void writer.delete(db.doc(path));
   await writer.close();
 
   await db.collection("users").doc(uid).delete();
@@ -71,6 +85,9 @@ export const deleteAccount = onCall({ region: "us-central1", enforceAppCheck: tr
     }
   }
 
-  logger.info("Account deleted", { posts: posts.size, photoPrefixes: prefixes.length, reports: reports.size });
+  logger.info("Account deleted", {
+    posts: posts.size, photoPrefixes: prefixes.length, reports: reports.size,
+    blocksMade: blocksMade.size, blocksReceived: blocksReceived.size,
+  });
   return { deleted: true };
 });
