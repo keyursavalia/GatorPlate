@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// First launch (and after a Terms update): what GatorPlate is, as three short feature cards, then "Agree &
-/// continue". No account needed; accepting starts a guest session.
+/// First launch (and after a Terms update): a live campus map preview (`WelcomeCampusHero`) with the app tile across
+/// its bottom edge, the name and tagline, three short feature rows, then "Agree & continue". No account needed;
+/// accepting starts a guest session.
 struct WelcomeTermsView: View {
     let onAgree: () -> Void
 
@@ -25,16 +26,27 @@ struct WelcomeTermsView: View {
 
     @State private var hasAppeared = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// The app tile's side; half of it overlaps the map.
+    private static let tileSize: CGFloat = 96
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Theme.Spacing.xxl) {
-                hero
-                    .padding(.top, Theme.Spacing.xxl)
+            VStack(spacing: Theme.Spacing.xl) {
                 VStack(spacing: Theme.Spacing.md) {
+                    WelcomeCampusHero()
+                        .containerRelativeFrame(.vertical) { height, _ in
+                            height * (dynamicTypeSize.isAccessibilitySize ? 0.2 : 0.33)
+                        }
+                    brand
+                        .padding(.top, -Self.tileSize / 2 - Theme.Spacing.lg)
+                }
+                .padding(.top, Theme.Spacing.sm)
+                VStack(alignment: .leading, spacing: Theme.Spacing.md) {
                     ForEach(Array(features.enumerated()), id: \.element.id) { index, feature in
-                        FeatureCard(icon: feature.icon, title: feature.title, detail: feature.detail,
-                                    tint: feature.tint)
+                        FeatureRow(icon: feature.icon, title: feature.title, detail: feature.detail,
+                                   tint: feature.tint)
                             .opacity(hasAppeared ? 1 : 0)
                             .offset(y: hasAppeared || reduceMotion ? 0 : 16)
                             .animation(reduceMotion ? .easeOut(duration: 0.3)
@@ -42,8 +54,9 @@ struct WelcomeTermsView: View {
                                        value: hasAppeared)
                     }
                 }
+                .padding(.horizontal, Theme.Spacing.sm)
             }
-            .padding(.horizontal, Theme.Spacing.xl)
+            .padding(.horizontal, Theme.Spacing.lg)
             .padding(.bottom, Theme.Spacing.xl)
             .frame(maxWidth: 500)
             .frame(maxWidth: .infinity)
@@ -64,13 +77,13 @@ struct WelcomeTermsView: View {
         .onAppear { hasAppeared = true }
     }
 
-    /// App mark on a brand gradient tile, the name and the tagline.
-    private var hero: some View {
+    /// App mark on a brand gradient tile (across the map's faded edge), the name and the tagline.
+    private var brand: some View {
         VStack(spacing: Theme.Spacing.lg) {
             Image(systemName: "fork.knife")
                 .font(.system(size: 44, weight: .semibold))
                 .foregroundStyle(.white)
-                .frame(width: 96, height: 96)
+                .frame(width: Self.tileSize, height: Self.tileSize)
                 .background(
                     LinearGradient(colors: [Theme.Palette.brandPurple, Theme.Palette.brandPurple.opacity(0.7)],
                                    startPoint: .topLeading, endPoint: .bottomTrailing),
@@ -82,9 +95,9 @@ struct WelcomeTermsView: View {
     }
 }
 
-/// One welcome point: a tinted icon tile, a bold title and a short line. Stacks the icon above the text at
-/// accessibility sizes. Read by VoiceOver as one element.
-private struct FeatureCard: View {
+/// One welcome point: a tinted icon tile, a bold title and a short line, with no card behind it so the page stays
+/// light. Stacks the icon above the text at accessibility sizes. Read by VoiceOver as one element.
+private struct FeatureRow: View {
     let icon: String
     let title: String
     let detail: String
@@ -114,9 +127,7 @@ private struct FeatureCard: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(Theme.Spacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
         .accessibilityElement(children: .combine)
     }
 }
