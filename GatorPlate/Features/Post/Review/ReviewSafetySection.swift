@@ -34,6 +34,9 @@ struct ReviewSafetySection: View {
                         Button("Remove", systemImage: "trash", role: .destructive) { viewModel.removeCaution(caution.id) }
                     }
             }
+            if let issue = viewModel.warning(for: .cautions) {
+                ReviewIssueText(issue: issue)
+            }
             if viewModel.draft.cautions.count < AppConfig.postMaxCautions {
                 Button("Add a note", systemImage: "plus") { viewModel.addCaution() }
                     .foregroundStyle(Theme.Palette.accent)
