@@ -23,4 +23,6 @@ nonisolated struct FoodAnalysisDiagnostics: Equatable, Sendable {
     var modelConfidence: Double?
     /// Photos sent in the request.
     var photoCount: Int?
+    /// The model that answered (or was tried last). Not sensitive; helps support after a model switch.
+    var modelName: String?
 }
