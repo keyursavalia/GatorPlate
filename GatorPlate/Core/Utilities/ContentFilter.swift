@@ -8,7 +8,7 @@ import OSLog
 /// into spaces, cut runs of 3+ repeated letters to 2, split into tokens. A one-word term matches a whole token, or
 /// anywhere inside one when it has 6+ letters; a multi-word term matches consecutive tokens. Trading also matches a
 /// price ("$5", "5 bucks") on the original text. Blocked words win over trading.
-nonisolated struct ContentFilter: Sendable {
+nonisolated struct ContentFilter: Equatable, Sendable {
     enum Verdict: String, Sendable {
         /// Words that aren't allowed.
         case terms
