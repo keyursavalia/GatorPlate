@@ -34,8 +34,12 @@ final class MapViewModel {
     @ObservationIgnored var boundsMaxDistance = SFSUCampus.maxCameraDistance
     private(set) var markGoneStatus = ActionStatus.idle
     private(set) var reportStatus = ActionStatus.idle
-    /// Posts reported in this session: Report turns into "Thanks, we'll review it."
-    private(set) var reportedPostIds: Set<String> = []
+    /// Posts this account reported (kept until they end): Report turns into "Thanks, we'll review it."
+    let reportedPosts: ReportedPosts
+    /// Reporting needs a verified account (`firestore.rules`); guests see a "Create a free account" prompt.
+    var canReport = false
+    /// A guest chose "Create a free account" on the Report sheet: the account flow opens once the post sheet closes.
+    @ObservationIgnored private var opensAccountAfterSheet = false
 
     @ObservationIgnored private let repository: PostsRepository
     @ObservationIgnored private let navigation: AppNavigation
@@ -45,7 +49,7 @@ final class MapViewModel {
 
     init(repository: PostsRepository, navigation: AppNavigation, postService: any PostService,
          routing: any RoutingService, location: any LocationProviding, locationAccess: LocationAccess,
-         images: PostImageCache?, browse: BrowseResults, currentUid: String?) {
+         images: PostImageCache?, browse: BrowseResults, reportedPosts: ReportedPosts, currentUid: String?) {
         self.repository = repository
         self.navigation = navigation
         self.postService = postService
@@ -54,6 +58,7 @@ final class MapViewModel {
         self.locationAccess = locationAccess
         self.images = images
         self.browse = browse
+        self.reportedPosts = reportedPosts
         self.currentUid = currentUid
     }
 
@@ -208,19 +213,33 @@ final class MapViewModel {
         }
     }
 
-    /// True when the report was sent.
-    func report(_ post: FoodPost, reason: ReportReason, note: String) async -> Bool {
+    /// True when the report was sent. The post is hidden from this account's Map and Feed right away.
+    func report(_ post: FoodPost, category: ReportCategory, reason: String) async -> Bool {
         guard reportStatus != .working else { return false }
         reportStatus = .working
         do {
-            try await postService.report(postId: post.id, reason: reason.reportText(note: note))
-            reportedPostIds.insert(post.id)
+            try await postService.report(postId: post.id, category: category, reason: reason)
+            reportedPosts.insert(post)
             reportStatus = .idle
+            Logger.ui.info("Post reported (\(category.rawValue, privacy: .public))")
             return true
         } catch {
             reportStatus = .failed(Self.actionMessage(for: error))
             return false
         }
+    }
+
+    /// "Create a free account" on the Report sheet: closes the post sheet; `postSheetDidDismiss` then asks for the
+    /// account flow (a cover can't open over the sheet).
+    func requestAccountToReport() {
+        opensAccountAfterSheet = true
+        selectedPostId = nil
+    }
+
+    /// The post sheet's `onDismiss`. True when the account flow should open now.
+    func postSheetDidDismiss() -> Bool {
+        defer { opensAccountAfterSheet = false }
+        return opensAccountAfterSheet
     }
 
     private static func actionMessage(for error: Error) -> String {
