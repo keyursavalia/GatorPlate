@@ -10,7 +10,7 @@ nonisolated struct GeminiModelChain: Equatable, Sendable {
     init(models: [String], startIndex: Int = 0) {
         var seen: Set<String> = []
         let unique = models.filter { seen.insert($0).inserted }
-        self.models = unique.isEmpty ? [AppConfig.defaultGeminiModelName] : unique
+        self.models = unique.isEmpty ? [RuntimeConfig.defaults.aiModelName] : unique
         index = min(max(0, startIndex), self.models.count - 1)
     }
 
