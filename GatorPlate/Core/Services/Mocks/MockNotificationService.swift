@@ -6,6 +6,7 @@ import Observation
 final class MockNotificationService: NotificationService {
     var authorization: NotificationAuthorization
     var pendingAlert: AlertOpenRequest?
+    var hasPendingAppealResult = false
     private(set) var handledAlerts: [AlertOpenRequest] = []
     /// What `requestAuthorization` grants.
     var grants = true
@@ -22,6 +23,10 @@ final class MockNotificationService: NotificationService {
     func alertHandled(_ request: AlertOpenRequest) {
         handledAlerts.append(request)
         if pendingAlert == request { pendingAlert = nil }
+    }
+
+    func appealResultHandled() {
+        hasPendingAppealResult = false
     }
 
     func refreshAuthorization() async {}
