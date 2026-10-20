@@ -1,8 +1,9 @@
 import Foundation
 import Observation
 
-/// The filtered posts both tabs show (one filter for Map and Feed). `PostsRepository` stays unfiltered; this
-/// re-filters when the posts, the filter or the open post change, every expiry tick while "Time left" is on, and
+/// The filtered posts both tabs show (one filter for Map and Feed). `PostsRepository` stays unfiltered; posts this
+/// account reported are left out (unless open). This re-filters when the posts, the filter, the reported posts or
+/// the open post change, every expiry tick while "Time left" is on, and
 /// after the student moves `AppConfig.browseLocationChangeMeters` while distance matters. `result` is reassigned
 /// only when it really changes, so nothing re-renders per location fix or per frame.
 @MainActor
@@ -13,6 +14,8 @@ final class BrowseResults {
     private(set) var userLocation: Coordinate?
 
     let filters: PostFilterStore
+    /// Posts this account reported, hidden from both tabs.
+    let reported: ReportedPosts?
 
     @ObservationIgnored private let repository: PostsRepository
     @ObservationIgnored private let navigation: AppNavigation
@@ -24,10 +27,12 @@ final class BrowseResults {
     @ObservationIgnored private var isObserving = false
 
     init(filters: PostFilterStore, repository: PostsRepository, navigation: AppNavigation,
-         location: any LocationProviding, notificationPicks: @escaping () -> AlertFilters? = { nil },
+         location: any LocationProviding, reported: ReportedPosts? = nil,
+         notificationPicks: @escaping () -> AlertFilters? = { nil },
          now: @escaping () -> Date = { .now },
          tickInterval: Duration = .seconds(AppConfig.postsExpiryTickSeconds)) {
         self.filters = filters
+        self.reported = reported
         self.repository = repository
         self.navigation = navigation
         self.location = location
@@ -62,7 +67,7 @@ final class BrowseResults {
     func recompute() {
         let filter = filters.filter
         updateLocation()
-        let next = PostFilterMatcher.visible(repository.activePosts, filter: filter, now: now(),
+        let next = PostFilterMatcher.visible(candidates, filter: filter, now: now(),
                                              userLocation: userLocation, keeping: navigation.selectedPostId)
         if next != result { result = next }
         updateTicker(needed: filter.minMinutesLeft != nil)
@@ -76,10 +81,17 @@ final class BrowseResults {
 
     /// The posts the filter would show with `filter` instead of the current one ("Showing 3 of 7" while editing).
     func preview(_ filter: PostFilter) -> PostFilterMatcher.Result {
-        PostFilterMatcher.visible(repository.activePosts, filter: filter, now: now(), userLocation: userLocation)
+        PostFilterMatcher.visible(candidates, filter: filter, now: now(), userLocation: userLocation)
     }
 
     // MARK: Private
+
+    /// Active posts minus the ones this account reported, except the open post.
+    private var candidates: [FoodPost] {
+        guard let reported, !reported.ids.isEmpty else { return repository.activePosts }
+        let selected = navigation.selectedPostId
+        return repository.activePosts.filter { !reported.contains($0.id) || $0.id == selected }
+    }
 
     /// Keeps the previous fix until the student has moved far enough, so GPS jitter changes nothing.
     private func updateLocation() {
@@ -99,6 +111,7 @@ final class BrowseResults {
         withObservationTracking {
             _ = repository.activePosts
             _ = filters.filter
+            _ = reported?.ids
             _ = navigation.selectedPostId
             _ = location.lastCoordinate
         } onChange: { [weak self] in
