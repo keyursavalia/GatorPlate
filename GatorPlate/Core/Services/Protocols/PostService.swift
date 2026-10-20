@@ -14,7 +14,14 @@ protocol PostService {
     /// slots that uploaded. A failed photo never blocks publishing: its slot is left out of `photoSlots`.
     func publish(_ submission: PostSubmission, photos: [Data?]) async throws -> PublishResult
     func markGone(postId: String) async throws
-    func report(postId: String, reason: String) async throws
+    /// One report per account per post (`reports/{postId}_{uid}`). A second one throws `.validation`.
+    /// `reason` is required for `.unsafe` (`AppConfig.reportReasonMinLength`...`MaxLength`), optional otherwise.
+    func report(postId: String, category: ReportCategory, reason: String) async throws
+    /// A banned poster's appeal for the ban ending `bannedUntil` (`appeals/{uid}`).
+    func appeal(message: String, bannedUntil: Date) async throws
+    /// The signed-in account's active posting ban, read fresh when Post food is tapped (a ban can start
+    /// mid-session). Nil when there's none or it can't be read: rules still refuse a banned post.
+    func postingBan() async -> PostingBan?
 }
 
 extension PostService {

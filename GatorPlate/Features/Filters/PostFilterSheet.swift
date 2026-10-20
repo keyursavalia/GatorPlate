@@ -9,6 +9,8 @@ struct PostFilterSheet: View {
     /// The student's Custom notifications picks, or nil when notifications are for all free food.
     let notificationPicks: AlertFilters?
 
+    @State private var picksPresentation = FoodPickPresentation()
+    @State private var foodError: String?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -26,7 +28,8 @@ struct PostFilterSheet: View {
                         Text("Copies your Custom notifications picks. Changing one never changes the other.")
                     }
                 }
-                FoodPickSections(picks: $store.filter.picks, wording: .browse)
+                FoodPickSections(picks: $store.filter.picks, presentation: $picksPresentation, wording: .browse,
+                                 foodError: foodError)
                 timeLeftSection
                 distanceSection
                 Section {
@@ -36,6 +39,8 @@ struct PostFilterSheet: View {
             }
             .environment(\.defaultMinListRowHeight, 48)
             .environment(\.listAccent, Theme.Palette.accent)
+            .foodPickPresentations($picksPresentation, picks: $store.filter.picks, wording: .browse,
+                                   foodError: $foodError)
             .safeAreaInset(edge: .bottom) { resultLine }
             .navigationTitle("Filters")
             .navigationBarTitleDisplayMode(.inline)

@@ -29,11 +29,18 @@ final class KeyboardDismissal: NSObject, UIGestureRecognizerDelegate {
         recognizer.view?.endEditing(true)
     }
 
+    /// Ignores taps in text fields and anywhere in a system alert: ending editing mid-tap on an alert's button
+    /// (e.g. Cancel on "Add a food") used up the tap on the keyboard, so the alert needed a second one.
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         var view = touch.view
         while let current = view {
             if current is UITextField || current is UITextView { return false }
             view = current.superview
+        }
+        var responder: UIResponder? = touch.view
+        while let current = responder {
+            if current is UIAlertController { return false }
+            responder = current.next
         }
         return true
     }

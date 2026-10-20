@@ -17,6 +17,7 @@ import {
 import { alertSubtitle } from "./filters.js";
 
 export { deleteAccount } from "./deleteAccount.js";
+export { onReportCreated } from "./moderation.js";
 
 initializeApp();
 

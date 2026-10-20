@@ -134,6 +134,9 @@ service cloud.firestore {
           // (no impersonating orgs).
           && post.authorUid == request.auth.uid
           && profile().accountType in ['student', 'organization']
+          // Not during a posting ban (set only by the onReportCreated function after the 4th removal in 30 days).
+          && (!('postingBannedUntil' in profile()) || profile().postingBannedUntil == null
+              || profile().postingBannedUntil < request.time)
           && post.authorName == profile().displayName
           && (!('orgName' in post) || post.orgName == profile().get('orgName', null))
           // Content limits (AppConfig: title 120, description 150, items 8, cautions 4, detail 80).
@@ -181,16 +184,62 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // reports/{postId}_{reporterUid}: one per account per post (the ID dedupes; no updates). Verified accounts
+    // only, never on your own post. Unsafe needs a written reason for the AI check. The onReportCreated function
+    // (Admin SDK) adds its verdict fields and removes posts; clients can't read reports.
     match /reports/{reportId} {
+      function reporter() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      }
+
+      function reportedPost() {
+        return get(/databases/$(database)/documents/posts/$(request.resource.data.postId)).data;
+      }
+
       allow create: if signedIn()
-        && request.resource.data.keys().hasAll(['postId', 'reporterUid', 'reason', 'createdAt'])
-        && request.resource.data.keys().hasOnly(['postId', 'reporterUid', 'reason', 'createdAt'])
+        && request.resource.data.keys().hasAll(['postId', 'reporterUid', 'category', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['postId', 'reporterUid', 'category', 'reason', 'createdAt'])
         && request.resource.data.reporterUid == request.auth.uid
         && isText(request.resource.data.postId, 1, 40)
-        && isText(request.resource.data.reason, 1, 220)
+        && reportId == request.resource.data.postId + '_' + request.auth.uid
+        && request.resource.data.category in ['unsafe', 'misleading', 'trading']
+        // AppConfig.reportReasonMin/MaxLength (20 / 280) with headroom.
+        && (request.resource.data.category != 'unsafe'
+            || ('reason' in request.resource.data && isText(request.resource.data.reason, 20, 300)))
+        && (!('reason' in request.resource.data) || isText(request.resource.data.reason, 1, 300))
         && request.resource.data.createdAt == request.time
-        && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId));
+        && request.auth.token.email_verified == true
+        && reporter().accountType in ['student', 'organization']
+        && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId))
+        && reportedPost().authorUid != request.auth.uid;
       allow read, update, delete: if false;
     }
+
+    // appeals/{uid}: a banned poster's appeal, one per ban. Reviewed by the admin in the Firebase console, who
+    // lifts the ban there (runbook in docs/PROGRESS.md). A new ban allows a new appeal.
+    match /appeals/{uid} {
+      function bannedUntil() {
+        return get(/databases/$(database)/documents/users/$(uid)).data.get('postingBannedUntil', null);
+      }
+
+      function isValidAppeal() {
+        return request.resource.data.keys().hasAll(['message', 'bannedUntil', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['message', 'bannedUntil', 'createdAt'])
+          && isText(request.resource.data.message, 20, 520)
+          && bannedUntil() != null
+          && bannedUntil() > request.time
+          && request.resource.data.bannedUntil == bannedUntil()
+          && request.resource.data.createdAt == request.time;
+      }
+
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid && isValidAppeal();
+      allow update: if signedIn() && request.auth.uid == uid && isValidAppeal()
+        && resource.data.bannedUntil != request.resource.data.bannedUntil;
+      allow delete: if false;
+    }
+
+    // moderation/{uid} and postRemovals/{postId}: written only by the onReportCreated function. No match here, so
+    // clients are denied by default.
   }
 }

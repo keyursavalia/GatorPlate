@@ -9,6 +9,8 @@ struct AlertFiltersView: View {
     @State private var viewModel: AlertFiltersViewModel
     /// Switched off with nothing picked.
     @State private var showsPickAlert = false
+    @State private var picksPresentation = FoodPickPresentation()
+    @State private var foodError: String?
 
     init(settings: SettingsViewModel) {
         _viewModel = State(initialValue: AlertFiltersViewModel(settings: settings))
@@ -34,7 +36,8 @@ struct AlertFiltersView: View {
                 }
             }
 
-            FoodPickSections(picks: $viewModel.draft, wording: .notifications)
+            FoodPickSections(picks: $viewModel.draft, presentation: $picksPresentation, wording: .notifications,
+                             foodError: foodError)
 
             Section {
                 NoteRow(text: "These only choose which notifications you get. AI labels can be wrong, so always confirm with the host.",
@@ -43,6 +46,8 @@ struct AlertFiltersView: View {
         }
         .environment(\.defaultMinListRowHeight, 48)
         .environment(\.listAccent, Theme.Palette.accent)
+        .foodPickPresentations($picksPresentation, picks: $viewModel.draft, wording: .notifications,
+                               foodError: $foodError)
         .navigationTitle("Custom notifications")
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: viewModel.draft) { viewModel.scheduleSave() }
