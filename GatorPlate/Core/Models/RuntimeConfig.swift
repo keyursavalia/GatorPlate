@@ -69,17 +69,22 @@ nonisolated struct RuntimeConfig: Equatable, Sendable {
     var recommendedAppVersion: AppVersion?
     var appStoreURL: URL?
     var supportEmail: String
-    var contentFilterTerms: [String]
-    var contentFilterTradingTerms: [String]
+    var contentFilterTerms: [String] {
+        didSet { contentFilter = Self.filter(contentFilterTerms, contentFilterTradingTerms) }
+    }
+    var contentFilterTradingTerms: [String] {
+        didSet { contentFilter = Self.filter(contentFilterTerms, contentFilterTradingTerms) }
+    }
+    /// Built once from the two lists (posts and names are checked on every keystroke).
+    private(set) var contentFilter: ContentFilter
     /// Keys whose remote value was unusable (fell back or was clamped). Key names only, for one log line.
     var invalidKeys: [String] = []
 
     /// `[aiModelName] + aiFallbackModelNames`.
     var aiModelChain: [String] { [aiModelName] + aiFallbackModelNames }
 
-    /// Built from the bundled lists; cheap to compare, so it isn't stored.
-    var contentFilter: ContentFilter {
-        ContentFilter(terms: contentFilterTerms, tradingTerms: contentFilterTradingTerms)
+    private static func filter(_ terms: [String], _ tradingTerms: [String]) -> ContentFilter {
+        ContentFilter(terms: terms, tradingTerms: tradingTerms)
     }
 
     /// The in-app defaults (from `AppConfig` and the bundled content-filter seed).
@@ -126,6 +131,7 @@ nonisolated struct RuntimeConfig: Equatable, Sendable {
         self.supportEmail = supportEmail
         self.contentFilterTerms = contentFilterTerms
         self.contentFilterTradingTerms = contentFilterTradingTerms
+        self.contentFilter = Self.filter(contentFilterTerms, contentFilterTradingTerms)
     }
 
     /// Parses Remote Config string values. Missing or blank keys use `defaults` silently; unusable ones use it too
