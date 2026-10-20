@@ -13,6 +13,7 @@ struct AppEnvironment {
     var account: any AccountService
     /// Remote Config settings (model names, kill switches, notices, update gates, filter lists).
     var runtime: any RuntimeConfigProviding
+    var blocking: any BlockingService
 
     static var live: AppEnvironment {
         let images = FirebaseStorageImageStore()
@@ -24,7 +25,8 @@ struct AppEnvironment {
         return AppEnvironment(auth: FirebaseAuthService(), posts: FirestorePostService(images: images),
                               analyzer: GeminiFoodAnalyzer(runtime: runtime), location: CoreLocationProvider(),
                               images: images, camera: CameraService(), routing: MapKitRoutingService(),
-                              notifications: notifications, account: FirebaseAccountService(), runtime: runtime)
+                              notifications: notifications, account: FirebaseAccountService(), runtime: runtime,
+                              blocking: FirestoreBlockingService())
     }
 
     static var mock: AppEnvironment {
@@ -33,7 +35,7 @@ struct AppEnvironment {
                               analyzer: MockFoodAnalyzer(), location: MockLocationProvider(),
                               images: images, camera: MockCameraService(), routing: MockRoutingService(),
                               notifications: MockNotificationService(), account: MockAccountService(),
-                              runtime: MockRuntimeConfig())
+                              runtime: MockRuntimeConfig(), blocking: MockBlockingService())
     }
 }
 
