@@ -1,36 +1,33 @@
 import SwiftUI
 
 /// Read-only Terms of Use or Privacy Policy with a Done button. Acceptance happens on `WelcomeTermsView`.
+/// `startSection` (a heading prefix like "11.") opens it scrolled to that section.
 struct LegalDocumentSheet: View {
     let kind: LegalDocument.Kind
+    var startSection: String?
     let onDismiss: () -> Void
 
     @State private var document: LegalDocument
+    @Environment(\.appEnvironment) private var environment
 
-    init(kind: LegalDocument.Kind, onDismiss: @escaping () -> Void) {
+    init(kind: LegalDocument.Kind, startSection: String? = nil, onDismiss: @escaping () -> Void) {
         self.kind = kind
+        self.startSection = startSection
         self.onDismiss = onDismiss
         _document = State(initialValue: LegalDocument.loadBundled(kind))
     }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                    blocks(document.intro)
-                    if !document.keyPoints.isEmpty {
-                        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                            blocks(document.keyPoints)
+            ScrollViewReader { proxy in
+                content
+                    .task {
+                        // The remote support address replaces the in-app default.
+                        document = LegalDocument.loadBundled(kind, supportEmail: environment.runtime.current.supportEmail)
+                        if let startSection, let id = document.headingID(startingWith: startSection) {
+                            proxy.scrollTo(id, anchor: .top)
                         }
-                        .padding(Theme.Spacing.lg)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Theme.Palette.brandGold.opacity(0.18), in: .rect(cornerRadius: Theme.Radius.card))
                     }
-                    blocks(document.body)
-                }
-                .padding(Theme.Spacing.xl)
-                .frame(maxWidth: 700)
-                .frame(maxWidth: .infinity)
             }
             .navigationTitle(kind.title)
             .navigationBarTitleDisplayMode(.inline)
@@ -42,6 +39,26 @@ struct LegalDocumentSheet: View {
         }
     }
 
+    private var content: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                blocks(document.intro)
+                if !document.keyPoints.isEmpty {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                        blocks(document.keyPoints)
+                    }
+                    .padding(Theme.Spacing.lg)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.Palette.brandGold.opacity(0.18), in: .rect(cornerRadius: Theme.Radius.card))
+                }
+                blocks(document.body)
+            }
+            .padding(Theme.Spacing.xl)
+            .frame(maxWidth: 700)
+            .frame(maxWidth: .infinity)
+        }
+    }
+
     private func blocks(_ blocks: [LegalDocument.Block]) -> some View {
         ForEach(blocks) { block in
             switch block.kind {
@@ -50,6 +67,7 @@ struct LegalDocumentSheet: View {
                     .font(.headline)
                     .accessibilityAddTraits(.isHeader)
                     .padding(.top, Theme.Spacing.sm)
+                    .id(block.id)
             case .bullet:
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
                     // Numbered items already carry their own "1." prefix.
