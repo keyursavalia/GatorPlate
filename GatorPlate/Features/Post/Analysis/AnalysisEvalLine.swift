@@ -19,7 +19,7 @@ enum AnalysisEvalLine {
             result?.allergens.map(\.rawValue).joined(separator: "|") ?? "",
             result.map { $0.items.contains { $0.calories != nil } ? "yes" : "no" } ?? "",
             confidence,
-            AppConfig.geminiModelName,
+            diagnostics.modelName ?? "",
             FoodAnalysisPrompt.promptVersion,
             diagnostics.photoCount.map(String.init) ?? "",
         ]
