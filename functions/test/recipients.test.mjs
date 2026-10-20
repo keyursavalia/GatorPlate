@@ -92,3 +92,14 @@ test("filters run after author and quiet hours, and filtered devices are counted
   assert.deepEqual(recipientIds(subscribers, post, "author", undefined, lateNight), { ids: [id(1), id(3)], filteredOut: 1 });
   assert.deepEqual(recipientIds(subscribers, post, "author", undefined, noon), { ids: [id(1), id(3)], filteredOut: 2 });
 });
+
+test("people who blocked the author get no alert; the author is still skipped", () => {
+  const subscribers = [
+    { uid: "author", notificationsEnabled: true, fcmInstallationId: id(1) },
+    { uid: "blocker", notificationsEnabled: true, fcmInstallationId: id(2) },
+    { uid: "fan", notificationsEnabled: true, fcmInstallationId: id(3) },
+  ];
+  assert.deepEqual(ids(subscribers, "author", undefined, noon, new Set(["blocker"])), [id(3)]);
+  assert.deepEqual(ids(subscribers, "author", undefined, noon, new Set()), [id(2), id(3)]);
+  assert.deepEqual(ids(subscribers, "author", undefined, noon), [id(2), id(3)]);
+});
