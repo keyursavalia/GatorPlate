@@ -22,7 +22,7 @@ struct PostActionsSection: View {
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
-        } else if viewModel.reportedPostIds.contains(post.id) {
+        } else if viewModel.reportedPosts.contains(post.id) {
             Section {
                 NoteRow(text: "Reported. Thanks, we'll review it.", systemImage: "checkmark.seal")
             }
