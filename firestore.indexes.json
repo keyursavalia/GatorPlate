@@ -12,6 +12,24 @@
       "fieldPath": "deleteAt",
       "ttl": true,
       "indexes": []
+    },
+    {
+      "collectionGroup": "postRemovals",
+      "fieldPath": "deleteAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "reports",
+      "fieldPath": "deleteAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "appeals",
+      "fieldPath": "bannedUntil",
+      "ttl": true,
+      "indexes": []
     }
   ]
 }
