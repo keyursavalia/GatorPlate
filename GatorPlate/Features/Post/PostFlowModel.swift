@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import Observation
 
 /// Post flow steps: capture (1-4 photos in a tray) -> AI analysis -> review -> success. "Fill it in myself" goes
@@ -33,15 +34,17 @@ final class PostFlowModel {
     var redraftChoice = RedraftChoice.none
 
     private let analyzer: any FoodAnalyzing
+    private let runtime: any RuntimeConfigProviding
     private let posts: any PostService
     private let location: any LocationProviding
     private let author: PostAuthor
     @ObservationIgnored private var photosAtEditStart: [UUID] = []
 
-    init(camera: any CameraCapturing, analyzer: any FoodAnalyzing, posts: any PostService,
-         location: any LocationProviding, author: PostAuthor) {
+    init(camera: any CameraCapturing, analyzer: any FoodAnalyzing, runtime: any RuntimeConfigProviding,
+         posts: any PostService, location: any LocationProviding, author: PostAuthor) {
         self.camera = CameraViewModel(camera: camera)
         self.analyzer = analyzer
+        self.runtime = runtime
         self.posts = posts
         self.location = location
         self.author = author
@@ -99,10 +102,31 @@ final class PostFlowModel {
     // MARK: Analysis
 
     private func startAnalysis() {
+        // Remote Config `ai_enabled` off: straight to Review, read fresh so turning it back on needs no relaunch.
+        guard runtime.current.aiEnabled else {
+            skipAnalysis()
+            return
+        }
         let analysis = AnalysisViewModel(photos: tray.photos, analyzer: analyzer)
         self.analysis = analysis
         step = .analysis
         analysis.start()
+    }
+
+    /// AI drafting is switched off: the photos go to Review as a manual draft (edits kept when editing photos).
+    private func skipAnalysis() {
+        Logger.services.info("AI analysis: ai_disabled")
+        endAnalysis()
+        if let review, isEditingPhotos {
+            review.updatePhotos(tray.photos)
+            finishEditingPhotos()
+            return
+        }
+        let newReview = makeReview(analysis: nil)
+        newReview.showsAIDisabledNote = true
+        review = newReview
+        isEditingPhotos = false
+        step = .review
     }
 
     /// Cancel on the Analyzing screen: back to the photos, nothing lost.
