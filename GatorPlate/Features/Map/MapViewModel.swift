@@ -36,6 +36,8 @@ final class MapViewModel {
     private(set) var reportStatus = ActionStatus.idle
     /// Posts this account reported (kept until they end): Report turns into "Thanks, we'll review it."
     let reportedPosts: ReportedPosts
+    /// People this user blocked (guests too).
+    let blocked: BlockedUsers
     /// Reporting needs a verified account (`firestore.rules`); guests see a "Create a free account" prompt.
     var canReport = false
     /// A guest chose "Create a free account" on the Report sheet: the account flow opens once the post sheet closes.
@@ -49,7 +51,8 @@ final class MapViewModel {
 
     init(repository: PostsRepository, navigation: AppNavigation, postService: any PostService,
          routing: any RoutingService, location: any LocationProviding, locationAccess: LocationAccess,
-         images: PostImageCache?, browse: BrowseResults, reportedPosts: ReportedPosts, currentUid: String?) {
+         images: PostImageCache?, browse: BrowseResults, reportedPosts: ReportedPosts, blocked: BlockedUsers,
+         currentUid: String?) {
         self.repository = repository
         self.navigation = navigation
         self.postService = postService
@@ -59,6 +62,7 @@ final class MapViewModel {
         self.images = images
         self.browse = browse
         self.reportedPosts = reportedPosts
+        self.blocked = blocked
         self.currentUid = currentUid
     }
 
@@ -226,6 +230,25 @@ final class MapViewModel {
         } catch {
             reportStatus = .failed(Self.actionMessage(for: error))
             return false
+        }
+    }
+
+    /// The name a block shows: the org name if the post has one, else the poster's name.
+    static func posterName(_ post: FoodPost) -> String {
+        if let org = post.orgName?.trimmingCharacters(in: .whitespacesAndNewlines), !org.isEmpty { return org }
+        let name = post.authorName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? "this poster" : name
+    }
+
+    /// Block from the post sheet: closes the sheet first, then hides the poster's posts at once (optimistic).
+    func block(_ post: FoodPost) async {
+        guard !isOwnPost(post) else { return }
+        let name = Self.posterName(post)
+        selectedPostId = nil
+        switch await blocked.block(uid: post.authorUid, name: name, postId: post.id) {
+        case .blocked: navigation.showNotice("Blocked. You won't see posts from \(name).")
+        case .limitReached: navigation.showNotice(BlockedUsers.limitMessage)
+        case .failed: navigation.showNotice(BlockedUsers.failedMessage)
         }
     }
 
