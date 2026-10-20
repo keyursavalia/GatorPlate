@@ -36,21 +36,25 @@ nonisolated struct LegalDocument {
     var keyPoints: [Block] = []
     var body: [Block] = []
 
-    static func loadBundled(_ kind: Kind) -> LegalDocument {
+    /// `supportEmail` is Remote Config `support_email`, so the owner can change the mailbox without a build.
+    static func loadBundled(_ kind: Kind, teamName: String = AppConfig.teamName,
+                            supportEmail: String = AppConfig.supportEmail) -> LegalDocument {
         guard let url = Bundle.main.url(forResource: kind.resourceName, withExtension: "md"),
               let markdown = try? String(contentsOf: url, encoding: .utf8) else {
             return LegalDocument(body: [Block(id: 0, kind: .paragraph, text: "The \(kind.title) could not be loaded.")])
         }
-        return parse(markdown)
+        return parse(markdown, teamName: teamName, supportEmail: supportEmail)
     }
 
-    static func parse(_ markdown: String) -> LegalDocument {
+    static func parse(_ markdown: String, teamName: String = AppConfig.teamName,
+                      supportEmail: String = AppConfig.supportEmail) -> LegalDocument {
         var sections: [[Block]] = [[]]
         var paragraph: [String] = []
         var nextID = 0
 
         func append(_ kind: Block.Kind, _ text: String) {
-            sections[sections.count - 1].append(Block(id: nextID, kind: kind, text: substitute(text)))
+            let filled = substitute(text, teamName: teamName, supportEmail: supportEmail)
+            sections[sections.count - 1].append(Block(id: nextID, kind: kind, text: filled))
             nextID += 1
         }
         func flushParagraph() {
@@ -87,11 +91,18 @@ nonisolated struct LegalDocument {
         return LegalDocument(intro: sections[0], keyPoints: sections[1], body: sections.dropFirst(2).flatMap { $0 })
     }
 
-    /// Fills [TEAM NAME] / [CONTACT EMAIL] from `AppConfig`; empty values leave the placeholder visible.
-    private static func substitute(_ text: String) -> String {
-        var result = text
-        if !AppConfig.teamName.isEmpty { result = result.replacingOccurrences(of: "[TEAM NAME]", with: AppConfig.teamName) }
-        if !AppConfig.supportEmail.isEmpty { result = result.replacingOccurrences(of: "[CONTACT EMAIL]", with: AppConfig.supportEmail) }
+    /// Fills [TEAM NAME] and [CONTACT EMAIL]. No placeholder may stay visible (App Review 1.2 needs real contact
+    /// details): DEBUG builds stop here if one survives.
+    static func substitute(_ text: String, teamName: String, supportEmail: String) -> String {
+        let result = text
+            .replacingOccurrences(of: "[TEAM NAME]", with: teamName)
+            .replacingOccurrences(of: "[CONTACT EMAIL]", with: supportEmail)
+        assert(!result.contains("[TEAM NAME]") && !result.contains("[CONTACT EMAIL]"), "Legal placeholder left visible")
         return result
+    }
+
+    /// The first heading that starts with `prefix` (e.g. "11." for Community guidelines), to scroll to it.
+    func headingID(startingWith prefix: String) -> Int? {
+        body.first { $0.kind == .heading && $0.text.hasPrefix(prefix) }?.id
     }
 }
