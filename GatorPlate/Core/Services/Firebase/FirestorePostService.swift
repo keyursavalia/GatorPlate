@@ -4,7 +4,8 @@ import Foundation
 import OSLog
 import Synchronization
 
-/// Live posts in Firestore `posts/{postId}`, photos through `ImageStore`, reports in `reports/{reportId}`.
+/// Live posts in Firestore `posts/{postId}`, photos through `ImageStore`, reports in `reports/{postId}_{uid}`,
+/// appeals in `appeals/{uid}`.
 @MainActor
 final class FirestorePostService: PostService {
     private let images: any ImageStore
@@ -138,15 +139,41 @@ final class FirestorePostService: PostService {
         }
     }
 
-    func report(postId: String, reason: String) async throws {
+    func report(postId: String, category: ReportCategory, reason: String) async throws {
         guard let uid = Auth.auth().currentUser?.uid else { throw AppError.unauthorized }
-        let cleaned = PostText.limited(PostText.clean(reason), to: AppConfig.postReportReasonMaxLength)
-        guard !cleaned.isEmpty else { throw AppError.validation("Add a reason for the report.") }
+        let cleaned = PostText.limited(PostText.clean(reason), to: AppConfig.reportReasonMaxLength)
+        if category.requiresReason, cleaned.count < AppConfig.reportReasonMinLength {
+            throw AppError.validation("Say in a sentence or two what makes it unsafe.")
+        }
+        var data: [String: Any] = [
+            "postId": postId,
+            "reporterUid": uid,
+            "category": category.rawValue,
+            "createdAt": FieldValue.serverTimestamp(),
+        ]
+        if !cleaned.isEmpty { data["reason"] = cleaned }
         do {
-            _ = try await reports.addDocument(data: [
-                "postId": postId,
-                "reporterUid": uid,
-                "reason": cleaned,
+            // The ID makes it one report per account per post; rules deny overwriting it.
+            try await reports.document("\(postId)_\(uid)").setData(data)
+        } catch {
+            let mapped = FirebaseErrorMapper.map(error)
+            if case .permissionDenied = mapped {
+                throw AppError.validation("You've already reported this post, or it's no longer up.")
+            }
+            throw mapped
+        }
+    }
+
+    func appeal(message: String, bannedUntil: Date) async throws {
+        guard let uid = Auth.auth().currentUser?.uid else { throw AppError.unauthorized }
+        let cleaned = PostText.limited(PostText.clean(message), to: AppConfig.appealMaxLength)
+        guard cleaned.count >= AppConfig.appealMinLength else {
+            throw AppError.validation("Tell us a little more (at least \(AppConfig.appealMinLength) characters).")
+        }
+        do {
+            try await Firestore.firestore().collection("appeals").document(uid).setData([
+                "message": cleaned,
+                "bannedUntil": Timestamp(date: bannedUntil),
                 "createdAt": FieldValue.serverTimestamp(),
             ])
         } catch {
