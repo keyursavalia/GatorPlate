@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Settings: profile card (opens Account) or, for guests, a Join / Sign in card; notifications (custom notifications
-/// and quiet hours only while notifications are on); location; display; privacy and legal; about; sign out for accounts.
+/// and quiet hours only while notifications are on); location; display; safety (blocked people); privacy and legal;
+/// about; sign out for accounts.
 struct SettingsView: View {
     let session: MainSession
     let authSession: AuthSession
@@ -43,6 +44,12 @@ struct SettingsView: View {
                 Section("Display") {
                     Toggle(isOn: $showCalories) {
                         ListRow(title: "Show calorie estimates", systemImage: "flame")
+                    }
+                }
+                Section("Safety") {
+                    NavigationLink { BlockedUsersView(blocked: session.blocked) } label: {
+                        ListRow(title: "Blocked people", systemImage: "hand.raised",
+                                value: session.blocked.users.isEmpty ? nil : String(session.blocked.users.count))
                     }
                 }
                 Section("Privacy & legal") {
