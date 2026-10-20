@@ -181,6 +181,17 @@ final class FirestorePostService: PostService {
         }
     }
 
+    func postingBan() async -> PostingBan? {
+        guard let uid = Auth.auth().currentUser?.uid else { return nil }
+        let database = Firestore.firestore()
+        guard let profile = try? await database.collection("users").document(uid).getDocument(),
+              let bannedUntil = (profile.get("postingBannedUntil") as? Timestamp)?.dateValue(),
+              bannedUntil > .now else { return nil }
+        let appeal = try? await database.collection("appeals").document(uid).getDocument()
+        let appealedFor = (appeal?.get("bannedUntil") as? Timestamp)?.dateValue()
+        return PostingBan(bannedUntil: bannedUntil, hasAppealed: appealedFor == bannedUntil)
+    }
+
     // MARK: Helpers
 
     private func isPublished(_ document: DocumentReference, by uid: String) async -> Bool {
