@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Settings: profile card (opens Account) or, for guests, a Join / Sign in card; notifications (custom notifications
 /// and quiet hours only while notifications are on); location; display; safety (blocked people); privacy and legal;
-/// about; sign out for accounts.
+/// help and support; about; sign out for accounts.
 struct SettingsView: View {
     let session: MainSession
     let authSession: AuthSession
@@ -16,9 +16,13 @@ struct SettingsView: View {
     let onDeleteAccount: (String) async throws -> Void
 
     @State private var openDocument: LegalDocument.Kind?
+    /// Community guidelines: the Terms opened at section 11.
+    @State private var showsGuidelines = false
+    @State private var showsSupportAddress = false
     @State private var isConfirmingSignOut = false
     @AppStorage(ReviewViewModel.showCaloriesKey) private var showCalories = true
     @Environment(\.openURL) private var openURL
+    @Environment(\.appEnvironment) private var environment
 
     private var viewModel: SettingsViewModel { session.settings }
     private var profile: UserProfile { authSession.profile }
@@ -58,6 +62,16 @@ struct SettingsView: View {
                     }
                     documentRow(.terms, systemImage: "doc.text")
                 }
+                Section("Help & support") {
+                    Button(action: contactSupport) {
+                        ListRow(title: "Contact support", systemImage: "envelope", showsDisclosure: true)
+                    }
+                    .accessibilityHint("Opens Mail to email the GatorPlate team")
+                    Button { showsGuidelines = true } label: {
+                        ListRow(title: "Community guidelines", systemImage: "checkmark.shield", showsDisclosure: true)
+                    }
+                    .accessibilityHint("Opens the Terms of Use at the community guidelines")
+                }
                 Section("About") {
                     NavigationLink { AboutView() } label: {
                         ListRow(title: "About GatorPlate", systemImage: "info.circle")
@@ -85,12 +99,32 @@ struct SettingsView: View {
             .sheet(item: $openDocument) { kind in
                 LegalDocumentSheet(kind: kind) { openDocument = nil }
             }
+            .sheet(isPresented: $showsGuidelines) {
+                LegalDocumentSheet(kind: .terms, startSection: "11.") { showsGuidelines = false }
+            }
+            .sheet(isPresented: $showsSupportAddress) {
+                ContactSupportSheet(email: environment.runtime.current.supportEmail)
+            }
             .alert("Sign out of GatorPlate?", isPresented: $isConfirmingSignOut) {
                 Button("Sign out", role: .destructive, action: onSignOut)
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("You'll keep browsing as a guest. Notifications on this phone stop until you turn them on again.")
             }
+        }
+    }
+
+    // MARK: Support
+
+    /// Opens Mail to the support address (Remote Config `support_email`); without a mail app, shows the address.
+    private func contactSupport() {
+        let email = environment.runtime.current.supportEmail
+        guard let url = URL(string: "mailto:\(email)?subject=GatorPlate%20support") else {
+            showsSupportAddress = true
+            return
+        }
+        openURL(url) { accepted in
+            if !accepted { showsSupportAddress = true }
         }
     }
 
