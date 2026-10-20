@@ -91,7 +91,7 @@ nonisolated struct LegalDocument {
     private static func substitute(_ text: String) -> String {
         var result = text
         if !AppConfig.teamName.isEmpty { result = result.replacingOccurrences(of: "[TEAM NAME]", with: AppConfig.teamName) }
-        if !AppConfig.contactEmail.isEmpty { result = result.replacingOccurrences(of: "[CONTACT EMAIL]", with: AppConfig.contactEmail) }
+        if !AppConfig.supportEmail.isEmpty { result = result.replacingOccurrences(of: "[CONTACT EMAIL]", with: AppConfig.supportEmail) }
         return result
     }
 }
