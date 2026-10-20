@@ -49,6 +49,7 @@ struct FeedScreen: View {
     /// Live count (with posts on screen), the retry banner and the filter chips.
     @ViewBuilder
     private var header: some View {
+        RuntimeNotices()
         if viewModel.content == .posts {
             LiveCountLabel(count: viewModel.posts.count)
         }
