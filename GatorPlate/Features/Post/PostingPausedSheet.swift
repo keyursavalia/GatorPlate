@@ -53,7 +53,7 @@ struct PostingPausedSheet: View {
             Text("You can post again \(ban.bannedUntil.formatted(.dateTime.weekday(.wide).month().day().hour().minute()))")
                 .font(.title3.bold())
                 .accessibilityAddTraits(.isHeader)
-            Text("More than 3 of your posts were removed after reports in the last 30 days, so posting is paused for 7 days. You can still browse, get alerts and report posts.")
+            Text("Several of your posts were removed after reports, so posting is paused until \(ban.bannedUntil.formatted(date: .long, time: .shortened)). You can still browse, get alerts, report and block.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
