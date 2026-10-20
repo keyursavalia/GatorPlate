@@ -10,9 +10,10 @@ struct PostFlowCoordinator: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(camera: any CameraCapturing, analyzer: any FoodAnalyzing, posts: any PostService,
-         location: any LocationProviding, author: PostAuthor, onViewMap: @escaping (String) -> Void) {
-        _model = State(initialValue: PostFlowModel(camera: camera, analyzer: analyzer, posts: posts,
+    init(camera: any CameraCapturing, analyzer: any FoodAnalyzing, runtime: any RuntimeConfigProviding,
+         posts: any PostService, location: any LocationProviding, author: PostAuthor,
+         onViewMap: @escaping (String) -> Void) {
+        _model = State(initialValue: PostFlowModel(camera: camera, analyzer: analyzer, runtime: runtime, posts: posts,
                                                    location: location, author: author))
         self.onViewMap = onViewMap
     }
@@ -137,7 +138,8 @@ struct PostFlowCoordinator: View {
 }
 
 #Preview {
-    PostFlowCoordinator(camera: MockCameraService(), analyzer: MockFoodAnalyzer(), posts: MockPostService(),
+    PostFlowCoordinator(camera: MockCameraService(), analyzer: MockFoodAnalyzer(), runtime: MockRuntimeConfig(),
+                        posts: MockPostService(),
                         location: MockLocationProvider(),
                         author: PostAuthor(uid: "mock-uid", displayName: "Mock Student", orgName: nil),
                         onViewMap: { _ in })
