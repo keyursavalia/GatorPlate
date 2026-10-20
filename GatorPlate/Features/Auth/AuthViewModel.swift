@@ -41,8 +41,13 @@ final class AuthViewModel {
     /// Profiles whose Terms version was already brought up to date this launch.
     @ObservationIgnored private var termsRecordedFor: Set<String> = []
 
-    init(auth: any AuthService, account: any AccountService, terms: TermsAcceptance = TermsAcceptance()) {
+    /// Remote Config word lists for names (names are public on every post).
+    @ObservationIgnored private let nameFilter: @MainActor () -> ContentFilter
+
+    init(auth: any AuthService, account: any AccountService, terms: TermsAcceptance = TermsAcceptance(),
+         nameFilter: @escaping @MainActor () -> ContentFilter = { RuntimeConfig.defaults.contentFilter }) {
         self.auth = auth
+        self.nameFilter = nameFilter
         self.account = account
         self.terms = terms
         self.passwordReset = PasswordResetModel(account: account)
@@ -259,8 +264,9 @@ final class AuthViewModel {
 
     var nameError: String? {
         guard hasAttemptedSubmit, mode == .signUp else { return nil }
-        guard Validation.trimmedName(name).isEmpty else { return nil }
-        return "Name is required."
+        let trimmed = Validation.trimmedName(name)
+        if trimmed.isEmpty { return "Name is required." }
+        return nameFilter().check(trimmed) == nil ? nil : Validation.blockedNameMessage
     }
 
     var emailError: String? {
