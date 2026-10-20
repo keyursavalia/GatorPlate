@@ -64,7 +64,8 @@ struct WelcomeTermsView: View {
         .scrollBounceBehavior(.basedOnSize)
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: Theme.Spacing.lg) {
-                LegalFootnote(lead: "By tapping Agree & continue, I agree to")
+                LegalFootnote(lead: "By tapping Agree & continue, I agree to",
+                              trailing: "including AI processing of food photos and safety reports by Google's Gemini")
                 PrimaryButton(title: "Agree & continue", action: onAgree)
                     .textCase(.uppercase)
             }
