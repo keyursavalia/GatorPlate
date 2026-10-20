@@ -23,6 +23,7 @@ struct AccountView: View {
         .task {
             guard viewModel == nil else { return }
             viewModel = AccountViewModel(profile: profile, account: environment.account, auth: environment.auth,
+                                         nameFilter: environment.runtime.current.contentFilter,
                                          onDelete: onDeleteAccount)
         }
     }
