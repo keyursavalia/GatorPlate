@@ -18,6 +18,8 @@ struct MainTabView: View {
     /// The account flow was opened from the post button: continue to the post flow once it closes.
     @State private var opensPostAfterAccountFlow = false
     @State private var notice: String?
+    /// An active posting ban found when Post food was tapped: the "Posting paused" sheet instead of the flow.
+    @State private var postingBan: PostingBan?
 
     private var profile: UserProfile { authSession.profile }
 
@@ -34,6 +36,11 @@ struct MainTabView: View {
                                 posts: environment.posts, location: environment.location,
                                 author: PostAuthor(profile: profile)) { postId in
                 postToShowAfterFlow = postId
+            }
+        }
+        .sheet(item: $postingBan) { ban in
+            PostingPausedSheet(ban: ban) { message in
+                try await environment.posts.appeal(message: message, bannedUntil: ban.bannedUntil)
             }
         }
         .fullScreenCover(item: $accountFlow, onDismiss: continueAfterAccountFlow) { start in
@@ -143,9 +150,22 @@ struct MainTabView: View {
     /// Posting needs an account: guests (and unverified accounts) go through the account flow first.
     private func requestPost() {
         if authSession.canPost {
-            isPostFlowPresented = true
+            openPostFlowUnlessBanned()
         } else {
             accountFlow = .post
+        }
+    }
+
+    /// Reads the ban fresh (it can start mid-session) and shows "Posting paused" instead of the camera when one is
+    /// running. If it can't be read, the flow opens; rules still refuse a banned post.
+    private func openPostFlowUnlessBanned() {
+        Task {
+            if let ban = await environment.posts.postingBan(), ban.isActive() {
+                Logger.ui.info("Post food blocked by a posting ban")
+                postingBan = ban
+            } else {
+                isPostFlowPresented = true
+            }
         }
     }
 
@@ -156,7 +176,7 @@ struct MainTabView: View {
         }
         opensPostAfterAccountFlow = false
         // A tapped alert waits for the post flow too; it opens when that closes.
-        if authSession.canPost { isPostFlowPresented = true } else { openTappedAlert() }
+        if authSession.canPost { openPostFlowUnlessBanned() } else { openTappedAlert() }
     }
 
     /// Opens the post from a tapped alert. Waits while the post flow or the account flow is open, so a draft or a
