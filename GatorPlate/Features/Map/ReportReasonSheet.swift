@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Report a post: three large choices (Unsafe to eat / Spam or misleading / Selling or trading). Unsafe opens a
-/// required "What makes it unsafe?" field that an AI checks before the post is removed; the others take an optional
-/// note. Guests see a "Create a free account" prompt instead (reports need a verified account). The poster is
+/// Report a post: four large choices (Unsafe to eat / Offensive or inappropriate / Spam or misleading / Selling or
+/// trading). Unsafe opens a required "What makes it unsafe?" field that an AI checks before the post is removed; the
+/// others take an optional note. Guests see a "Create a free account" prompt instead (reports need a verified account). The poster is
 /// never told who reported.
 struct ReportReasonSheet: View {
     let post: FoodPost
@@ -73,9 +73,12 @@ struct ReportReasonSheet: View {
                         .foregroundStyle(Theme.Palette.danger)
                 }
 
-                Label("Reports are private. The poster isn't told who reported.", systemImage: "lock.fill")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    Label("Reports are private. The poster isn't told who reported.", systemImage: "lock.fill")
+                    Label("Offensive reports are reviewed by a person within 24 hours.", systemImage: "person.badge.shield.checkmark")
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             }
             .padding(Theme.Spacing.lg)
         }
@@ -84,7 +87,8 @@ struct ReportReasonSheet: View {
 
     private func reasonField(for category: ReportCategory) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text(category.requiresReason ? "What makes it unsafe?" : "Anything else? (optional)")
+            Text(category.requiresReason ? "What makes it unsafe?"
+                 : category == .offensive ? "What's wrong? (optional)" : "Anything else? (optional)")
                 .font(.headline)
             TextField(category.requiresReason ? "e.g. The chicken is pink inside and has been out since noon."
                                               : "Add a detail",
@@ -101,7 +105,7 @@ struct ReportReasonSheet: View {
                 .accessibilityLabel(category.requiresReason ? "What makes it unsafe" : "Optional detail")
             HStack(alignment: .firstTextBaseline) {
                 if category.requiresReason {
-                    Label("An AI checks unsafe reports. A clear reason gets the post removed faster.",
+                    Label("Your reason and the post's photo are sent to Google's Gemini AI to check the report.",
                           systemImage: "sparkles")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -210,7 +214,7 @@ private struct CategoryChoice: View {
 
     private var tint: Color {
         switch category {
-        case .unsafe: Theme.Palette.danger
+        case .unsafe, .offensive: Theme.Palette.danger
         case .misleading: Theme.Palette.warning
         case .trading: Theme.Palette.brandPurple
         }
