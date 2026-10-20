@@ -74,7 +74,8 @@ final class MockPostService: PostService {
         broadcast()
     }
 
-    func report(postId: String, reason: String) async throws {}
+    func report(postId: String, category: ReportCategory, reason: String) async throws {}
+    func appeal(message: String, bannedUntil: Date) async throws {}
 }
 
 extension FoodPost {
