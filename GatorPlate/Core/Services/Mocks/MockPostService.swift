@@ -76,6 +76,9 @@ final class MockPostService: PostService {
 
     func report(postId: String, category: ReportCategory, reason: String) async throws {}
     func appeal(message: String, bannedUntil: Date) async throws {}
+    /// What `postingBan()` returns (previews of the "Posting paused" sheet).
+    var ban: PostingBan?
+    func postingBan() async -> PostingBan? { ban }
 }
 
 extension FoodPost {
