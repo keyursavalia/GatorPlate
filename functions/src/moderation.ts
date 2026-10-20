@@ -6,6 +6,7 @@ import { type ServerConfig, modelChain } from "./config-logic.js";
 import { isPostId } from "./deleteAccount.js";
 import { generateWithFallback } from "./genai.js";
 import { pushToAdmins, removePost } from "./moderation-actions.js";
+import { photoPath } from "./photo-screening-logic.js";
 import {
   type UnsafeVerdict,
   CATEGORY_LABELS,
@@ -25,11 +26,6 @@ import {
 } from "./moderation-logic.js";
 import { errorCode } from "./recipients.js";
 import { serverConfig } from "./runtimeConfig.js";
-
-/** Storage path of one photo slot: `{id}.jpg` for the cover slot 0, `{id}_N.jpg` otherwise. */
-function photoPath(postId: string, slot: number): string {
-  return slot === 0 ? `postImages/${postId}.jpg` : `postImages/${postId}_${slot}.jpg`;
-}
 
 /**
  * New report -> maybe remove the post. Unsafe: the AI checks the reporter's reason against the post; credible
