@@ -32,6 +32,10 @@ struct ReviewWhereSection: View {
             }
             .listRowBackground(rowHighlight(highlighted == .locationDetail))
             .id(PostDraftValidator.Field.locationDetail)
+            if let issue = viewModel.warning(for: .locationDetail) {
+                ReviewIssueText(issue: issue)
+                    .listRowBackground(rowHighlight(highlighted == .locationDetail))
+            }
 
             Picker("Available for", selection: $viewModel.draft.durationMinutes) {
                 ForEach(AppConfig.postDurationOptionsMinutes, id: \.self) { minutes in
