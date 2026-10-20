@@ -16,6 +16,8 @@ import {
 } from "./recipients.js";
 import { alertSubtitle } from "./filters.js";
 
+export { onAdminActionCreated } from "./adminActions.js";
+export { onAppealWritten } from "./appeals.js";
 export { onBlockCreated } from "./blocks.js";
 export { deleteAccount } from "./deleteAccount.js";
 export { onReportCreated } from "./moderation.js";
