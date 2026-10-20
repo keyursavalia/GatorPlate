@@ -18,6 +18,7 @@ import { alertSubtitle } from "./filters.js";
 import { passesPostChecks } from "./post-checks.js";
 
 export { onAdminActionCreated } from "./adminActions.js";
+export { aiHealthCheck } from "./aiHealth.js";
 export { onAppealWritten } from "./appeals.js";
 export { onBlockCreated } from "./blocks.js";
 export { deleteAccount } from "./deleteAccount.js";
