@@ -99,7 +99,8 @@ struct MainTabView: View {
         @Bindable var navigation = session.navigation
         return TabView(selection: $navigation.selectedTab) {
             Tab("Map", systemImage: "map", value: AppNavigation.TabID.map) {
-                MapScreen(viewModel: session.map, permissions: session.permissions, onPostFood: requestPost)
+                MapScreen(viewModel: session.map, permissions: session.permissions, onPostFood: requestPost,
+                          onRequestAccount: { accountFlow = .join })
             }
             Tab("Feed", systemImage: "list.bullet", value: AppNavigation.TabID.feed) {
                 FeedScreen(viewModel: session.feed, onPostFood: requestPost)
@@ -122,6 +123,10 @@ struct MainTabView: View {
         }
         .onChange(of: permissionConditions(session), initial: true) { _, conditions in
             session.permissions.update(conditions)
+        }
+        // Reporting needs a verified account, like posting.
+        .onChange(of: authSession.canPost, initial: true) { _, canPost in
+            session.map.canReport = canPost
         }
     }
 
