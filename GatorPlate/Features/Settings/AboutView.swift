@@ -19,6 +19,25 @@ struct AboutView: View {
              detail: "Live on the map, with notifications and Apple Maps directions."),
     ]
 
+    @Environment(\.appEnvironment) private var environment
+
+    /// "Questions or concerns?" with the support address as a mail link (Remote Config `support_email`).
+    private var contactLine: some View {
+        let email = environment.runtime.current.supportEmail
+        return VStack(spacing: 2) {
+            Text("Questions or concerns?")
+                .foregroundStyle(.secondary)
+            if let url = URL(string: "mailto:\(email)") {
+                Link(email, destination: url)
+                    .accessibilityHint("Opens Mail")
+            } else {
+                Text(email)
+            }
+        }
+        .font(.footnote)
+        .multilineTextAlignment(.center)
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xxl) {
@@ -47,6 +66,8 @@ struct AboutView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+
+                contactLine
             }
             .padding(.horizontal, Theme.Spacing.xl)
             .padding(.vertical, Theme.Spacing.lg)
