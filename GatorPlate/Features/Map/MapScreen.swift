@@ -173,6 +173,7 @@ struct MapScreen: View {
                     .frame(maxWidth: .infinity)
                     .transition(.opacity)
             }
+            RuntimeNotices(isGlass: true)
             VStack(spacing: Theme.Spacing.sm) {
                 // One sheet at a time: hidden while a post's sheet is open.
                 if viewModel.selectedPost == nil {
