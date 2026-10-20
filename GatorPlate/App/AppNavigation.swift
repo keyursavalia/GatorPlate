@@ -18,6 +18,7 @@ final class AppNavigation {
 
     static let postEndedNotice = "That food post has ended."
     static let alertPostUnavailableNotice = "That food is no longer available."
+    static let blockedPosterNotice = "You blocked this poster."
 
     var selectedTab = TabID.map
     var selectedPostId: String?
@@ -37,6 +38,8 @@ final class AppNavigation {
     private(set) var showsAlertUnavailable = false
 
     @ObservationIgnored private let posts: PostsRepository
+    /// Whether this user blocked a post's author (set by `MainSession`). Such posts never open by ID.
+    @ObservationIgnored var isAuthorBlocked: (String) -> Bool = { _ in false }
     @ObservationIgnored private let pendingWait: Duration
     @ObservationIgnored private let alertMaxWait: Duration
     /// Tells the notification service an alert was opened (or shown as missing).
@@ -133,6 +136,11 @@ final class AppNavigation {
         notice = nil
     }
 
+    /// A short info notice on the map (e.g. after blocking someone).
+    func showNotice(_ text: String) {
+        notice = text
+    }
+
     func dismissAlertUnavailable() {
         showsAlertUnavailable = false
     }
@@ -192,6 +200,12 @@ final class AppNavigation {
     }
 
     private func show(_ id: String, alert: AlertOpenRequest?) {
+        if let post = posts.post(id: id), isAuthorBlocked(post.authorUid) {
+            selectedPostId = nil
+            notice = Self.blockedPosterNotice
+            if let alert { alertResolved(alert) }
+            return
+        }
         selectedPostId = id
         guard let alert else { return }
         cameraFocusPostId = id
