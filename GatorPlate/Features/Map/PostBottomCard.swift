@@ -8,6 +8,7 @@ struct PostBottomCard: View {
 
     @AppStorage(ReviewViewModel.showCaloriesKey) private var showCalories = true
     @State private var isReporting = false
+    @State private var isConfirmingGone = false
 
     var body: some View {
         PostDetailContent(post: post, photoSources: PostPhotoSource.sources(for: post), images: viewModel.images,
@@ -16,10 +17,19 @@ struct PostBottomCard: View {
                           filterNote: viewModel.isHiddenByFilters(post) ? "Hidden by your filters" : nil) {
             menu
         } actions: {
-            PostActionsSection(post: post, viewModel: viewModel)
+            PostActionsSection(post: post, viewModel: viewModel) { isConfirmingGone = true }
         }
         .sheet(isPresented: $isReporting) {
             ReportReasonSheet(post: post, viewModel: viewModel)
+        }
+        // A system alert like Sign out, kept off the list rows so it isn't copied onto each one.
+        .alert("Mark this food as gone?", isPresented: $isConfirmingGone) {
+            Button("Mark as gone", role: .destructive) {
+                Task { await viewModel.markGone(post) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("It disappears from the map and feed for everyone.")
         }
     }
 
