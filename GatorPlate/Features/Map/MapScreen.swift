@@ -7,6 +7,8 @@ struct MapScreen: View {
     /// First-run location and notification prompts; owns the "Notifications on" toast.
     let permissions: FirstRunPermissions
     let onPostFood: () -> Void
+    /// A guest asked for an account from the Report sheet (opens once the post sheet has closed).
+    var onRequestAccount: () -> Void = {}
 
     @Namespace private var mapScope
     @State private var detent: PresentationDetent = Self.peekDetent
@@ -62,7 +64,9 @@ struct MapScreen: View {
         }
         .mapScope(mapScope)
         .sensoryFeedback(.impact(weight: .light), trigger: viewModel.selectedPostId) { _, new in new != nil }
-        .sheet(isPresented: isSheetPresented) { bottomCard }
+        .sheet(isPresented: isSheetPresented, onDismiss: {
+            if viewModel.postSheetDidDismiss() { onRequestAccount() }
+        }) { bottomCard }
         .onChange(of: viewModel.selectedPostId) { _, new in
             if new != nil { detent = Self.peekDetent }
             viewModel.selectionDidChange()
