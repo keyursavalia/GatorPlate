@@ -43,7 +43,7 @@ extension FirebaseNotificationService: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping () -> Void) {
         let request = response.notification.request
         let userInfo = request.content.userInfo
-        let postId = Self.postId(from: userInfo)
+        let tap = NotificationTap.parse(userInfo)
         let check = Self.postIdCheck(userInfo)
         let notificationId = request.identifier
         // With the proxy off, FCM learns about the open from here (delivery metrics only).
@@ -51,7 +51,7 @@ extension FirebaseNotificationService: UNUserNotificationCenterDelegate {
         let complete = UncheckedSendable(completionHandler)
         Task { @MainActor in
             Logger.ui.info("Alert postId \(check, privacy: .public)")
-            didOpenNotification(postId: postId, notificationId: notificationId)
+            didOpenNotification(tap, notificationId: notificationId)
             complete.value()
         }
     }
