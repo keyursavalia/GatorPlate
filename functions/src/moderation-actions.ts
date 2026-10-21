@@ -81,8 +81,23 @@ export async function removePost(postId: string, post: Record<string, unknown>, 
     logger.info("Post removed", { category, strike: false });
   }
 
+  await recordRemovalNotice(authorUid, category);
   if (options.push) await pushToUser(authorUid, options.push);
   return true;
+}
+
+/**
+ * `users/{uid}.lastRemoval`: the app shows it once as a banner, so the poster learns about the removal even without
+ * push. The category only, never the post or who reported it. A missing profile (deleted account) is fine.
+ */
+async function recordRemovalNotice(authorUid: string, category: RemovalCategory) {
+  try {
+    await getFirestore().collection("users").doc(authorUid).update({
+      lastRemoval: { category, removedAt: FieldValue.serverTimestamp() },
+    });
+  } catch (error) {
+    logger.info("No profile for the removal notice", { code: errorCode(error) });
+  }
 }
 
 /** Appends the strike, prunes the window, and bans on the configured count. Never shortens a running ban. */
