@@ -9,7 +9,7 @@ import { pushToAdmins, removePost } from "./moderation-actions.js";
 import { photoPath } from "./photo-screening-logic.js";
 import {
   type UnsafeVerdict,
-  CATEGORY_LABELS,
+  adminReviewPush,
   UNSAFE_PUSH_BODY,
   UNSAFE_PUSH_TITLE,
   UNSAFE_VERDICT_SCHEMA,
@@ -100,13 +100,9 @@ export const onReportCreated = onDocumentCreated(
 
     const counts = countsTowardThreshold(category, unsafeCredible);
     await event.data.ref.update({ ...verdictFields, deleteAt, postSnapshot, countsTowardThreshold: counts });
-    if (category === "offensive") {
-      await pushToAdmins(config, {
-        title: "New report to review",
-        body: `${CATEGORY_LABELS[category]} report on a live post.`,
-        kind: "adminReview",
-      });
-    }
+    const aiVerdict = typeof verdictFields.aiVerdict === "string" ? verdictFields.aiVerdict : null;
+    const review = adminReviewPush(category, aiVerdict);
+    if (review) await pushToAdmins(config, { ...review, kind: "adminReview" });
     if (!counts) return;
 
     const countingReports = await db.collection("reports")
