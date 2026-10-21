@@ -24,6 +24,7 @@ struct AdminView: View {
             case .appeals: appeals
             }
         }
+        .overlay { emptyState }
         .navigationTitle("Moderation")
         .navigationBarTitleDisplayMode(.inline)
         .task { viewModel.start() }
@@ -36,11 +37,26 @@ struct AdminView: View {
         }
     }
 
+    /// Centered under the picker when the current tab has nothing.
+    @ViewBuilder
+    private var emptyState: some View {
+        switch viewModel.tab {
+        case .reports where viewModel.reports.isEmpty:
+            EmptyState(icon: "checkmark.shield.fill", title: "All clear",
+                       message: "No reports in the last 90 days. Offensive reports and unsafe reports the AI "
+                           + "couldn't check will show up first.",
+                       tint: Theme.Palette.success)
+        case .appeals where viewModel.appeals.isEmpty:
+            EmptyState(icon: "envelope.open.fill", title: "No appeals",
+                       message: "When someone appeals a posting pause, it shows up here. Open appeals come first.")
+        default:
+            EmptyView()
+        }
+    }
+
     @ViewBuilder
     private var reports: some View {
-        if viewModel.reports.isEmpty {
-            Section { Text("No reports in the last 90 days.").foregroundStyle(.secondary) }
-        } else {
+        if !viewModel.reports.isEmpty {
             Section {
                 ForEach(viewModel.sortedReports) { report in
                     NavigationLink {
@@ -62,9 +78,6 @@ struct AdminView: View {
 
     @ViewBuilder
     private var appeals: some View {
-        if viewModel.appeals.isEmpty {
-            Section { Text("No appeals.").foregroundStyle(.secondary) }
-        }
         if !viewModel.openAppeals.isEmpty {
             Section("Open") { ForEach(viewModel.openAppeals) { appealLink($0) } }
         }
@@ -94,6 +107,12 @@ extension AdminReport {
 #Preview {
     NavigationStack {
         AdminView(viewModel: AdminViewModel(service: MockAdminService(appeals: [.sample], reports: [.sample])))
+    }
+}
+
+#Preview("Empty") {
+    NavigationStack {
+        AdminView(viewModel: AdminViewModel(service: MockAdminService()))
     }
 }
 
