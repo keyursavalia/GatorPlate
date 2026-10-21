@@ -206,7 +206,8 @@ service cloud.firestore {
     // reports/{postId}_{reporterUid}: one per account per post (the ID dedupes; no updates). Verified accounts
     // only, never on your own post. Unsafe needs a written reason for the AI check; offensive's is optional. The
     // onReportCreated function (Admin SDK) adds its verdict fields, a post snapshot and a TTL `deleteAt`, and removes
-    // posts; clients can't read reports.
+    // posts; removals and admin dismissals close reports (`resolution`, `resolvedBy`, `resolvedAt`). Only admins read
+    // reports.
     match /reports/{reportId} {
       function reporter() {
         return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
@@ -294,7 +295,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['action', 'createdBy', 'createdAt'])
         && request.resource.data.keys().hasOnly(['action', 'postId', 'uid', 'decision', 'clearStrikes', 'strike',
                                                  'note', 'createdBy', 'createdAt'])
-        && request.resource.data.action in ['removePost', 'resolveAppeal', 'liftBan', 'clearStrikes']
+        && request.resource.data.action in ['removePost', 'dismissReports', 'resolveAppeal', 'liftBan', 'clearStrikes']
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time;
       allow update, delete: if false;
