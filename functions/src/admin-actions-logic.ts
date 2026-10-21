@@ -4,7 +4,7 @@
  */
 import { CAMPUS_TIME_ZONE } from "./filters.js";
 
-export const ADMIN_ACTIONS = ["removePost", "resolveAppeal", "liftBan", "clearStrikes"] as const;
+export const ADMIN_ACTIONS = ["removePost", "dismissReports", "resolveAppeal", "liftBan", "clearStrikes"] as const;
 export type AdminActionName = (typeof ADMIN_ACTIONS)[number];
 export const APPEAL_DECISIONS = ["upheld", "denied"] as const;
 export type AppealDecision = (typeof APPEAL_DECISIONS)[number];
@@ -13,6 +13,7 @@ export const NOTE_MAX_LENGTH = 200;
 
 export type AdminAction =
   | { action: "removePost"; postId: string; strike: boolean; note: string | null }
+  | { action: "dismissReports"; postId: string }
   | { action: "resolveAppeal"; uid: string; decision: AppealDecision; clearStrikes: boolean; note: string | null }
   | { action: "liftBan"; uid: string; clearStrikes: boolean }
   | { action: "clearStrikes"; uid: string };
@@ -62,6 +63,10 @@ export function parseAdminAction(raw: unknown): ParsedAdminAction {
       const note = optionalNote(data);
       if (note !== null && typeof note === "object") return fail(note.error);
       return { ok: true, value: { action: "removePost", postId: data.postId, strike, note } };
+    }
+    case "dismissReports": {
+      if (!isPostIdValue(data.postId)) return fail("postId is missing or invalid");
+      return { ok: true, value: { action: "dismissReports", postId: data.postId } };
     }
     case "resolveAppeal": {
       if (!isUid(data.uid)) return fail("uid is missing or invalid");
