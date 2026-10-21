@@ -5,7 +5,7 @@ import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { type ServerConfig, modelChain } from "./config-logic.js";
 import { isPostId } from "./deleteAccount.js";
 import { generateWithFallback } from "./genai.js";
-import { pushToAdmins, removePost } from "./moderation-actions.js";
+import { closeReports, pushToAdmins, removePost, wasRemoved } from "./moderation-actions.js";
 import { photoPath } from "./photo-screening-logic.js";
 import {
   type UnsafeVerdict,
@@ -55,6 +55,8 @@ export const onReportCreated = onDocumentCreated(
     const post = postDoc.data();
     if (!post) {
       await event.data.ref.update({ deleteAt });
+      // Removed between the report's rules check and now: nothing left to review.
+      if (await wasRemoved(postId)) await closeReports(postId, "removed", "auto");
       logger.info("Reported post already gone", { category });
       return;
     }
