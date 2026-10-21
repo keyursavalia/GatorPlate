@@ -103,6 +103,13 @@ struct MainTabView: View {
         .onChange(of: environment.notifications.hasPendingAppealResult) {
             showAppealResult()
         }
+        .onChange(of: environment.notifications.hasPendingAdminReview) {
+            openModeration()
+        }
+        .onChange(of: session?.adminAccess.isAdmin) {
+            // A cold-start tap arrives before admin status is known.
+            openModeration()
+        }
         .onChange(of: profile.lastRemoval, initial: true) { _, removal in
             // Once per removal on this phone, also when push is off.
             guard let removal, RemovalNoticeTracker.shouldShow(removal, uid: profile.uid) else { return }
@@ -221,6 +228,16 @@ struct MainTabView: View {
         Task {
             if let ban = await environment.posts.postingBan(), ban.isActive() { postingBan = ban }
         }
+    }
+
+    /// A tapped admin push (report, appeal, blocks, AI health): Settings > Moderation, for admins only. Waits while
+    /// the post or account flow is open, and until admin status is known.
+    private func openModeration() {
+        guard environment.notifications.hasPendingAdminReview, let session, session.adminAccess.isAdmin,
+              !isPostFlowPresented, accountFlow == nil else { return }
+        environment.notifications.adminReviewHandled()
+        session.navigation.selectedTab = .settings
+        session.navigation.settingsPath = [.moderation]
     }
 
     private func showPostAfterFlow() {
