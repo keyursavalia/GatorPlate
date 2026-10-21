@@ -162,3 +162,14 @@ test("reports expire 90 days after they're filed and keep a text-only post snaps
   });
   assert.equal(CATEGORY_LABELS.offensive, "Offensive or inappropriate");
 });
+
+test("offensive reports and unchecked unsafe reports go to a person", async () => {
+  const { adminReviewPush } = await import("../lib/moderation-logic.js");
+  assert.equal(adminReviewPush("offensive", null).title, "New report to review");
+  assert.equal(adminReviewPush("unsafe", "unavailable").title, "Unsafe report needs a look");
+  assert.equal(adminReviewPush("unsafe", "disabled").title, "Unsafe report needs a look");
+  assert.equal(adminReviewPush("unsafe", "notCredible"), null);
+  assert.equal(adminReviewPush("unsafe", "credible"), null);
+  assert.equal(adminReviewPush("misleading", null), null);
+  assert.equal(adminReviewPush("trading", null), null);
+});
