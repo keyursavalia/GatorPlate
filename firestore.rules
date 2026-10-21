@@ -13,6 +13,11 @@ service cloud.firestore {
       return value is string && value.size() >= minSize && value.size() <= maxSize;
     }
 
+    // An admin: `admin` custom claim, set by the syncAdminClaim function from Remote Config `admin_uids`.
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
     // users/{uid}: owner-only. Written by guest start / sign-up (create), the guest upgrade and Settings/alerts
     // (update). Deleted only by the deleteAccount Cloud Function (Admin SDK bypasses rules). accountType, email,
     // createdAt and uid change only in the one-time guest upgrade.
@@ -227,7 +232,9 @@ service cloud.firestore {
         && reporter().accountType in ['student', 'organization']
         && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId))
         && reportedPost().authorUid != request.auth.uid;
-      allow read, update, delete: if false;
+      // Admins review reports in the app (Settings > Moderation).
+      allow read: if isAdmin();
+      allow update, delete: if false;
     }
 
     // appeals/{uid}: a banned poster's appeal, one per ban. Reviewed by the admin in the Firebase console, who
@@ -247,7 +254,7 @@ service cloud.firestore {
           && request.resource.data.createdAt == request.time;
       }
 
-      allow read: if signedIn() && request.auth.uid == uid;
+      allow read: if (signedIn() && request.auth.uid == uid) || isAdmin();
       allow create: if signedIn() && request.auth.uid == uid && isValidAppeal();
       allow update: if signedIn() && request.auth.uid == uid && isValidAppeal()
         && resource.data.bannedUntil != request.resource.data.bannedUntil;
@@ -273,8 +280,27 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // moderation/{uid}, postRemovals/{postId}, banHolds/{hash} and adminActions/{id}: written only by Cloud
-    // Functions (adminActions docs are created by the owner in the Firebase console). No match here, so clients are
-    // denied by default.
+    // moderation/{uid}: written only by Cloud Functions; admins read it for context.
+    match /moderation/{uid} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // adminActions/{id}: created by admins (in the app or the Firebase console); onAdminActionCreated does the work
+    // and writes status, result and processedAt. Admins read them to follow the status. Never updated by clients.
+    match /adminActions/{actionId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasAll(['action', 'createdBy', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['action', 'postId', 'uid', 'decision', 'clearStrikes', 'strike',
+                                                 'note', 'createdBy', 'createdAt'])
+        && request.resource.data.action in ['removePost', 'resolveAppeal', 'liftBan', 'clearStrikes']
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // postRemovals/{postId} and banHolds/{hash}: written only by Cloud Functions. No match here, so clients are denied
+    // by default.
   }
 }
