@@ -1,16 +1,35 @@
 import SwiftUI
 
-/// One report: the post as reported, the reason, the AI verdict, the poster's record, and Remove post.
+/// One report: the post as reported, the reason, the AI verdict, the poster's record, and the actions: Remove post
+/// or Dismiss while it needs review, Remove post after a dismissal, none once removed. Follows the live report, and
+/// goes back to the list after an action succeeds (the report moves to Handled there).
 struct AdminReportDetailView: View {
-    let report: AdminReport
     let viewModel: AdminViewModel
 
     @State private var moderation: AdminModeration?
     @State private var isConfirmingRemoval = false
+    @State private var isConfirmingDismissal = false
     @State private var withStrike = true
+    @Environment(\.dismiss) private var dismiss
+
+    private let initialReport: AdminReport
+    private var report: AdminReport { viewModel.report(id: initialReport.id) ?? initialReport }
+
+    init(report: AdminReport, viewModel: AdminViewModel) {
+        initialReport = report
+        self.viewModel = viewModel
+    }
 
     var body: some View {
         List {
+            if let outcome = report.outcomeLabel {
+                Section {
+                    LabeledContent("Outcome", value: outcome)
+                    if let resolvedAt = report.resolvedAt {
+                        LabeledContent("Closed", value: resolvedAt.formatted(date: .abbreviated, time: .shortened))
+                    }
+                }
+            }
             Section("Report") {
                 LabeledContent("Category", value: report.category.label)
                 LabeledContent("Reported", value: report.createdAt.formatted(date: .abbreviated, time: .shortened))
@@ -42,13 +61,23 @@ struct AdminReportDetailView: View {
                     }
                 }
             }
-            Section {
-                Toggle("Count as a strike", isOn: $withStrike)
-                Button("Remove post", role: .destructive) { isConfirmingRemoval = true }
-                    .disabled(viewModel.runningAction != nil)
-            } footer: {
-                Text("Removes the post if it's still up. A strike counts toward a posting pause. "
-                     + "The poster gets an in-app notice, not a push.")
+            if report.resolution != .removed {
+                Section {
+                    Toggle("Count as a strike", isOn: $withStrike)
+                    Button("Remove post", role: .destructive) { isConfirmingRemoval = true }
+                        .disabled(viewModel.runningAction != nil)
+                } footer: {
+                    Text("Removes the post if it's still up and closes every report on it. A strike counts toward "
+                         + "a posting pause. The poster gets an in-app notice, not a push.")
+                }
+            }
+            if report.isOpen {
+                Section {
+                    Button("Dismiss reports") { isConfirmingDismissal = true }
+                        .disabled(viewModel.runningAction != nil)
+                } footer: {
+                    Text("Keeps the post and closes every report on it. No strike, and nobody is told.")
+                }
             }
         }
         .navigationTitle(report.category.label)
@@ -59,12 +88,24 @@ struct AdminReportDetailView: View {
             moderation = try? await viewModel.service.moderation(uid: uid)
         }
         .alert("Remove this post?", isPresented: $isConfirmingRemoval) {
-            Button("Remove", role: .destructive) {
-                Task { await viewModel.run(.removePost(postId: report.postId, strike: withStrike)) }
-            }
+            Button("Remove", role: .destructive) { run(.removePost(postId: report.postId, strike: withStrike)) }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(withStrike ? "It disappears for everyone and counts as a strike." : "It disappears for everyone.")
+        }
+        .alert("Dismiss the reports on this post?", isPresented: $isConfirmingDismissal) {
+            Button("Dismiss") { run(.dismissReports(postId: report.postId)) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The post stays up. Its reports move to Handled.")
+        }
+    }
+}
+
+extension AdminReportDetailView {
+    private func run(_ action: AdminActionRequest) {
+        Task {
+            if await viewModel.run(action) { dismiss() }
         }
     }
 }
