@@ -53,6 +53,21 @@ export function isReportCategory(value: unknown): value is ReportCategory {
   return typeof value === "string" && (REPORT_CATEGORIES as readonly string[]).includes(value);
 }
 
+/**
+ * The admin push a report needs, or null. Offensive reports always go to a person; an Unsafe report goes to one when
+ * the AI couldn't check it (`unavailable`) or AI moderation is off (`disabled`), since nothing else looked at it.
+ */
+export function adminReviewPush(category: ReportCategory,
+  aiVerdict: string | null): { title: string; body: string } | null {
+  if (category === "offensive") {
+    return { title: "New report to review", body: `${CATEGORY_LABELS.offensive} report on a live post.` };
+  }
+  if (category === "unsafe" && (aiVerdict === "unavailable" || aiVerdict === "disabled")) {
+    return { title: "Unsafe report needs a look", body: "The AI couldn't check an Unsafe to eat report on a live post." };
+  }
+  return null;
+}
+
 /** When a report filed at `createdAtMs` is deleted by TTL. */
 export function reportDeleteAtMs(createdAtMs: number): number {
   return createdAtMs + REPORT_RETENTION_DAYS * DAY_MS;
