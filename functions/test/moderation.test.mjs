@@ -10,6 +10,7 @@ import {
   isStrikeCategory,
   parseRemovals,
   parseUnsafeVerdict,
+  removalResolver,
   postFacts,
   reachesRemovalThreshold,
   removalsInWindow,
@@ -172,4 +173,11 @@ test("offensive reports and unchecked unsafe reports go to a person", async () =
   assert.equal(adminReviewPush("unsafe", "credible"), null);
   assert.equal(adminReviewPush("misleading", null), null);
   assert.equal(adminReviewPush("trading", null), null);
+});
+
+test("admin removals close reports as the admin's, every other removal as automatic", () => {
+  assert.equal(removalResolver("admin"), "admin");
+  for (const category of ["unsafe", "offensive", "misleading", "trading", "screened", "filtered"]) {
+    assert.equal(removalResolver(category), "auto", category);
+  }
 });
