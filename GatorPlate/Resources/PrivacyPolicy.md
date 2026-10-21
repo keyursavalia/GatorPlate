@@ -49,12 +49,13 @@ We do not use advertising or analytics SDKs, and we never sell or share data wit
 - **Blocks:** until you unblock the person, or either account is deleted.
 - **Appeals:** until the posting pause ends, then deleted automatically; deleted at once if you delete your account.
 - **Moderation records:** removed posts count for 30 days; older entries are dropped the next time the record changes. Records are deleted with your account.
+- **Posting pause after deleting an account:** if you delete your account while posting is paused, we keep a one-way hash of your email address (not the address itself) and the pause end date, only until the pause ends, so a new account with the same email can't post before then.
 - **Device installation ID:** until you turn alerts off, sign out, or delete your account.
 - **Server logs:** they record counts and categories (never post text, names, or emails) and are kept up to 30 days.
 Automatic deletions can take up to a day longer to run.
 
 ## 6. Deleting your account
-You can delete your account in Settings > Account > Delete account. This deletes your account, your posts and photos, the reports you filed, your blocks (and blocks other people made of you), your appeal, and your moderation records. Reports other people filed about your posts are kept until they expire after 90 days.
+You can delete your account in Settings > Account > Delete account. This deletes your account, your posts and photos, the reports you filed, your blocks (and blocks other people made of you), your appeal, and your moderation records. If posting is paused at that moment, the pause still applies to a new account with the same email until it ends (see section 5). Reports other people filed about your posts are kept until they expire after 90 days.
 
 ## 7. Your choices
 You can turn alerts and location off at any time, change what you are alerted about, block or unblock posters, and delete your account in Settings.
