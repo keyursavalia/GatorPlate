@@ -38,6 +38,22 @@ nonisolated struct AdminReport: Identifiable, Equatable, Sendable {
     let aiVerdict: String?
     let aiConcern: String?
     let aiRationale: String?
+    /// Set by the functions when the post is removed or an admin dismisses the reports; nil while it needs review.
+    var resolution: ReportResolution?
+    /// True when an admin closed it; false for automatic removals (reports, photo screening, text filter).
+    var resolvedByAdmin = false
+    var resolvedAt: Date?
+
+    var isOpen: Bool { resolution == nil }
+
+    /// "Removed by an admin", "Removed automatically" or "Dismissed"; nil while open.
+    var outcomeLabel: String? {
+        switch resolution {
+        case .removed: resolvedByAdmin ? "Removed by an admin" : "Removed automatically"
+        case .dismissed: "Dismissed"
+        case nil: nil
+        }
+    }
 
     /// Offensive first, then unchecked unsafe reports, then the rest; newest first within each.
     static func reviewOrder(_ lhs: AdminReport, _ rhs: AdminReport) -> Bool {
@@ -50,6 +66,12 @@ nonisolated struct AdminReport: Identifiable, Equatable, Sendable {
         if category == .unsafe, aiVerdict == "unavailable" || aiVerdict == "disabled" { return 1 }
         return 2
     }
+}
+
+/// How a report was closed (`reports.resolution`): its post was removed, or an admin kept the post.
+nonisolated enum ReportResolution: String, Sendable {
+    case removed
+    case dismissed
 }
 
 /// A poster's moderation record (`moderation/{uid}`).
@@ -69,6 +91,8 @@ nonisolated struct AdminModeration: Equatable, Sendable {
 /// An `adminActions` doc the app writes for the admin; `onAdminActionCreated` does the work.
 nonisolated enum AdminActionRequest: Equatable, Sendable {
     case removePost(postId: String, strike: Bool)
+    /// Keeps the post and closes its open reports.
+    case dismissReports(postId: String)
     case resolveAppeal(uid: String, upheld: Bool, clearStrikes: Bool, note: String?)
     case liftBan(uid: String, clearStrikes: Bool)
     case clearStrikes(uid: String)
@@ -78,6 +102,8 @@ nonisolated enum AdminActionRequest: Equatable, Sendable {
         switch self {
         case .removePost(let postId, let strike):
             ["action": "removePost", "postId": postId, "strike": strike]
+        case .dismissReports(let postId):
+            ["action": "dismissReports", "postId": postId]
         case .resolveAppeal(let uid, let upheld, let clearStrikes, let note):
             ["action": "resolveAppeal", "uid": uid, "decision": upheld ? "upheld" : "denied",
              "clearStrikes": clearStrikes].merging(note.map { ["note": $0] } ?? [:]) { first, _ in first }
