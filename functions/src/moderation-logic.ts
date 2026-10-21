@@ -9,6 +9,16 @@ export type ReportCategory = (typeof REPORT_CATEGORIES)[number];
 
 /** Why a post was removed. Report categories and `admin` are strikes; `screened` and `filtered` are not. */
 export type RemovalCategory = ReportCategory | "screened" | "filtered" | "admin";
+
+/** How a report was closed (`reports.resolution`): its post was removed, or an admin kept the post. */
+export type ReportResolution = "removed" | "dismissed";
+/** Who closed it (`reports.resolvedBy`): an admin in the app, or an automatic removal. */
+export type ReportResolver = "admin" | "auto";
+
+/** Admin removals close a post's reports as the admin's; every other removal closes them automatically. */
+export function removalResolver(category: RemovalCategory): ReportResolver {
+  return category === "admin" ? "admin" : "auto";
+}
 export const STRIKE_CATEGORIES = [...REPORT_CATEGORIES, "admin"] as const;
 export type StrikeCategory = (typeof STRIKE_CATEGORIES)[number];
 
