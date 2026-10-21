@@ -9,12 +9,7 @@ struct BlockedUsersView: View {
 
     var body: some View {
         List {
-            if blocked.users.isEmpty {
-                EmptyState(icon: "hand.raised",
-                           title: "No one blocked",
-                           message: "You haven't blocked anyone. Block a poster from their post's More menu.")
-                    .listRowBackground(Color.clear)
-            } else {
+            if !blocked.users.isEmpty {
                 Section {
                     ForEach(blocked.users) { user in
                         row(user)
@@ -22,6 +17,13 @@ struct BlockedUsersView: View {
                 } footer: {
                     Text("They can't see who blocked them. Unblocking shows their posts again.")
                 }
+            }
+        }
+        .overlay {
+            if blocked.users.isEmpty {
+                EmptyState(icon: "hand.raised.fill",
+                           title: "No one blocked",
+                           message: "You haven't blocked anyone. To block a poster, open their post and tap the ⋯ button.")
             }
         }
         .navigationTitle("Blocked people")
