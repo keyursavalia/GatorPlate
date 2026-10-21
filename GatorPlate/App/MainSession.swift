@@ -21,6 +21,9 @@ final class MainSession {
     let permissions: FirstRunPermissions
     /// People this user blocked; their posts are hidden on Map and Feed.
     let blocked: BlockedUsers
+    /// Admin status (accounts only) and the Moderation screen's data.
+    let adminAccess: AdminAccess
+    let admin: AdminViewModel
 
     init(environment: AppEnvironment, profile: UserProfile) {
         self.uid = profile.uid
@@ -48,6 +51,8 @@ final class MainSession {
         self.filters = filters
         self.browse = browse
         self.blocked = blocked
+        self.adminAccess = AdminAccess(service: environment.admin, isAccount: !profile.isGuest)
+        self.admin = AdminViewModel(service: environment.admin)
         self.map = MapViewModel(repository: repository, navigation: navigation, postService: environment.posts,
                                 routing: environment.routing, location: environment.location,
                                 locationAccess: locationAccess, images: images, browse: browse,
@@ -66,6 +71,7 @@ final class MainSession {
         browse.start()
         settings.activate()
         blocked.start()
+        adminAccess.refresh()
     }
 
     /// Stops the listener and removes this device's alert registration while the user can still write.
@@ -88,6 +94,7 @@ final class MainSession {
         navigation.selectedPostId = nil
         browse.stop()
         blocked.stop()
+        admin.stop()
         repository.stop()
     }
 }
