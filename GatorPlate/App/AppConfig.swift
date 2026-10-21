@@ -195,6 +195,15 @@ nonisolated enum AppConfig {
     /// Key in `NSLocationTemporaryUsageDescriptionDictionary` (Info.plist).
     static let preciseLocationPurposeKey = "FoodNearby"
 
+    // Admin moderation (Settings > Moderation, for the `admin` claim)
+    static let adminSyncTimeoutSeconds = 10
+    /// Appeals and reports shown at most.
+    static let adminListLimit = 100
+    /// An admin action waits this long for `onAdminActionCreated` to write its status.
+    static let adminActionTimeoutSeconds = 20
+    /// Reports are deleted after this many days (TTL); the admin list covers the same window.
+    static let reportRetentionDays = 90
+
     // Runtime config (Firebase Remote Config)
     /// The launch fetch gives up after this long; the UI never waits for it (cached or default values show first).
     static let runtimeConfigFetchTimeoutSeconds = 5
