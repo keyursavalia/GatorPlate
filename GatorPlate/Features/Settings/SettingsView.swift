@@ -50,6 +50,14 @@ struct SettingsView: View {
                         ListRow(title: "Show calorie estimates", systemImage: "flame")
                     }
                 }
+                if session.adminAccess.isAdmin {
+                    Section("Admin") {
+                        NavigationLink(value: AppNavigation.SettingsRoute.moderation) {
+                            ListRow(title: "Moderation", systemImage: "shield.lefthalf.filled",
+                                    subtitle: "Reports and appeals to review")
+                        }
+                    }
+                }
                 Section("Safety") {
                     NavigationLink { BlockedUsersView(blocked: session.blocked) } label: {
                         ListRow(title: "Blocked people", systemImage: "hand.raised",
@@ -94,6 +102,8 @@ struct SettingsView: View {
                     AlertFiltersView(settings: viewModel)
                 case .account:
                     AccountView(profile: profile, passwordReset: passwordReset, onDeleteAccount: onDeleteAccount)
+                case .moderation:
+                    AdminView(viewModel: session.admin)
                 }
             }
             .sheet(item: $openDocument) { kind in
