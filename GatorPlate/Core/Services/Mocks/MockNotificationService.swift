@@ -7,6 +7,7 @@ final class MockNotificationService: NotificationService {
     var authorization: NotificationAuthorization
     var pendingAlert: AlertOpenRequest?
     var hasPendingAppealResult = false
+    var hasPendingAdminReview = false
     private(set) var handledAlerts: [AlertOpenRequest] = []
     /// What `requestAuthorization` grants.
     var grants = true
@@ -27,6 +28,10 @@ final class MockNotificationService: NotificationService {
 
     func appealResultHandled() {
         hasPendingAppealResult = false
+    }
+
+    func adminReviewHandled() {
+        hasPendingAdminReview = false
     }
 
     func refreshAuthorization() async {}
