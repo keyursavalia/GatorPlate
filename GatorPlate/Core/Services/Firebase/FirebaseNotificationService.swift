@@ -15,6 +15,7 @@ final class FirebaseNotificationService: NSObject, NotificationService {
     private(set) var authorization = NotificationAuthorization.notDetermined
     private(set) var pendingAlert: AlertOpenRequest?
     private(set) var hasPendingAppealResult = false
+    private(set) var hasPendingAdminReview = false
 
     @ObservationIgnored private let registerForRemoteNotifications: () -> Void
     @ObservationIgnored private let appState: () -> AlertOpenRequest.AppState
@@ -210,6 +211,8 @@ final class FirebaseNotificationService: NSObject, NotificationService {
             pendingAlert = AlertOpenRequest(postId: postId, appState: state, notificationId: notificationId)
         case .appealResolved:
             hasPendingAppealResult = true
+        case .adminReview:
+            hasPendingAdminReview = true
         case .openApp:
             break
         }
@@ -217,6 +220,10 @@ final class FirebaseNotificationService: NSObject, NotificationService {
 
     func appealResultHandled() {
         hasPendingAppealResult = false
+    }
+
+    func adminReviewHandled() {
+        hasPendingAdminReview = false
     }
 
     private func write(_ fields: [String: Any], uid: String,
