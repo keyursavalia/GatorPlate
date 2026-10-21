@@ -16,8 +16,6 @@ struct SettingsView: View {
     let onDeleteAccount: (String) async throws -> Void
 
     @State private var openDocument: LegalDocument.Kind?
-    /// Community guidelines: the Terms opened at section 11.
-    @State private var showsGuidelines = false
     @State private var showsSupportAddress = false
     @State private var isConfirmingSignOut = false
     @AppStorage(ReviewViewModel.showCaloriesKey) private var showCalories = true
@@ -75,10 +73,6 @@ struct SettingsView: View {
                         ListRow(title: "Contact support", systemImage: "envelope", showsDisclosure: true)
                     }
                     .accessibilityHint("Opens Mail to email the GatorPlate team")
-                    Button { showsGuidelines = true } label: {
-                        ListRow(title: "Community guidelines", systemImage: "checkmark.shield", showsDisclosure: true)
-                    }
-                    .accessibilityHint("Opens the Terms of Use at the community guidelines")
                 }
                 Section("About") {
                     NavigationLink { AboutView() } label: {
@@ -108,9 +102,6 @@ struct SettingsView: View {
             }
             .sheet(item: $openDocument) { kind in
                 LegalDocumentSheet(kind: kind) { openDocument = nil }
-            }
-            .sheet(isPresented: $showsGuidelines) {
-                LegalDocumentSheet(kind: .terms, startSection: "11.") { showsGuidelines = false }
             }
             .sheet(isPresented: $showsSupportAddress) {
                 ContactSupportSheet(email: environment.runtime.current.supportEmail)
