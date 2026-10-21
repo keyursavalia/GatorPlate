@@ -16,6 +16,8 @@ nonisolated struct UserProfile: Codable, Sendable {
     /// Nil until the user saves filters; nil means all free food.
     var alertFilters: AlertFilters?
     var createdAt: Date
+    /// The latest removed post, written only by the moderation functions; never written by the app.
+    var lastRemoval: PostRemovalNotice? = nil
 
     var isGuest: Bool { accountType == .guest }
 }
