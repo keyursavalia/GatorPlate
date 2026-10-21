@@ -58,7 +58,10 @@ final class FirebaseAdminService: AdminService {
                                createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? .now,
                                snapshot: Self.snapshot(data["postSnapshot"] as? [String: Any]),
                                aiVerdict: data["aiVerdict"] as? String, aiConcern: data["aiConcern"] as? String,
-                               aiRationale: data["aiRationale"] as? String)
+                               aiRationale: data["aiRationale"] as? String,
+                               resolution: (data["resolution"] as? String).flatMap(ReportResolution.init),
+                               resolvedByAdmin: data["resolvedBy"] as? String == "admin",
+                               resolvedAt: (data["resolvedAt"] as? Timestamp)?.dateValue())
         }
     }
 
