@@ -2,20 +2,26 @@ import Foundation
 
 /// What a tapped notification asks the app to do, from its data payload. Pure, so the harness can test payloads.
 /// Kinds (`data.kind`, written by the functions): free food alerts carry `postId` only; `postRemoved`,
-/// `appealResolved` and `adminReview` carry no post. Anything unknown or malformed just opens the app.
+/// `appealResolved` and `adminReview` carry no post. `postRemoved`, unknown or malformed payloads just open the app.
 nonisolated enum NotificationTap: Equatable, Sendable {
     /// A free food alert: open this post.
     case openPost(String)
     /// The admin decided an appeal: show the Posting paused sheet if a ban is still running.
     case appealResolved
-    /// Open the app and do nothing else (`postRemoved`, `adminReview`, unknown kinds, a bad post ID).
+    /// For admins: a report, appeal, block count or AI health issue to review (opens Settings > Moderation).
+    case adminReview
+    /// Open the app and do nothing else (`postRemoved`, unknown kinds, a bad post ID).
     case openApp
 
     static let kindKey = "kind"
 
     static func parse(_ userInfo: [AnyHashable: Any]) -> NotificationTap {
         if let postId = postId(from: userInfo) { return .openPost(postId) }
-        if userInfo[kindKey] as? String == "appealResolved" { return .appealResolved }
+        switch userInfo[kindKey] as? String {
+        case "appealResolved": return .appealResolved
+        case "adminReview": return .adminReview
+        default: break
+        }
         return .openApp
     }
 
