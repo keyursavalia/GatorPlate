@@ -10,11 +10,14 @@ protocol NotificationService: AnyObject {
     var pendingAlert: AlertOpenRequest? { get }
     /// An `appealResolved` notification was tapped; cleared by `appealResultHandled()`.
     var hasPendingAppealResult: Bool { get }
+    /// An `adminReview` notification was tapped; cleared by `adminReviewHandled()`.
+    var hasPendingAdminReview: Bool { get }
 
     /// Navigation opened the post or showed "no longer available": forget the request and clear its alert
     /// from Notification Center.
     func alertHandled(_ request: AlertOpenRequest)
     func appealResultHandled()
+    func adminReviewHandled()
     func refreshAuthorization() async
     /// Shows the system prompt (iOS shows it once). Call only after explaining the value.
     func requestAuthorization() async -> NotificationAuthorization
