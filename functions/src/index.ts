@@ -20,6 +20,7 @@ import { passesPostChecks } from "./post-checks.js";
 export { onAdminActionCreated } from "./adminActions.js";
 export { aiHealthCheck } from "./aiHealth.js";
 export { onAppealWritten } from "./appeals.js";
+export { onProfileEmailSet } from "./banHolds.js";
 export { onBlockCreated } from "./blocks.js";
 export { deleteAccount } from "./deleteAccount.js";
 export { onReportCreated } from "./moderation.js";
