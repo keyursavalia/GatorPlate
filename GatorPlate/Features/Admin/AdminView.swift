@@ -54,25 +54,48 @@ struct AdminView: View {
         }
     }
 
+    /// "Needs review" (in review order) and "Handled" (removed or dismissed, latest first). Removing a post or
+    /// dismissing its reports moves every report on that post to Handled.
     @ViewBuilder
     private var reports: some View {
         if !viewModel.reports.isEmpty {
             Section {
-                ForEach(viewModel.sortedReports) { report in
-                    NavigationLink {
-                        AdminReportDetailView(report: report, viewModel: viewModel)
-                    } label: {
+                if viewModel.openReports.isEmpty {
+                    NoteRow(text: "Nothing needs review.", systemImage: "checkmark.shield")
+                }
+                ForEach(viewModel.openReports) { report in
+                    reportLink(report) {
                         let when = report.createdAt.formatted(.relative(presentation: .named))
-                        ListRow(title: report.snapshot?.title ?? "Post \(report.postId.prefix(6))…",
-                                systemImage: report.category.systemImage,
+                        ListRow(title: report.title, systemImage: report.category.systemImage,
                                 subtitle: "\(report.category.label) · \(when)",
                                 iconTint: report.needsHuman ? Theme.Palette.danger : nil)
                     }
                 }
+            } header: {
+                Text("Needs review")
             } footer: {
                 Text("Offensive reports and unsafe reports the AI couldn't check come first. "
                      + "Respond to offensive reports within 24 hours.")
             }
+            if !viewModel.handledReports.isEmpty {
+                Section("Handled") {
+                    ForEach(viewModel.handledReports) { report in
+                        reportLink(report) {
+                            ListRow(title: report.title, systemImage: report.category.systemImage,
+                                    subtitle: "\(report.category.label) · \(report.outcomeLabel ?? "")",
+                                    iconTint: .secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func reportLink(_ report: AdminReport, @ViewBuilder label: () -> some View) -> some View {
+        NavigationLink {
+            AdminReportDetailView(report: report, viewModel: viewModel)
+        } label: {
+            label()
         }
     }
 
@@ -98,6 +121,9 @@ struct AdminView: View {
 }
 
 extension AdminReport {
+    /// The post's title as reported, or a short post ID.
+    var title: String { snapshot?.title ?? "Post \(postId.prefix(6))…" }
+
     /// Shown in red: a person must look at it.
     var needsHuman: Bool {
         category == .offensive || (category == .unsafe && (aiVerdict == "unavailable" || aiVerdict == "disabled"))
