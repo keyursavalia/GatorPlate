@@ -15,6 +15,13 @@ test("removePost needs a post ID and defaults to a strike", () => {
   assert.equal(parseAdminAction({ action: "removePost", postId: POST, strike: "yes" }).ok, false);
 });
 
+test("dismissReports needs a post ID", () => {
+  assert.deepEqual(parseAdminAction({ action: "dismissReports", postId: POST }),
+    { ok: true, value: { action: "dismissReports", postId: POST } });
+  assert.equal(parseAdminAction({ action: "dismissReports" }).ok, false);
+  assert.equal(parseAdminAction({ action: "dismissReports", postId: "../users/x" }).ok, false);
+});
+
 test("resolveAppeal needs a uid and a decision", () => {
   assert.deepEqual(parseAdminAction({ action: "resolveAppeal", uid: UID, decision: "upheld", clearStrikes: true }),
     { ok: true, value: { action: "resolveAppeal", uid: UID, decision: "upheld", clearStrikes: true, note: null } });
