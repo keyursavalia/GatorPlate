@@ -6,7 +6,8 @@ nonisolated enum AccountCleanup {
     static let perUserKeys = ["post.lastPublishedAt"]
     /// `map.dismissedLocationBanner.` is from the old map location banner; still cleared on devices that have it.
     static let perUserKeyPrefixes = ["map.dismissedLocationBanner.", PostFilterStore.filterKeyPrefix,
-                                     PostFilterStore.sortKeyPrefix, ReportedPosts.keyPrefix]
+                                     PostFilterStore.sortKeyPrefix, ReportedPosts.keyPrefix,
+                                     RemovalNoticeTracker.keyPrefix]
 
     static func clearPerUserDefaults(_ defaults: UserDefaults = .standard) {
         for key in perUserKeys { defaults.removeObject(forKey: key) }
