@@ -119,6 +119,19 @@ service cloud.firestore {
         return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
       }
 
+      // banHolds/{sha256(email)}: a pause kept from a deleted account with this email (deleteAccount writes it;
+      // onProfileEmailSet copies it onto the new profile within seconds, this covers the gap).
+      function banHoldPath() {
+        let id = hashing.sha256(request.auth.token.email.lower()).toHexString().lower();
+        return /databases/$(database)/documents/banHolds/$(id);
+      }
+
+      function isHeld() {
+        return request.auth.token.email is string
+          && exists(banHoldPath())
+          && get(banHoldPath()).data.bannedUntil > request.time;
+      }
+
       function isValidNewPost(post) {
         return post.keys().hasAll([
               'authorUid', 'authorName', 'title', 'description', 'items', 'overallDietary',
@@ -137,6 +150,7 @@ service cloud.firestore {
           // Not during a posting ban (set only by the onReportCreated function after the 4th removal in 30 days).
           && (!('postingBannedUntil' in profile()) || profile().postingBannedUntil == null
               || profile().postingBannedUntil < request.time)
+          && !isHeld()
           && post.authorName == profile().displayName
           && (!('orgName' in post) || post.orgName == profile().get('orgName', null))
           // Content limits (AppConfig: title 120, description 150, items 8, cautions 4, detail 80).
@@ -259,7 +273,8 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // moderation/{uid}, postRemovals/{postId} and adminActions/{id}: written only by Cloud Functions (adminActions
-    // docs are created by the owner in the Firebase console). No match here, so clients are denied by default.
+    // moderation/{uid}, postRemovals/{postId}, banHolds/{hash} and adminActions/{id}: written only by Cloud
+    // Functions (adminActions docs are created by the owner in the Firebase console). No match here, so clients are
+    // denied by default.
   }
 }
