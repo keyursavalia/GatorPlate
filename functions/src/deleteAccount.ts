@@ -1,8 +1,9 @@
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { Timestamp, getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { logger } from "firebase-functions";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { banHoldId, shouldHoldBan } from "./ban-hold-logic.js";
 import { chunk, errorCode } from "./recipients.js";
 
 /** Deleting needs a sign-in this recent (AppConfig.accountRecentLoginSeconds); the app reauthenticates first. */
@@ -42,7 +43,8 @@ export function uidKeyedDocPaths(uid: string): string[] {
  * fails halfway can be retried by the same signed-in user; every step is idempotent. Order: each post's photos
  * then the post; the user's reports, appeal, moderation record, and every block they made or received (one bulk
  * writer, so deleting resets strikes); the profile (with alert filters and device registration); the Auth user.
- * Reports other people filed about the user's posts stay until their 90-day TTL. Logs carry counts only.
+ * Reports other people filed about the user's posts stay until their 90-day TTL. A running posting pause is kept as
+ * a ban hold under a hash of the email (`ban-hold-logic.ts`) until it ends. Logs carry counts only.
  */
 export const deleteAccount = onCall({ region: "us-central1", enforceAppCheck: true }, async (request) => {
   const uid = request.auth?.uid;
@@ -53,6 +55,15 @@ export const deleteAccount = onCall({ region: "us-central1", enforceAppCheck: tr
 
   const db = getFirestore();
   const bucket = getStorage().bucket();
+
+  // First, so a pause survives even if a later step fails and the user retries.
+  const ban = (await db.collection("users").doc(uid).get()).get("postingBannedUntil");
+  const banMs = ban instanceof Timestamp ? ban.toMillis() : null;
+  const holdId = banHoldId(request.auth?.token.email);
+  const held = holdId !== null && shouldHoldBan(banMs, Date.now());
+  if (held && holdId && ban instanceof Timestamp) {
+    await db.collection("banHolds").doc(holdId).set({ bannedUntil: ban, createdAt: Timestamp.now() });
+  }
 
   const posts = await db.collection("posts").where("authorUid", "==", uid).select().get();
   const prefixes = posts.docs.map((doc) => photoPrefix(doc.id)).filter((prefix): prefix is string => prefix !== null);
@@ -87,7 +98,7 @@ export const deleteAccount = onCall({ region: "us-central1", enforceAppCheck: tr
 
   logger.info("Account deleted", {
     posts: posts.size, photoPrefixes: prefixes.length, reports: reports.size,
-    blocksMade: blocksMade.size, blocksReceived: blocksReceived.size,
+    blocksMade: blocksMade.size, blocksReceived: blocksReceived.size, banHeld: held,
   });
   return { deleted: true };
 });
