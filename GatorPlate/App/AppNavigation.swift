@@ -13,7 +13,7 @@ final class AppNavigation {
 
     /// Screens pushed inside the Settings tab.
     enum SettingsRoute: Hashable {
-        case alertFilters, account
+        case alertFilters, account, moderation
     }
 
     static let postEndedNotice = "That food post has ended."
