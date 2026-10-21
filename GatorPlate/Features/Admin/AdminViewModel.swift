@@ -31,7 +31,17 @@ final class AdminViewModel {
 
     var openAppeals: [AdminAppeal] { appeals.filter(\.isOpen) }
     var decidedAppeals: [AdminAppeal] { appeals.filter { !$0.isOpen } }
-    var sortedReports: [AdminReport] { reports.sorted(by: AdminReport.reviewOrder) }
+    /// Reports that still need a look, in review order.
+    var openReports: [AdminReport] { reports.filter(\.isOpen).sorted(by: AdminReport.reviewOrder) }
+    /// Closed reports, most recently closed first.
+    var handledReports: [AdminReport] {
+        reports.filter { !$0.isOpen }.sorted { ($0.resolvedAt ?? $0.createdAt) > ($1.resolvedAt ?? $1.createdAt) }
+    }
+
+    /// The live version of a report (its resolution changes after an action), or nil once it's gone.
+    func report(id: AdminReport.ID) -> AdminReport? {
+        reports.first { $0.id == id }
+    }
 
     func start() {
         guard tasks.isEmpty else { return }
@@ -58,8 +68,10 @@ final class AdminViewModel {
         tasks = []
     }
 
-    func run(_ action: AdminActionRequest) async {
-        guard runningAction == nil else { return }
+    /// Runs the action and shows its outcome. Returns whether it succeeded.
+    @discardableResult
+    func run(_ action: AdminActionRequest) async -> Bool {
+        guard runningAction == nil else { return false }
         runningAction = action
         defer { runningAction = nil }
         do {
@@ -67,6 +79,8 @@ final class AdminViewModel {
         } catch {
             outcome = AdminActionOutcome(succeeded: false, message: ((error as? AppError) ?? .unknown).userMessage)
         }
-        Logger.ui.info("Admin action \(self.outcome?.succeeded == true ? "done" : "failed", privacy: .public)")
+        let succeeded = outcome?.succeeded == true
+        Logger.ui.info("Admin action \(succeeded ? "done" : "failed", privacy: .public)")
+        return succeeded
     }
 }
