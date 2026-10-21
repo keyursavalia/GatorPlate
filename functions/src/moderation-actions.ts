@@ -10,10 +10,13 @@ import type { ServerConfig } from "./config-logic.js";
 import { photoPrefix } from "./deleteAccount.js";
 import {
   type RemovalCategory,
+  type ReportResolution,
+  type ReportResolver,
   type StrikeCategory,
   banEndMs,
   isStrikeCategory,
   parseRemovals,
+  removalResolver,
   removalsInWindow,
 } from "./moderation-logic.js";
 import { errorCode, isAlreadyExists } from "./recipients.js";
@@ -39,8 +42,8 @@ export interface RemovalOptions {
 }
 
 /**
- * Removes a post once (the marker first, so a second trigger stops), deletes its photos and the doc, then records
- * the strike and starts a ban per the configured rules. Returns false when the post was already removed.
+ * Removes a post once (the marker first, so a second trigger stops), deletes its photos and the doc, closes its
+ * reports, then records the strike and starts a ban per the configured rules. Returns false when the post was already removed.
  */
 export async function removePost(postId: string, post: Record<string, unknown>, options: RemovalOptions,
   config: ServerConfig): Promise<boolean> {
@@ -70,6 +73,7 @@ export async function removePost(postId: string, post: Record<string, unknown>, 
     }
   }
   await db.collection("posts").doc(postId).delete();
+  await closeReportsSafely(postId, "removed", removalResolver(category));
 
   const authorUid = typeof post.authorUid === "string" ? post.authorUid : "";
   if (!authorUid) return true;
@@ -84,6 +88,39 @@ export async function removePost(postId: string, post: Record<string, unknown>, 
   await recordRemovalNotice(authorUid, category);
   if (options.push) await pushToUser(authorUid, options.push);
   return true;
+}
+
+/**
+ * Closes a post's open reports (`resolution`, `resolvedBy`, `resolvedAt`), so the admin's Moderation list moves them
+ * from "Needs review" to "Handled". Reports already closed keep their first resolution. Returns how many it closed.
+ */
+export async function closeReports(postId: string, resolution: ReportResolution,
+  resolvedBy: ReportResolver): Promise<number> {
+  const db = getFirestore();
+  const reports = await db.collection("reports").where("postId", "==", postId).get();
+  const open = reports.docs.filter((doc) => doc.get("resolution") === undefined);
+  if (open.length === 0) return 0;
+  const batch = db.batch();
+  for (const doc of open) {
+    batch.update(doc.ref, { resolution, resolvedBy, resolvedAt: FieldValue.serverTimestamp() });
+  }
+  await batch.commit();
+  logger.info("Reports closed", { resolution, resolvedBy, count: open.length });
+  return open.length;
+}
+
+/** `closeReports` for a removal that already happened: a failure is logged, never thrown. */
+async function closeReportsSafely(postId: string, resolution: ReportResolution, resolvedBy: ReportResolver) {
+  try {
+    await closeReports(postId, resolution, resolvedBy);
+  } catch (error) {
+    logger.warn("Couldn't close the post's reports", { code: errorCode(error) });
+  }
+}
+
+/** Whether `removePost` removed this post in the last day (its marker is still there). */
+export async function wasRemoved(postId: string): Promise<boolean> {
+  return (await getFirestore().collection("postRemovals").doc(postId).get()).exists;
 }
 
 /**
