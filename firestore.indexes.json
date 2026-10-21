@@ -26,6 +26,12 @@
       "indexes": []
     },
     {
+      "collectionGroup": "banHolds",
+      "fieldPath": "bannedUntil",
+      "ttl": true,
+      "indexes": []
+    },
+    {
       "collectionGroup": "appeals",
       "fieldPath": "bannedUntil",
       "ttl": true,
