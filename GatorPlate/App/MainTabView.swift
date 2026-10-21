@@ -103,6 +103,12 @@ struct MainTabView: View {
         .onChange(of: environment.notifications.hasPendingAppealResult) {
             showAppealResult()
         }
+        .onChange(of: profile.lastRemoval, initial: true) { _, removal in
+            // Once per removal on this phone, also when push is off.
+            guard let removal, RemovalNoticeTracker.shouldShow(removal, uid: profile.uid) else { return }
+            RemovalNoticeTracker.markSeen(removal, uid: profile.uid)
+            notice = removal.message
+        }
         .onChange(of: environment.location.authorization) {
             // Back from iOS Settings after "Turn on location in Settings".
             if session?.locationAccess.authorizationDidChange() == true {
