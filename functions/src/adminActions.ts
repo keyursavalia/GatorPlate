@@ -1,6 +1,6 @@
 /**
- * Moderation from the Firebase console: the owner creates an `adminActions/{id}` doc (`removePost`,
- * `resolveAppeal`, `liftBan`, `clearStrikes`), this function does the work and writes `status` ("done" / "failed"),
+ * Moderation from the app or the Firebase console: an admin creates an `adminActions/{id}` doc (`removePost`,
+ * `dismissReports`, `resolveAppeal`, `liftBan`, `clearStrikes`), this function does the work and writes `status` ("done" / "failed"),
  * a short `result` and `processedAt`. Runs once per doc (a transaction claims it), never throws, and logs the action
  * and outcome only. Clients can't read or write `adminActions` (no rules match).
  */
@@ -9,7 +9,7 @@ import { logger } from "firebase-functions";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { type AdminAction, appealDecisionPush, parseAdminAction } from "./admin-actions-logic.js";
 import type { ServerConfig } from "./config-logic.js";
-import { pushToUser, removePost } from "./moderation-actions.js";
+import { closeReports, pushToUser, removePost, wasRemoved } from "./moderation-actions.js";
 import { errorCode } from "./recipients.js";
 import { serverConfig } from "./runtimeConfig.js";
 
@@ -61,6 +61,8 @@ async function run(action: AdminAction, config: ServerConfig): Promise<Outcome> 
   switch (action.action) {
     case "removePost":
       return removePostAction(action.postId, action.strike, config);
+    case "dismissReports":
+      return dismissReports(action.postId);
     case "resolveAppeal":
       return resolveAppeal(action.uid, action.decision, action.clearStrikes, action.note);
     case "liftBan":
@@ -72,13 +74,29 @@ async function run(action: AdminAction, config: ServerConfig): Promise<Outcome> 
   }
 }
 
+/** Removing the post closes its reports (in `removePost`). */
 async function removePostAction(postId: string, strike: boolean, config: ServerConfig): Promise<Outcome> {
   const post = (await getFirestore().collection("posts").doc(postId).get()).data();
-  if (!post) return { ok: false, message: "Post not found (already removed or ended)" };
+  if (!post) {
+    // Removed earlier (for example by reports): close any reports still open from before the fix.
+    if (await wasRemoved(postId)) {
+      await closeReports(postId, "removed", "auto");
+      return { ok: true, message: "Post was already removed. Its reports are closed." };
+    }
+    return { ok: false, message: "This post already ended. Use Dismiss to close its reports." };
+  }
   // No push to the poster for admin removals.
   const removed = await removePost(postId, post, { category: "admin", strike }, config);
+  if (!removed) await closeReports(postId, "removed", "auto");
   return removed ? { ok: true, message: strike ? "Post removed with a strike" : "Post removed" }
-    : { ok: false, message: "Post was already removed" };
+    : { ok: true, message: "Post was already removed. Its reports are closed." };
+}
+
+/** Keeps the post (if it's still up) and closes its open reports. */
+async function dismissReports(postId: string): Promise<Outcome> {
+  const count = await closeReports(postId, "dismissed", "admin");
+  if (count === 0) return { ok: false, message: "No open reports for this post" };
+  return { ok: true, message: count === 1 ? "Report dismissed" : `${count} reports dismissed` };
 }
 
 /** Deletes the running ban on both docs; optionally empties the strike history. */
