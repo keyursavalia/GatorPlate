@@ -14,8 +14,6 @@
 		<string>mailto</string>
 		<string>googlegmail</string>
 		<string>ms-outlook</string>
-		<string>readdle-spark</string>
-		<string>ymail</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Take photos of leftover food so GatorPlate can draft your post. Photograph the food, not people.</string>
