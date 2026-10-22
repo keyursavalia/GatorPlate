@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// "24 min left". Orange under 10 minutes, red "Ending soon" under 5. Refreshes each time the minute count drops.
+/// "24 min left" ("2 h 15 min left" for long posts). Orange under 10 minutes, red "Ending soon" under 5. Refreshes each time the minute count drops.
 struct TimeRemainingPill: View {
     let expiresAt: Date
     /// Over a photo: an opaque backing (glass and tints never go over photos).
@@ -43,7 +43,7 @@ struct TimeRemainingPill: View {
             switch minutesLeft {
             case 0: "Ended"
             case ..<5: "Ending soon"
-            default: "\(minutesLeft) min left"
+            default: "\(DurationText.short(minutes: minutesLeft)) left"
             }
         }
 
@@ -51,7 +51,7 @@ struct TimeRemainingPill: View {
             switch minutesLeft {
             case 0: "Ended"
             case ..<5: "Ending soon, \(minutesLeft) minutes left"
-            default: "\(minutesLeft) minutes left"
+            default: "\(DurationText.spoken(minutes: minutesLeft)) left"
             }
         }
 
