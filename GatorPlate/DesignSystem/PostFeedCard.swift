@@ -88,7 +88,7 @@ struct PostFeedCard: View {
             .background(.background.tertiary, in: .capsule)
     }
 
-    /// "Org · Chavez Center".
+    /// "Org · Student Center".
     private var placeLine: String {
         let place = CampusBuilding.byId(post.buildingId)?.shortName ?? post.locationName
         return [post.orgName ?? post.authorName, place].joined(separator: " · ")
