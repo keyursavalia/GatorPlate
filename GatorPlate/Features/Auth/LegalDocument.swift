@@ -32,8 +32,6 @@ nonisolated struct LegalDocument {
 
     /// Title area (version and date).
     var intro: [Block] = []
-    /// The "Key points" summary shown at the top.
-    var keyPoints: [Block] = []
     var body: [Block] = []
 
     /// `supportEmail` is Remote Config `support_email`, so the owner can change the mailbox without a build.
@@ -87,8 +85,8 @@ nonisolated struct LegalDocument {
         }
         flushParagraph()
 
-        guard sections.count >= 3 else { return LegalDocument(body: sections.flatMap { $0 }) }
-        return LegalDocument(intro: sections[0], keyPoints: sections[1], body: sections.dropFirst(2).flatMap { $0 })
+        guard sections.count >= 2 else { return LegalDocument(body: sections.flatMap { $0 }) }
+        return LegalDocument(intro: sections[0], body: sections.dropFirst().flatMap { $0 })
     }
 
     /// Fills [TEAM NAME] and [CONTACT EMAIL]. No placeholder may stay visible (App Review 1.2 needs real contact
