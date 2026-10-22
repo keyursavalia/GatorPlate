@@ -19,8 +19,6 @@ final class AnalysisViewModel {
     private(set) var completedSteps = 0
     /// True after `AppConfig.aiSlowThresholdSeconds`; a "Still working…" line appears.
     private(set) var isSlow = false
-    /// DEBUG only: content-free CSV line for the evaluation report.
-    private(set) var evalLine: String?
 
     let photos: [CapturedPhoto]
     private let analyzer: any FoodAnalyzing
@@ -42,7 +40,6 @@ final class AnalysisViewModel {
         state = .analyzing
         completedSteps = 0
         isSlow = false
-        evalLine = nil
         analysisTask = Task { [weak self] in
             await self?.run()
         }
@@ -75,9 +72,6 @@ final class AnalysisViewModel {
         } catch {
             state = error == .cancelled ? .idle : .failed(error)
         }
-        #if DEBUG
-        evalLine = AnalysisEvalLine.make(state: state, diagnostics: analyzer.lastDiagnostics)
-        #endif
     }
 
     /// With 3+ photos each is shrunk to `aiMultiPhotoLongEdge` (fewer image tokens, faster).
