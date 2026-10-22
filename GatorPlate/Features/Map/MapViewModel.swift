@@ -34,7 +34,7 @@ final class MapViewModel {
     @ObservationIgnored var boundsMaxDistance = SFSUCampus.maxCameraDistance
     private(set) var markGoneStatus = ActionStatus.idle
     private(set) var reportStatus = ActionStatus.idle
-    /// Posts this account reported (kept until they end): Report turns into "Thanks, we'll review it."
+    /// Posts this account reported (kept until they end): hidden from Map and Feed, and Report is gone from the menu.
     let reportedPosts: ReportedPosts
     /// People this user blocked (guests too).
     let blocked: BlockedUsers
@@ -217,7 +217,8 @@ final class MapViewModel {
         }
     }
 
-    /// True when the report was sent. The post is hidden from this account's Map and Feed right away.
+    /// True when the report was sent. Closes the post sheet (the Report sheet with it) and hides the post from this
+    /// account's Map and Feed right away, with a thank-you notice over the map.
     func report(_ post: FoodPost, category: ReportCategory, reason: String) async -> Bool {
         guard reportStatus != .working else { return false }
         reportStatus = .working
@@ -225,6 +226,8 @@ final class MapViewModel {
             try await postService.report(postId: post.id, category: category, reason: reason)
             reportedPosts.insert(post)
             reportStatus = .idle
+            if selectedPostId == post.id { selectedPostId = nil }
+            navigation.showNotice("Reported. Thanks, we'll review it.")
             Logger.ui.info("Post reported (\(category.rawValue, privacy: .public))")
             return true
         } catch {
