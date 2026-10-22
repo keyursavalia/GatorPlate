@@ -5,8 +5,6 @@ import SwiftUI
 struct LegalFootnote: View {
     /// The words before the links, e.g. "By signing in, I agree to".
     let lead: String
-    /// Words after the links, before the final period (e.g. the AI disclosure on Welcome).
-    var trailing: String?
 
     @State private var openDocument: LegalDocument.Kind?
 
@@ -32,7 +30,6 @@ struct LegalFootnote: View {
         text += link(.privacy)
         text += AttributedString(" and ")
         text += link(.terms)
-        if let trailing { text += AttributedString(", \(trailing)") }
         text += AttributedString(".")
         return text
     }
