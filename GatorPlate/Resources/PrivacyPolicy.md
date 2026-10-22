@@ -5,18 +5,9 @@
 
 ---
 
-## Key points
-- You can browse GatorPlate and get alerts **without an account**. Guests get an anonymous ID, with no name or email.
-- An account (email and display name) is needed **only to post** food or report posts.
-- Your **location stays on your phone**. It is never stored or shared.
-- Photos are checked by **Google's Gemini AI** to draft posts and keep the App safe. We never send your name, email, or account ID to the AI.
-- No ads, no tracking, and we **never sell** your data.
-
----
-
 ## 1. What we collect
 - **Guests:** an anonymous ID created by Firebase, the Terms version you accepted, and your alert settings if you turn alerts on.
-- **Accounts:** your email address and display name, plus the organization name on older organization accounts.
+- **Accounts** (needed only to post food or report posts): your email address and display name, plus the organization name on older organization accounts.
 - **Posts:** the text, place, times, and up to 4 food photos you publish.
 - **Reports you file:** the post, the category, your reason if you wrote one, and a snapshot of the reported post (title, description, place, and the poster's name and account ID; no photos) so a person can review it after the post ends.
 - **Blocks:** who you blocked and the display name they had at the time.
