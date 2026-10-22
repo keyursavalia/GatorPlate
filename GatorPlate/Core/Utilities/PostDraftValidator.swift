@@ -77,7 +77,8 @@ nonisolated enum PostDraftValidator {
             block(.locationDetail, "Keep it under \(AppConfig.postLocationDetailMaxLength) characters.")
         }
 
-        if !AppConfig.postDurationOptionsMinutes.contains(draft.durationMinutes) {
+        // The presets and every custom length fall in this range; the rules refuse anything past 5 h.
+        if !AppConfig.postDurationRangeMinutes.contains(draft.durationMinutes) {
             block(.duration, "Pick how long the food is available.")
         }
 
