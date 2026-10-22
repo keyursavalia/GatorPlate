@@ -177,31 +177,32 @@ struct WelcomeFeatureCarousel: View {
     }
 }
 
-/// One feature on a plain card: an icon tile beside the title, a short line, then a divider and a few checkmarked
-/// points. Read by VoiceOver as one element.
+/// One feature on a plain card, centered top to bottom: the icon tile, the title, a short line, then a divider and
+/// a few checkmarked points. Read by VoiceOver as one element.
 private struct FeatureCard: View {
     let feature: WelcomeFeatureCarousel.Feature
 
-    @ScaledMetric(relativeTo: .headline) private var tile: CGFloat = 36
+    @ScaledMetric(relativeTo: .title2) private var tile: CGFloat = 48
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            HStack(spacing: Theme.Spacing.md) {
-                Image(systemName: feature.icon)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(feature.tint)
-                    .frame(width: tile, height: tile)
-                    .background(feature.tint.opacity(0.15), in: .rect(cornerRadius: 9))
+        VStack(spacing: Theme.Spacing.md) {
+            Image(systemName: feature.icon)
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(feature.tint)
+                .frame(width: tile, height: tile)
+                .background(feature.tint.opacity(0.15), in: .rect(cornerRadius: 12))
+            VStack(spacing: Theme.Spacing.xs) {
                 Text(feature.title)
                     .font(.headline)
+                Text(feature.detail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Text(feature.detail)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            .multilineTextAlignment(.center)
             Spacer(minLength: 0)
             Divider()
-            WrapLayout(spacing: Theme.Spacing.lg, lineSpacing: Theme.Spacing.xs) {
+            WrapLayout(spacing: Theme.Spacing.lg, lineSpacing: Theme.Spacing.xs, centered: true) {
                 ForEach(feature.points, id: \.self) { point in
                     Label {
                         Text(point)
@@ -216,7 +217,7 @@ private struct FeatureCard: View {
             .foregroundStyle(.secondary)
         }
         .padding(Theme.Spacing.lg)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(feature.title). \(feature.detail)")
