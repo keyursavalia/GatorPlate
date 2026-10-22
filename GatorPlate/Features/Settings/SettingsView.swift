@@ -16,7 +16,7 @@ struct SettingsView: View {
     let onDeleteAccount: (String) async throws -> Void
 
     @State private var openDocument: LegalDocument.Kind?
-    @State private var showsSupportAddress = false
+    @State private var showsSupport = false
     @State private var isConfirmingSignOut = false
     @AppStorage(ReviewViewModel.showCaloriesKey) private var showCalories = true
     @Environment(\.openURL) private var openURL
@@ -68,16 +68,14 @@ struct SettingsView: View {
                     }
                     documentRow(.terms, systemImage: "doc.text")
                 }
-                Section("Help & support") {
-                    Button(action: contactSupport) {
-                        ListRow(title: "Contact support", systemImage: "envelope", showsDisclosure: true)
-                    }
-                    .accessibilityHint("Opens Mail to email the GatorPlate team")
-                }
                 Section("About") {
                     NavigationLink { AboutView() } label: {
                         ListRow(title: "About GatorPlate", systemImage: "info.circle")
                     }
+                    Button { showsSupport = true } label: {
+                        ListRow(title: "Contact support", systemImage: "envelope", showsDisclosure: true)
+                    }
+                    .accessibilityHint("Choose an email app to write to the GatorPlate team")
                 }
                 if !authSession.isGuest {
                     Section {
@@ -103,7 +101,7 @@ struct SettingsView: View {
             .sheet(item: $openDocument) { kind in
                 LegalDocumentSheet(kind: kind) { openDocument = nil }
             }
-            .sheet(isPresented: $showsSupportAddress) {
+            .sheet(isPresented: $showsSupport) {
                 ContactSupportSheet(email: environment.runtime.current.supportEmail)
             }
             .alert("Sign out of GatorPlate?", isPresented: $isConfirmingSignOut) {
@@ -112,20 +110,6 @@ struct SettingsView: View {
             } message: {
                 Text("You'll keep browsing as a guest. Notifications on this phone stop until you turn them on again.")
             }
-        }
-    }
-
-    // MARK: Support
-
-    /// Opens Mail to the support address (Remote Config `support_email`); without a mail app, shows the address.
-    private func contactSupport() {
-        let email = environment.runtime.current.supportEmail
-        guard let url = URL(string: "mailto:\(email)?subject=GatorPlate%20support") else {
-            showsSupportAddress = true
-            return
-        }
-        openURL(url) { accepted in
-            if !accepted { showsSupportAddress = true }
         }
     }
 
