@@ -5,7 +5,7 @@
  *   GatorPlate/Resources/PrivacyPolicy.md -> hosting/public/privacy/index.html
  * plus hosting/public/support/index.html and a small hosting/public/index.html linking all three.
  * Handles the subset `LegalDocument.parse` handles: "# " title, "## " headings, "- " bullets, "1. " numbered items,
- * "---" separators (the first block after the intro is the key points box), paragraphs, **bold** and `code`.
+ * "---" separators (ignored), paragraphs, **bold** and `code`.
  * [TEAM NAME] and [CONTACT EMAIL] come from `AppConfig.swift` (teamName, supportEmail). No dependencies.
  * Run: node scripts/build-legal-pages.mjs (also the Hosting predeploy hook).
  */
@@ -99,11 +99,7 @@ function convert(markdown) {
   flushParagraph();
   flushList();
 
-  const [intro, keyPoints, ...rest] = sections;
-  const body = sections.length >= 3
-    ? `${intro.join("\n")}\n<section class="key-points">${keyPoints.join("\n")}</section>\n${rest.flat().join("\n")}`
-    : sections.flat().join("\n");
-  return { title, html: body };
+  return { title, html: sections.flat().join("\n") };
 }
 
 function page(title, body, { home = false } = {}) {
@@ -115,9 +111,9 @@ function page(title, body, { home = false } = {}) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(title)}</title>
 <style>
-  :root { color-scheme: light dark; --text: #1c1c1e; --muted: #5b5b60; --bg: #ffffff; --box: #fbf3dc; --accent: #5b3fb5; }
+  :root { color-scheme: light dark; --text: #1c1c1e; --muted: #5b5b60; --bg: #ffffff; --accent: #5b3fb5; }
   @media (prefers-color-scheme: dark) {
-    :root { --text: #f2f2f7; --muted: #aeaeb2; --bg: #111113; --box: #2b2618; --accent: #a993ec; }
+    :root { --text: #f2f2f7; --muted: #aeaeb2; --bg: #111113; --accent: #a993ec; }
   }
   body { margin: 0; background: var(--bg); color: var(--text);
          font: 17px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
@@ -128,7 +124,6 @@ function page(title, body, { home = false } = {}) {
   a { color: var(--accent); }
   li { margin: 0.35rem 0; }
   code { font-size: 0.9em; }
-  .key-points { background: var(--box); border-radius: 16px; padding: 4px 20px; margin: 1.5rem 0; }
   .muted { color: var(--muted); }
 </style>
 </head>
