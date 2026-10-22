@@ -65,13 +65,6 @@ struct PrivacyView: View {
 
             Section {
                 Button { showsPolicy = true } label: {
-                    ListRow(title: "AI and safety checks", systemImage: "checkmark.shield",
-                            subtitle: "Google's Gemini checks published photos and the reason in unsafe reports. "
-                                + "No names, emails or account IDs are sent.",
-                            showsDisclosure: true)
-                }
-                .accessibilityHint("Opens the Privacy Policy")
-                Button { showsPolicy = true } label: {
                     ListRow(title: LegalDocument.Kind.privacy.title, systemImage: "lock.doc", showsDisclosure: true)
                 }
             }
