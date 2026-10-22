@@ -1,14 +1,15 @@
 /**
  * Checks `onPostCreated` runs on a new post before anyone is alerted: the content filter on every user-written field
- * (the app blocks first, so this catches modified clients or a list updated between edit and publish), then photo
- * screening. A post that fails is removed without a strike and nobody is alerted.
+ * (the app blocks first, so this catches modified clients or a list updated between edit and publish), then the AI
+ * screening of the photos and the text (disguised profanity the word list misses). A post that fails is removed
+ * without a strike and nobody is alerted. Abusive text is removed as `filtered`, a photo problem as `screened`.
  */
 import { logger } from "firebase-functions";
 import type { SharedConfig } from "./config-logic.js";
 import { ContentFilter, checkPost } from "./content-filter.js";
 import { removePost } from "./moderation-actions.js";
-import { SCREENED_PUSH } from "./photo-screening-logic.js";
-import { photosFailScreening } from "./photo-screening.js";
+import { SCREENED_PUSH, TEXT_SCREENED_PUSH, isTextProblem } from "./photo-screening-logic.js";
+import { screenPost } from "./photo-screening.js";
 import { serverConfig, sharedConfig } from "./runtimeConfig.js";
 
 let cachedFilter: { lists: SharedConfig; filter: ContentFilter } | null = null;
@@ -30,11 +31,13 @@ export async function passesPostChecks(postId: string, post: Record<string, unkn
     await removePost(postId, post, { category: "filtered", strike: false }, config);
     return false;
   }
-  if (await photosFailScreening(postId, post, config)) {
+  const problem = await screenPost(postId, post, config);
+  if (problem) {
+    const isText = isTextProblem(problem);
     await removePost(postId, post, {
-      category: "screened",
+      category: isText ? "filtered" : "screened",
       strike: false,
-      push: { ...SCREENED_PUSH, kind: "postRemoved" },
+      push: { ...(isText ? TEXT_SCREENED_PUSH : SCREENED_PUSH), kind: "postRemoved" },
     }, config);
     return false;
   }
