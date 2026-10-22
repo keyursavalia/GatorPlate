@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// Places views left to right and wraps onto new lines (the Feed's filter chips at accessibility sizes).
+/// Places views left to right and wraps onto new lines (the Feed's filter chips at accessibility sizes). Each line
+/// starts at the leading edge, or is centered with `centered` (the Welcome cards' points).
 struct WrapLayout: Layout {
     var spacing: CGFloat = 8
     var lineSpacing: CGFloat = 8
+    var centered = false
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let rows = rows(for: subviews, maxWidth: proposal.width ?? .infinity)
@@ -15,7 +17,7 @@ struct WrapLayout: Layout {
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         var y = bounds.minY
         for row in rows(for: subviews, maxWidth: bounds.width) {
-            var x = bounds.minX
+            var x = centered ? bounds.minX + max(0, (bounds.width - row.width) / 2) : bounds.minX
             for index in row.indices {
                 let size = subviews[index].sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
                 subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(width: min(size.width, bounds.width), height: size.height))
