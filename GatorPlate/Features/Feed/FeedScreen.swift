@@ -25,6 +25,8 @@ struct FeedScreen: View {
                 .frame(maxWidth: .infinity)
             }
             .scrollBounceBehavior(.basedOnSize)
+            // Centered in the visible area (like Blocked people), not in the scrolling content.
+            .overlay { emptyState }
             .animation(reduceMotion ? .easeOut(duration: 0.2) : .snappy, value: viewModel.posts.map(\.id))
             .animation(reduceMotion ? .easeOut(duration: 0.2) : .snappy, value: viewModel.chips)
             .navigationTitle("Free food")
@@ -66,29 +68,29 @@ struct FeedScreen: View {
 
     @ViewBuilder
     private var content: some View {
+        if viewModel.content == .posts { cards }
+    }
+
+    /// Loading and the empty states, over the scroll view so they sit in the middle of the screen while the title
+    /// and the filter chips stay in place.
+    @ViewBuilder
+    private var emptyState: some View {
         switch viewModel.content {
         case .loading:
             ProgressView("Loading free food...")
-                .frame(maxWidth: .infinity)
-                .containerRelativeFrame(.vertical) { height, _ in height * 0.6 }
         case .failed:
-            centered(EmptyState(icon: "wifi.exclamationmark", title: "Couldn't load posts",
-                                message: "We'll keep trying. Check your connection."))
+            EmptyState(icon: "wifi.exclamationmark", title: "Couldn't load posts",
+                       message: "We'll keep trying. Check your connection.")
         case .empty:
-            centered(EmptyState(icon: "fork.knife", title: "Nothing posted",
-                                message: "No free food right now. Check back soon."))
+            EmptyState(icon: "fork.knife", title: "Nothing posted",
+                       message: "No free food right now. Check back soon.")
         case .allHidden:
-            centered(EmptyState(icon: "line.3.horizontal.decrease", title: "Nothing matches your filters",
-                                message: viewModel.hiddenFooter ?? "", actionTitle: "Clear filters",
-                                action: viewModel.clearFilters))
+            EmptyState(icon: "line.3.horizontal.decrease", title: "Nothing matches your filters",
+                       message: viewModel.hiddenFooter ?? "", actionTitle: "Clear filters",
+                       action: viewModel.clearFilters)
         case .posts:
-            cards
+            EmptyView()
         }
-    }
-
-    /// An empty state in the middle of the visible area, inside the scroll view so the title stays.
-    private func centered(_ state: EmptyState) -> some View {
-        state.containerRelativeFrame(.vertical) { height, _ in height * 0.6 }
     }
 
     private var cards: some View {
