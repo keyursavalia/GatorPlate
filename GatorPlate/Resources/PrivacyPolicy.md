@@ -1,7 +1,7 @@
 # GatorPlate Privacy Policy
 
-**Version:** 2026-11-1
-**Last updated:** October 20, 2026
+**Version:** 2026-11-2
+**Last updated:** October 22, 2026
 
 ---
 
@@ -24,7 +24,7 @@ We use this information only to run the App: to show food posts, send the alerts
 ## 3. AI processing
 The App sends some data to Google's Gemini AI models. Google processes it as our service provider:
 - **When you analyze food photos while posting**, the photos (with location and camera details removed) and our instructions are sent through Firebase AI Logic to draft your post.
-- **When a post is published**, its photos are checked through Google Cloud (Agent Platform) for content that isn't allowed, such as people, sexual content, violence, or things that aren't food. Post text is checked against a word list on our own servers, not by AI.
+- **When a post is published**, its photos and text (title, description, food items, notes, room or floor, and the poster's or organization's name) are checked through Google Cloud (Agent Platform) for content that isn't allowed, such as people, sexual content, violence, abusive language, or things that aren't food. Post text is also checked against a word list on our own servers.
 - **When someone reports a post as Unsafe to eat**, their written reason is sent together with the post's cover photo and text (title, description, food items, listed allergens and notes) to check whether the report is credible.
 We never send names, email addresses, or account IDs to the AI.
 
