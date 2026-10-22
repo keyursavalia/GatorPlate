@@ -181,12 +181,13 @@ service cloud.firestore {
                   && post.photoSlots.hasOnly([0, 1, 2, 3])
                   && post.hasPhoto == (post.photoSlots.size() > 0)))
           && post.status == 'active'
-          // Server time only; window 15-60 min with a few minutes of clock-skew slack.
+          // Server time only; window 15 min to 5 h (AppConfig.postDurationRangeMinutes) with a few minutes of
+          // clock-skew slack. The 5 h cap is the hard limit, whatever the client sends.
           && post.createdAt == request.time
           && post.updatedAt == request.time
           && post.expiresAt is timestamp
           && post.expiresAt > request.time + duration.value(10, 'm')
-          && post.expiresAt <= request.time + duration.value(65, 'm')
+          && post.expiresAt <= request.time + duration.value(305, 'm')
           // TTL deletes the post 24 h after it ends.
           && post.deleteAt == post.expiresAt + duration.value(24, 'h');
       }
