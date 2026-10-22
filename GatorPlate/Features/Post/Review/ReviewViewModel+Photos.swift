@@ -12,6 +12,7 @@ extension ReviewViewModel {
         draft.location = previous.draft.location
         draft.locationDetail = previous.draft.locationDetail
         draft.durationMinutes = previous.draft.durationMinutes
+        draft.isCustomDuration = previous.draft.isCustomDuration
         draft.safetyAttested = previous.draft.safetyAttested
         initialDraft = draft
     }
