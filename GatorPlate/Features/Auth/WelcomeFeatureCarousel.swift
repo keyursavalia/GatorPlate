@@ -31,7 +31,7 @@ struct WelcomeFeatureCarousel: View {
                 points: ["Diet", "Places", "Quiet hours"], tint: Theme.Palette.brandPurple),
         Feature(id: 3, icon: "exclamationmark.shield.fill", title: "Eat smart",
                 detail: "Eat at your own risk and ask about allergens. Report or block anything that's off.",
-                points: ["Report", "Block", "Posts end within an hour"], tint: Theme.Palette.warning),
+                points: ["Report", "Block", "Posts expire"], tint: Theme.Palette.warning),
         Feature(id: 4, icon: "lock.shield.fill", title: "Private by design",
                 detail: "Your location stays on your phone. Your data is never sold.",
                 points: ["No ads", "No tracking"], tint: Theme.Palette.brandGold),
