@@ -141,7 +141,8 @@ struct ReviewView: View {
         } footer: {
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 Text("Required to publish.")
-                Text("Photos you post are checked by Google's Gemini AI for safety, including if someone reports your post.")
+                Text("Your photos and text are checked by Google's Gemini AI for safety when you post, and again if "
+                     + "someone reports your post.")
             }
         }
     }
