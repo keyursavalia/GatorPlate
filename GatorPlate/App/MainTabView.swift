@@ -70,6 +70,8 @@ struct MainTabView: View {
             }
             let session = session ?? MainSession(environment: environment, profile: profile)
             self.session = session
+            // A new session starts with reporting off; `canPost` may have turned true before it existed.
+            session.map.canReport = authSession.canPost
             session.start()
             openTappedAlert()
             showAppealResult()
@@ -77,6 +79,8 @@ struct MainTabView: View {
         }
         .onDisappear { session?.stop() }
         .onChange(of: authSession.canPost) { _, canPost in
+            // Reporting needs a verified account, like posting.
+            session?.map.canReport = canPost
             guard canPost, let start = accountFlow else { return }
             opensPostAfterAccountFlow = start == .post
             accountFlow = nil
@@ -152,10 +156,6 @@ struct MainTabView: View {
         }
         .onChange(of: permissionConditions(session), initial: true) { _, conditions in
             session.permissions.update(conditions)
-        }
-        // Reporting needs a verified account, like posting.
-        .onChange(of: authSession.canPost, initial: true) { _, canPost in
-            session.map.canReport = canPost
         }
     }
 
