@@ -39,6 +39,8 @@ nonisolated struct PostDraft: Equatable, Sendable {
     /// "Room / floor / entrance". Required.
     var locationDetail = ""
     var durationMinutes = AppConfig.defaultPostDurationMinutes
+    /// "+ Custom" is chosen: the length comes from the hours and minutes wheels, even when it equals a preset.
+    var isCustomDuration = false
     var safetyAttested = false
 
     /// Empty draft for the manual path.
