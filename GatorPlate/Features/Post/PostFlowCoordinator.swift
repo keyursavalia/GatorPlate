@@ -67,10 +67,10 @@ struct PostFlowCoordinator: View {
             case .idle, .analyzing, .success:
                 AnalyzingScreen(viewModel: analysis, onCancel: model.cancelAnalysis, onFillManually: model.fillManually)
             case .rejected(let reason):
-                AnalysisRejectedView(reason: reason, evalLine: analysis.evalLine,
+                AnalysisRejectedView(reason: reason, photos: analysis.photos,
                                      onRetake: model.retake, onFillManually: model.fillManually)
             case .failed(let error):
-                AnalysisFailedView(error: error, evalLine: analysis.evalLine,
+                AnalysisFailedView(error: error, photos: analysis.photos,
                                    onRetry: analysis.retry, onFillManually: model.fillManually)
             }
         }
