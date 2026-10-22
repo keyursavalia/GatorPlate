@@ -100,7 +100,7 @@ extension FoodPost {
                  items: [FoodItem(name: "Veggie pizza", dietary: .vegetarian,
                                   calories: CalorieRange(low: 250, high: 300))],
                  dietary: .vegetarian, allergens: [.wheat, .milk], minutesLeft: 8),
-            mock(id: "mock-burritos", title: "Burritos - Chavez Center",
+            mock(id: "mock-burritos", title: "Burritos - Student Center",
                  description: "Chicken and bean burritos left over from the welcome mixer.",
                  buildingId: "chavez", room: "Jack Adams Hall",
                  items: [FoodItem(name: "Chicken burrito", dietary: .nonVegetarian,
