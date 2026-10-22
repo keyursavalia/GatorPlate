@@ -97,7 +97,7 @@ struct NoteRow: View {
 #Preview {
     List {
         ListRow(title: "Free food notifications", systemImage: "bell.badge")
-        ListRow(title: "Cesar Chavez Center", systemImage: "mappin.and.ellipse", subtitle: "Room 201")
+        ListRow(title: "Student Center", systemImage: "mappin.and.ellipse", subtitle: "Room 201")
         ListRow(title: "Diet", systemImage: "leaf.fill", value: "Appears vegetarian")
         CheckRow(title: "Vegan", isSelected: true) {}
         NoteRow(text: "AI drafted this post. Give it a quick check.", systemImage: "sparkles")
