@@ -8,9 +8,6 @@ struct AnalyzingScreen: View {
     let onFillManually: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var scanOffset: CGFloat = 0
-
-    private static let photoSize: CGFloat = 240
 
     var body: some View {
         ScrollView {
@@ -73,70 +70,13 @@ struct AnalyzingScreen: View {
     // MARK: Photos
 
     private var photoStack: some View {
-        let photos = Array(viewModel.photos.prefix(4))
-        return ZStack {
-            ForEach(Array(photos.enumerated().reversed()), id: \.element.id) { index, photo in
-                Image(uiImage: photo.previewImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: Self.photoSize, height: Self.photoSize)
-                    .overlay { if index == 0, !reduceMotion { scanLine } }
-                    .clipShape(.rect(cornerRadius: Theme.Radius.photo))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: Theme.Radius.photo).strokeBorder(.background, lineWidth: 3)
-                    }
-                    .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
-                    .rotationEffect(.degrees(fanAngle(index: index, count: photos.count)))
-                    .offset(x: fanOffset(index: index, count: photos.count))
-            }
-        }
-        .frame(height: Self.photoSize + 30)
-        .overlay(alignment: .bottom) {
-            Label("AI drafting", systemImage: "sparkles")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, Theme.Spacing.md)
-                .padding(.vertical, 6)
-                // Solid: pills over photos never use glass.
-                .background(Theme.Palette.brandPurple, in: .capsule)
-                .shadow(color: Theme.Palette.brandPurple.opacity(0.4), radius: 8, y: 4)
+        let count = min(viewModel.photos.count, 4)
+        return AnalysisPhotoStack(photos: viewModel.photos, isScanning: true,
+                                  accessibilityLabel: count == 1 ? "Your food photo, being analyzed"
+                                                                 : "Your \(count) food photos, being analyzed") {
+            AnalysisStatusPill(title: "AI drafting", systemImage: "sparkles", tint: Theme.Palette.brandPurple)
                 .symbolEffect(.pulse, options: .repeat(.continuous), isActive: !reduceMotion)
-                .offset(y: Theme.Spacing.sm)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(photos.count == 1 ? "Your food photo, being analyzed"
-                                              : "Your \(photos.count) food photos, being analyzed")
-    }
-
-    private func fanAngle(index: Int, count: Int) -> Double {
-        guard count > 1 else { return 0 }
-        return (Double(index) - Double(count - 1) / 2) * 6
-    }
-
-    private func fanOffset(index: Int, count: Int) -> CGFloat {
-        guard count > 1 else { return 0 }
-        return (CGFloat(index) - CGFloat(count - 1) / 2) * 18
-    }
-
-    /// A brand-purple line with a soft glow sweeping down the top photo.
-    private var scanLine: some View {
-        GeometryReader { proxy in
-            LinearGradient(colors: [Theme.Palette.brandPurple.opacity(0), Theme.Palette.brandPurple.opacity(0.45)],
-                           startPoint: .top, endPoint: .bottom)
-                .frame(height: proxy.size.height * 0.35)
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(Theme.Palette.brandPurple)
-                        .frame(height: 2)
-                        .shadow(color: Theme.Palette.brandPurple, radius: 6)
-                }
-                .offset(y: scanOffset * proxy.size.height - proxy.size.height * 0.35)
-                .onAppear {
-                    withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) { scanOffset = 1 }
-                }
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
     }
 
     // MARK: Timeline
