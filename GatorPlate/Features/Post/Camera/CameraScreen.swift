@@ -22,6 +22,7 @@ struct CameraScreen: View {
     @AppStorage("camera.hasSeenPeopleHint") private var hasSeenPeopleHint = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.appEnvironment) private var environment
 
     var body: some View {
         ZStack {
@@ -129,6 +130,10 @@ struct CameraScreen: View {
                     CameraOverlayText(text: "\(AppConfig.postMaxPhotos) photos max. Remove one to add another.")
                 } else if showsPeopleHint {
                     CameraOverlayText(text: "Photograph the food, not people.")
+                        .transition(.opacity)
+                } else if !tray.isEmpty, environment.runtime.current.aiEnabled {
+                    // App Review 5.1.2(i): says where the photos are sent, before Next sends them.
+                    CameraOverlayText(text: "Next sends your photos to Google's Gemini AI to draft the post.")
                         .transition(.opacity)
                 }
                 if !tray.isEmpty {
