@@ -43,14 +43,6 @@ struct LegalDocumentSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                 blocks(document.intro)
-                if !document.keyPoints.isEmpty {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                        blocks(document.keyPoints)
-                    }
-                    .padding(Theme.Spacing.lg)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Theme.Palette.brandGold.opacity(0.18), in: .rect(cornerRadius: Theme.Radius.card))
-                }
                 blocks(document.body)
             }
             .padding(Theme.Spacing.xl)
