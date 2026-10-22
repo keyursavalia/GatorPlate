@@ -7,7 +7,7 @@ nonisolated enum AppConfig {
     // Auth
     static let requireEmailVerification = true
     /// Terms of Use and Privacy Policy version (both files carry it). A bump shows the Terms gate to everyone once.
-    static let termsVersion = "2026-11-1"
+    static let termsVersion = "2026-11-2"
     static let minPasswordLength = 8
     static let maxNameLength = 60
     static let maxEmailLength = 254
@@ -57,9 +57,16 @@ nonisolated enum AppConfig {
     static let aiChecklistStepSeconds = 2.0
 
     // Posts
+    /// The one-tap lengths; "+ Custom" picks anything in `postDurationRangeMinutes` instead.
     static let postDurationOptionsMinutes = [15, 30, 45, 60]
     static let defaultPostDurationMinutes = 30
-    static let maxPostDurationMinutes = 60
+    /// Custom lengths: 15 min to 5 h, in `postDurationStepMinutes` steps. `firestore.rules` caps posts at 5 h too.
+    static let postDurationRangeMinutes = 15...300
+    static let postDurationStepMinutes = 5
+    /// What "+ Custom" starts at.
+    static let defaultCustomPostDurationMinutes = 90
+    /// Past this the Review footer warns that perishable food shouldn't sit out longer (the 2-hour food-safety rule).
+    static let perishableFoodLimitMinutes = 120
     /// Client-side anti-spam.
     static let postCooldownSeconds = 60
     /// Posts and photos are deleted this long after `expiresAt` (Firestore TTL on `deleteAt`).
