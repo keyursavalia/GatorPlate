@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The post flow's photos as a fanned stack (up to 4) with a pill across the bottom edge: "AI drafting" with a scan
+/// The post flow's photos as a fanned stack (up to 4) with a pill below it: "AI drafting" with a scan
 /// line while analyzing, or the reason it stopped. `obscured` blurs them (photos rejected for showing people).
 struct AnalysisPhotoStack<Badge: View>: View {
     let photos: [CapturedPhoto]
@@ -16,6 +16,15 @@ struct AnalysisPhotoStack<Badge: View>: View {
 
     var body: some View {
         let shown = Array(photos.prefix(4))
+        VStack(spacing: Theme.Spacing.lg) {
+            stack(shown)
+            badge
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func stack(_ shown: [CapturedPhoto]) -> some View {
         ZStack {
             ForEach(Array(shown.enumerated().reversed()), id: \.element.id) { index, photo in
                 Image(uiImage: photo.previewImage)
@@ -34,11 +43,6 @@ struct AnalysisPhotoStack<Badge: View>: View {
             }
         }
         .frame(height: Self.photoSize + 30)
-        .overlay(alignment: .bottom) {
-            badge.offset(y: Theme.Spacing.sm)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabel)
     }
 
     /// A brand-purple line with a soft glow sweeping down the top photo.
