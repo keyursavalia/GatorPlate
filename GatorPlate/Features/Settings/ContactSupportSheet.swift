@@ -1,16 +1,19 @@
 import SwiftUI
 
-/// Settings > About > Contact support: a short header, the support address (Remote Config `support_email`) as a
-/// row that copies it, and every installed email app (`MailApp`) to write with, so people who don't use Mail can
-/// pick theirs. With no email app, copying the address is the way.
+/// Settings > About > Contact support, presented like the Terms and Privacy sheets (title and Done, no grabber): a
+/// short header, the support address (Remote Config `support_email`) with Copy, and a tile per installed email app
+/// (`MailApp`: Mail, Gmail, Outlook) with its logo and name. Mail writes in the app when it can; with no email app,
+/// copying the address is the way.
 struct ContactSupportSheet: View {
     let email: String
 
     @State private var apps: [MailApp] = []
     @State private var copied = false
     @State private var failedApp: MailApp?
+    @State private var isComposingInApp = false
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @ScaledMetric(relativeTo: .title) private var circle: CGFloat = 64
 
@@ -18,32 +21,17 @@ struct ContactSupportSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
+            ScrollView {
+                VStack(spacing: Theme.Spacing.xl) {
                     header
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 0, leading: Theme.Spacing.lg, bottom: Theme.Spacing.sm,
-                                                  trailing: Theme.Spacing.lg))
+                    addressCard
+                    writeWith
                 }
-                Section {
-                    addressRow
-                } footer: {
-                    Text("Tap to copy the address.")
-                }
-                Section {
-                    if apps.isEmpty {
-                        NoteRow(text: "No email app found. Copy the address and write from any email.",
-                                systemImage: "info.circle")
-                    }
-                    ForEach(apps) { app in
-                        appRow(app)
-                    }
-                } header: {
-                    Text("Write with")
-                }
+                .padding(Theme.Spacing.xl)
+                .frame(maxWidth: 600)
+                .frame(maxWidth: .infinity)
             }
-            .listSectionSpacing(.compact)
-            .environment(\.defaultMinListRowHeight, 52)
+            .scrollBounceBehavior(.basedOnSize)
             .navigationTitle("Contact support")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -58,9 +46,11 @@ struct ContactSupportSheet: View {
             } message: {
                 Text("Copy the address and write to us from any email.")
             }
+            .sheet(isPresented: $isComposingInApp) {
+                MailComposeView(recipient: email, subject: Self.subject) { isComposingInApp = false }
+                    .ignoresSafeArea()
+            }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
         .sensoryFeedback(.success, trigger: copied) { _, now in now }
         .onAppear { apps = MailApp.installed }
     }
@@ -81,7 +71,7 @@ struct ContactSupportSheet: View {
                 Text("We read every message and reply as soon as we can. "
                      + "Reports of offensive posts are reviewed within 24 hours.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .multilineTextAlignment(.center)
@@ -89,44 +79,64 @@ struct ContactSupportSheet: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// The address; tapping copies it, and the trailing icon turns into a check.
-    private var addressRow: some View {
-        Button(action: copy) {
-            HStack(spacing: Theme.Spacing.md) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Support email")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Text(email)
-                        .foregroundStyle(Color.primary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
-                Spacer(minLength: Theme.Spacing.sm)
-                Image(systemName: copied ? "checkmark.circle.fill" : "doc.on.doc")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(copied ? Theme.Palette.success : Theme.Palette.brandPurple)
-                    .contentTransition(.symbolEffect(.replace))
-                    .accessibilityHidden(true)
+    /// "Email us at" over the address, with a Copy capsule that turns into "Copied" for 2 s.
+    private var addressCard: some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.md))
+            : AnyLayout(HStackLayout(spacing: Theme.Spacing.md))
+        return layout {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Email us at")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.secondary)
+                Text(email)
+                    .font(.headline)
+                    .foregroundStyle(Color.primary)
+                    .textSelection(.enabled)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                    .minimumScaleFactor(0.8)
             }
+            .accessibilityElement(children: .combine)
+            if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: Theme.Spacing.sm) }
+            Button(action: copy) {
+                Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
+                    .font(.subheadline.weight(.semibold))
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .tint(Theme.Palette.brandPurple)
+            .accessibilityLabel(copied ? "Address copied" : "Copy address")
         }
-        .accessibilityLabel("Support email, \(email)")
-        .accessibilityValue(copied ? "Copied" : "")
-        .accessibilityHint("Copies the address")
+        .padding(Theme.Spacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
     }
 
-    private func appRow(_ app: MailApp) -> some View {
-        Button { write(with: app) } label: {
-            HStack(spacing: Theme.Spacing.md) {
-                ListRow(title: app.name, systemImage: app == .standard ? "envelope.fill" : "envelope",
-                        subtitle: app == .standard ? "Your default email app" : nil)
-                Image(systemName: "arrow.up.forward")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-                    .accessibilityHidden(true)
+    /// "Write with" and a tile per installed app, side by side (stacked at accessibility sizes).
+    private var writeWith: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            Text("Write with")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+            if apps.isEmpty {
+                Text("No email app found. Copy the address and write from any email.")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.secondary)
+            } else {
+                let layout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(spacing: Theme.Spacing.md))
+                    : AnyLayout(HStackLayout(spacing: Theme.Spacing.md))
+                layout {
+                    ForEach(apps) { app in
+                        Button { write(with: app) } label: { MailAppTile(app: app) }
+                            .buttonStyle(TileButtonStyle())
+                            .accessibilityLabel(app.name)
+                            .accessibilityHint("Starts an email to GatorPlate support in \(app.name)")
+                    }
+                }
             }
         }
-        .accessibilityHint("Starts an email to GatorPlate support in \(app.name)")
     }
 
     private func copy() {
@@ -140,6 +150,10 @@ struct ContactSupportSheet: View {
     }
 
     private func write(with app: MailApp) {
+        if app == .appleMail, MailApp.canComposeInApp {
+            isComposingInApp = true
+            return
+        }
         guard let url = app.composeURL(to: email, subject: Self.subject) else {
             failedApp = app
             return
@@ -147,6 +161,52 @@ struct ContactSupportSheet: View {
         openURL(url) { accepted in
             if accepted { dismiss() } else { failedApp = app }
         }
+    }
+}
+
+/// An email app's logo (or an envelope until the logo asset is added) over its name, on a plain card.
+private struct MailAppTile: View {
+    let app: MailApp
+
+    @ScaledMetric(relativeTo: .title) private var logo: CGFloat = 52
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.sm) {
+            Group {
+                if app.hasLogo {
+                    Image(app.logoAsset)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    Image(systemName: app.fallbackSymbol)
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(Theme.Palette.brandPurple)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Theme.Palette.brandPurple.opacity(0.15))
+                }
+            }
+            .frame(width: logo, height: logo)
+            .clipShape(.rect(cornerRadius: logo * 0.225))
+            .accessibilityHidden(true)
+            Text(app.name)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .padding(.vertical, Theme.Spacing.lg)
+        .padding(.horizontal, Theme.Spacing.sm)
+        .frame(maxWidth: .infinity)
+        .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
+    }
+}
+
+/// Dims a tile while pressed.
+private struct TileButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.6 : 1)
+            .contentShape(.rect(cornerRadius: Theme.Radius.card))
     }
 }
 
