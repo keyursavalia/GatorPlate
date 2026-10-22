@@ -1,7 +1,7 @@
 # GatorPlate Terms of Use
 
-**Version:** 2026-11-1
-**Last updated:** October 20, 2026
+**Version:** 2026-11-2
+**Last updated:** October 22, 2026
 
 ---
 
@@ -29,7 +29,7 @@ By publishing a post, you confirm that:
 5. The location you enter is accurate and on the SF State campus.
 6. You have reviewed all post details, including any AI-suggested text, and corrected anything wrong.
 7. If you post on behalf of a student organization, you are allowed to do so.
-Follow SF State rules and food-safety guidance for events. Posts are time-limited (default 30 minutes, maximum 60 minutes) and disappear automatically when time ends.
+Follow SF State rules and food-safety guidance for events. Posts are time-limited (default 30 minutes, maximum 5 hours) and disappear automatically when time ends.
 
 ## 5. Taking food
 - Taking food is **voluntary and at your own risk**. The App does not prepare, inspect, test, or guarantee any food.
