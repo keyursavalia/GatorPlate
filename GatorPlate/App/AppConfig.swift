@@ -13,7 +13,7 @@ nonisolated enum AppConfig {
     static let maxEmailLength = 254
     /// Substituted for [TEAM NAME] in the Terms and Privacy Policy.
     static let teamName = "KEYUR DIPAKBHAI SAVALIA"
-    /// In-app default for Remote Config `support_email` (Help & support, [CONTACT EMAIL] in the legal text).
+    /// In-app default for Remote Config `support_email` (About > Contact support, [CONTACT EMAIL] in the legal text).
     static let supportEmail = "contact@keyursavalia.com"
 
     // Safety
