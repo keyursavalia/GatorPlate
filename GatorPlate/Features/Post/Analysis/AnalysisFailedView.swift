@@ -1,29 +1,29 @@
 import SwiftUI
 
-/// AI failed (offline, busy, unavailable). Posting never depends on AI: try again or fill it in.
+/// AI failed (offline, busy, unavailable). Posting never depends on AI: fill it in (the photos carry over) or try
+/// again.
 struct AnalysisFailedView: View {
     let error: AppError
-    var evalLine: String?
+    var photos: [CapturedPhoto] = []
     let onRetry: () -> Void
     let onFillManually: () -> Void
 
     var body: some View {
-        AnalysisMessageLayout(icon: icon, title: title, message: message, evalLine: evalLine) {
+        AnalysisMessageLayout(photos: photos, status: status, title: title, message: message,
+                              note: "Your photos are kept. You review everything before it's posted.") {
             PrimaryButton(title: "Fill it in myself", action: onFillManually)
-            Button(action: onRetry) {
-                Text("Try again")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: Theme.Size.primaryButtonHeight)
-            }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.capsule)
-            .tint(Theme.Palette.brandPurple)
-            .accessibilityHint("Runs the AI again on the same photo")
+                .accessibilityHint("Opens the post form with your photos")
+            SecondaryButton(title: "Try again", action: onRetry)
+                .accessibilityHint("Runs the AI again on the same photos")
         }
     }
 
-    private var icon: String {
-        error == .network ? "wifi.slash" : "sparkles"
+    private var status: AnalysisStatus {
+        switch error {
+        case .network: .init(label: "Offline", icon: "wifi.slash", tint: Theme.Palette.warning)
+        case .aiBusy: .init(label: "AI busy", icon: "hourglass", tint: Theme.Palette.warning)
+        default: .init(label: "AI unavailable", icon: "exclamationmark.triangle.fill", tint: Theme.Palette.warning)
+        }
     }
 
     private var title: String {
@@ -42,6 +42,11 @@ struct AnalysisFailedView: View {
     }
 }
 
-#Preview("Offline") {
+#Preview("Unavailable") {
+    AnalysisFailedView(error: .aiUnavailable, onRetry: {}, onFillManually: {})
+}
+
+#Preview("Offline, AX5") {
     AnalysisFailedView(error: .network, onRetry: {}, onFillManually: {})
+        .dynamicTypeSize(.accessibility5)
 }
