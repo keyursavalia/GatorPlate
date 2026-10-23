@@ -204,11 +204,9 @@ struct AboutView: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// The App Store version ("1.0"), without the build number.
     private static var versionText: String {
-        let info = Bundle.main.infoDictionary
-        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
-        let build = info?["CFBundleVersion"] as? String ?? "?"
-        return "\(version) (\(build))"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
     }
 }
 
