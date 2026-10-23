@@ -32,11 +32,11 @@ struct AboutView: View {
     ]
 
     private let reasons = [
-        Reason(id: "waste", icon: "leaf.fill", title: "Less waste", detail: "Food gets eaten, not tossed",
+        Reason(id: "waste", icon: "leaf.fill", title: "Less waste", detail: "Food gets eaten",
                tint: Theme.Palette.success),
-        Reason(id: "free", icon: "gift.fill", title: "Always free", detail: "For everyone on campus",
+        Reason(id: "free", icon: "gift.fill", title: "Always free", detail: "For all students",
                tint: Theme.Palette.brandGold),
-        Reason(id: "private", icon: "lock.shield.fill", title: "Private", detail: "No ads or tracking",
+        Reason(id: "private", icon: "lock.shield.fill", title: "Private", detail: "Never tracked",
                tint: Theme.Palette.brandPurple),
     ]
 
@@ -173,15 +173,16 @@ struct AboutView: View {
                         .accessibilityHidden(true)
                     Text(reason.title)
                         .font(.subheadline.weight(.semibold))
+                    // Two lines kept for every tile, so the three line up even if one wraps.
                     Text(reason.detail)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(2, reservesSpace: true)
                 }
                 .multilineTextAlignment(.center)
                 .padding(.vertical, Theme.Spacing.lg)
                 .padding(.horizontal, Theme.Spacing.sm)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
                 .accessibilityElement(children: .combine)
             }
