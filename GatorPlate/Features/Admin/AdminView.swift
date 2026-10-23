@@ -29,8 +29,9 @@ struct AdminView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { viewModel.start() }
         .onDisappear { viewModel.stop() }
-        .alert(viewModel.outcome?.succeeded == true ? "Done" : "Didn't work",
-               isPresented: Binding(get: { viewModel.outcome != nil }, set: { if !$0 { viewModel.outcome = nil } })) {
+        // A success: the detail went back here. A failure shows on the detail instead (`adminActionFailureAlert`).
+        .alert("Done", isPresented: Binding(get: { viewModel.outcome?.succeeded == true },
+                                            set: { if !$0 { viewModel.outcome = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(viewModel.outcome?.message ?? "")
@@ -147,4 +148,16 @@ extension AdminReport {
         AdminView(viewModel: AdminViewModel(service: MockAdminService(appeals: [.sample], reports: [.sample])))
     }
     .dynamicTypeSize(.accessibility5)
+}
+
+extension View {
+    /// "Didn't work" with the reason, on the detail screen the action was run from; it stays there to try again.
+    func adminActionFailureAlert(_ viewModel: AdminViewModel) -> some View {
+        alert("Didn't work", isPresented: Binding(get: { viewModel.outcome?.succeeded == false },
+                                                  set: { if !$0 { viewModel.outcome = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(viewModel.outcome?.message ?? "")
+        }
+    }
 }
