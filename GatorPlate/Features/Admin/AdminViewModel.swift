@@ -19,7 +19,7 @@ final class AdminViewModel {
     private(set) var loadError: String?
     /// The action in flight, so its buttons show progress and others are disabled.
     private(set) var runningAction: AdminActionRequest?
-    /// The last action's outcome, shown as an alert.
+    /// The last action's outcome: "Done" on the list after the detail goes back, or "Didn't work" on the detail.
     var outcome: AdminActionOutcome?
 
     @ObservationIgnored let service: any AdminService
@@ -36,6 +36,11 @@ final class AdminViewModel {
     /// Closed reports, most recently closed first.
     var handledReports: [AdminReport] {
         reports.filter { !$0.isOpen }.sorted { ($0.resolvedAt ?? $0.createdAt) > ($1.resolvedAt ?? $1.createdAt) }
+    }
+
+    /// The live version of an appeal (its resolution changes after a decision), or nil once it's gone.
+    func appeal(id: AdminAppeal.ID) -> AdminAppeal? {
+        appeals.first { $0.id == id }
     }
 
     /// The live version of a report (its resolution changes after an action), or nil once it's gone.
