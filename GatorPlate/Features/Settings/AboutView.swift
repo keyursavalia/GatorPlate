@@ -197,7 +197,7 @@ struct AboutView: View {
             Label("A student project at SF State", systemImage: "graduationcap.fill")
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.Palette.brandPurple)
-            Text("Free for everyone on campus. Not an official San Francisco State University app.")
+            Text("Free for everyone on campus.\nNot an official San Francisco State University app.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
