@@ -21,10 +21,11 @@ nonisolated enum MailApp: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The asset catalog image for the app's logo. Until it's added, `fallbackSymbol` shows instead.
-    var logoAsset: String {
+    /// The asset catalog image for the app's logo, or nil for Mail: Apple's app icons can't be used in other apps'
+    /// UI (App Review 5.2.5), so Mail always shows `fallbackSymbol`. A missing asset falls back the same way.
+    var logoAsset: String? {
         switch self {
-        case .appleMail: "MailLogo"
+        case .appleMail: nil
         case .gmail: "GmailLogo"
         case .outlook: "OutlookLogo"
         }
@@ -72,5 +73,5 @@ nonisolated enum MailApp: String, CaseIterable, Identifiable {
 
     /// Whether the logo image has been added to the asset catalog.
     @MainActor
-    var hasLogo: Bool { UIImage(named: logoAsset) != nil }
+    var hasLogo: Bool { logoAsset.flatMap { UIImage(named: $0) } != nil }
 }
