@@ -7,6 +7,8 @@ struct PostFeedCard: View {
     let post: FoodPost
     let distanceText: String?
     let images: PostImageCache?
+    /// Keeps room for two title lines (the iPad grid, so cards in a row match).
+    var reservesTitleLines = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -49,16 +51,25 @@ struct PostFeedCard: View {
 
     private var details: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text(post.title)
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                .multilineTextAlignment(.leading)
+            title
             Text(placeLine)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
             metaRow
+        }
+    }
+
+    @ViewBuilder
+    private var title: some View {
+        let text = Text(post.title)
+            .font(.headline)
+            .foregroundStyle(.primary)
+            .multilineTextAlignment(.leading)
+        if reservesTitleLines {
+            text.lineLimit(2, reservesSpace: true)
+        } else {
+            text.lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
         }
     }
 
