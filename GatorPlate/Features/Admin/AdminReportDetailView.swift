@@ -2,7 +2,8 @@ import SwiftUI
 
 /// One report: the post as reported, the reason, the AI verdict, the poster's record, and the actions: Remove post
 /// or Dismiss while it needs review, Remove post after a dismissal, none once removed. Follows the live report, and
-/// goes back to the list after an action succeeds (the report moves to Handled there).
+/// goes back to the list after an action succeeds (the report moves to Handled there, under a "Done" alert). A failed
+/// action shows "Didn't work" here.
 struct AdminReportDetailView: View {
     let viewModel: AdminViewModel
 
@@ -87,6 +88,7 @@ struct AdminReportDetailView: View {
             guard let uid = report.snapshot?.authorUid, !uid.isEmpty else { return }
             moderation = try? await viewModel.service.moderation(uid: uid)
         }
+        .adminActionFailureAlert(viewModel)
         .alert("Remove this post?", isPresented: $isConfirmingRemoval) {
             Button("Remove", role: .destructive) { run(.removePost(postId: report.postId, strike: withStrike)) }
             Button("Cancel", role: .cancel) {}
