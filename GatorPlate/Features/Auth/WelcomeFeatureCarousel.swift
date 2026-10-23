@@ -22,19 +22,19 @@ struct WelcomeFeatureCarousel: View {
     static let features = [
         Feature(id: 0, icon: "map.fill", title: "Live campus map",
                 detail: "See free food on campus right now. No account needed.",
-                points: ["Live", "No sign-up"], tint: Theme.Palette.success),
+                points: ["Live", "No sign-up", "Directions"], tint: Theme.Palette.success),
         Feature(id: 1, icon: "camera.viewfinder", title: "Snap it, AI drafts it",
-                detail: "Gemini fills in the food, diet and allergens from a photo. You check it before it posts.",
+                detail: "Snap a photo and Gemini drafts the post.",
                 points: ["Food", "Diet", "Allergens"], tint: Theme.Palette.accent),
         Feature(id: 2, icon: "bell.badge.fill", title: "Alerts you choose",
                 detail: "Get notified only for the food and places you care about.",
                 points: ["Diet", "Places", "Quiet hours"], tint: Theme.Palette.brandPurple),
         Feature(id: 3, icon: "exclamationmark.shield.fill", title: "Eat smart",
-                detail: "Eat at your own risk and ask about allergens. Report or block anything that's off.",
+                detail: "Eat at your own risk. Report what's off.",
                 points: ["Report", "Block", "Posts expire"], tint: Theme.Palette.warning),
         Feature(id: 4, icon: "lock.shield.fill", title: "Private by design",
                 detail: "Your location stays on your phone. Your data is never sold.",
-                points: ["No ads", "No tracking"], tint: Theme.Palette.brandGold),
+                points: ["No ads", "No tracking", "Delete anytime"], tint: Theme.Palette.brandGold),
     ]
 
     /// One position in the strip: a real card, or a copy at either end.
@@ -178,24 +178,31 @@ struct WelcomeFeatureCarousel: View {
 }
 
 /// One feature on a plain card, centered top to bottom: the icon tile, the title, a short line, then a divider and
-/// a few checkmarked points. Read by VoiceOver as one element.
+/// three checkmarked points. Larger type and spacing on iPad (regular width). Read by VoiceOver as one element.
 private struct FeatureCard: View {
     let feature: WelcomeFeatureCarousel.Feature
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .title2) private var tile: CGFloat = 48
+    @ScaledMetric(relativeTo: .title) private var largeTile: CGFloat = 64
+
+    private var isRegular: Bool {
+        horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize
+    }
 
     var body: some View {
-        VStack(spacing: Theme.Spacing.md) {
+        VStack(spacing: isRegular ? Theme.Spacing.lg : Theme.Spacing.md) {
             Image(systemName: feature.icon)
-                .font(.title2.weight(.semibold))
+                .font((isRegular ? Font.title : .title2).weight(.semibold))
                 .foregroundStyle(feature.tint)
-                .frame(width: tile, height: tile)
-                .background(feature.tint.opacity(0.15), in: .rect(cornerRadius: 12))
+                .frame(width: isRegular ? largeTile : tile, height: isRegular ? largeTile : tile)
+                .background(feature.tint.opacity(0.15), in: .rect(cornerRadius: isRegular ? 16 : 12))
             VStack(spacing: Theme.Spacing.xs) {
                 Text(feature.title)
-                    .font(.headline)
+                    .font(isRegular ? .title3.weight(.semibold) : .headline)
                 Text(feature.detail)
-                    .font(.subheadline)
+                    .font(isRegular ? .body : .subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -213,10 +220,10 @@ private struct FeatureCard: View {
                     .labelStyle(PointLabelStyle())
                 }
             }
-            .font(.footnote.weight(.medium))
+            .font((isRegular ? Font.subheadline : .footnote).weight(.medium))
             .foregroundStyle(.secondary)
         }
-        .padding(Theme.Spacing.lg)
+        .padding(isRegular ? Theme.Spacing.xl : Theme.Spacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
         .accessibilityElement(children: .ignore)
