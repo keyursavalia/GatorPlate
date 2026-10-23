@@ -79,38 +79,39 @@ struct ContactSupportSheet: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// "Email us at" over the address, with a Copy capsule that turns into "Copied" for 2 s.
+    /// "Email us at" over the address, with a Copy capsule that turns into "Copied" for 2 s. The whole card copies.
     private var addressCard: some View {
         let layout = dynamicTypeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.md))
             : AnyLayout(HStackLayout(spacing: Theme.Spacing.md))
-        return layout {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Email us at")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.secondary)
-                Text(email)
-                    .font(.headline)
-                    .foregroundStyle(Color.primary)
-                    .textSelection(.enabled)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-                    .minimumScaleFactor(0.8)
-            }
-            .accessibilityElement(children: .combine)
-            if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: Theme.Spacing.sm) }
-            Button(action: copy) {
+        return Button(action: copy) {
+            layout {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Email us at")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.secondary)
+                    Text(email)
+                        .font(.headline)
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                        .minimumScaleFactor(0.8)
+                }
+                if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: Theme.Spacing.sm) }
                 Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
                     .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.primary)
                     .contentTransition(.symbolEffect(.replace))
+                    .padding(.horizontal, Theme.Spacing.md)
+                    .padding(.vertical, 7)
+                    .background(Theme.Palette.brandPurple.opacity(0.25), in: .capsule)
             }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.capsule)
-            .tint(Theme.Palette.brandPurple)
-            .accessibilityLabel(copied ? "Address copied" : "Copy address")
+            .padding(Theme.Spacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
+            .contentShape(.rect(cornerRadius: Theme.Radius.card))
         }
-        .padding(Theme.Spacing.lg)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
+        .buttonStyle(TileButtonStyle())
+        .accessibilityLabel(copied ? "Address copied" : "Copy address, \(email)")
     }
 
     /// "Write with" and a tile per installed app, side by side (stacked at accessibility sizes).
