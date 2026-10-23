@@ -174,8 +174,8 @@ private struct MailAppTile: View {
     var body: some View {
         VStack(spacing: Theme.Spacing.sm) {
             Group {
-                if app.hasLogo {
-                    Image(app.logoAsset)
+                if app.hasLogo, let logoAsset = app.logoAsset {
+                    Image(logoAsset)
                         .resizable()
                         .scaledToFit()
                 } else {
