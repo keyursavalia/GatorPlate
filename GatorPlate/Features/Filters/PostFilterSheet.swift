@@ -141,16 +141,3 @@ struct PostFilterSheet: View {
             .accessibilityAddTraits(.updatesFrequently)
     }
 }
-
-#Preview {
-    let session = MainSession.preview
-    Color.clear.sheet(isPresented: .constant(true)) {
-        PostFilterSheet(store: session.filters, browse: session.browse, showsSort: true, notificationPicks: nil)
-    }
-}
-
-#Preview("AX5") {
-    let session = MainSession.preview
-    PostFilterSheet(store: session.filters, browse: session.browse, showsSort: true, notificationPicks: AlertFilters())
-        .dynamicTypeSize(.accessibility5)
-}
