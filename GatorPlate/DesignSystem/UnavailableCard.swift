@@ -57,14 +57,3 @@ struct UnavailableCard: View {
         }
     }
 }
-
-#Preview {
-    UnavailableCard(onShowAvailable: {}, onDismiss: {})
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.teal.gradient)
-}
-
-#Preview("AX5") {
-    UnavailableCard(onShowAvailable: {}, onDismiss: {})
-        .dynamicTypeSize(.accessibility5)
-}
