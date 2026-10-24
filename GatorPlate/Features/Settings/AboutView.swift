@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// About GatorPlate, in the Welcome screen's style: the app tile, name, tagline and version; "How it works" as a
-/// three-step timeline (tinted icon tiles joined by a line); three reasons it exists as tiles; and a note that it's a
-/// student project, not an official SFSU app. Steps rise in one after another (fade only with Reduce Motion).
+/// three-step timeline (tinted icon tiles joined by a line); three reasons it exists as tiles; and the developer (a link
+/// to their LinkedIn profile) with a note that it's not an official SFSU app. Steps rise in one after another (fade only with Reduce Motion).
 /// Scrolls only when large text needs it; tiles stack at accessibility sizes.
 struct AboutView: View {
     private struct Step: Identifiable {
@@ -192,17 +192,24 @@ struct AboutView: View {
 
     // MARK: Footnote
 
+    /// "Developed by" opens the profile URL with the system: the LinkedIn app takes it when installed (a universal
+    /// link), otherwise the default browser does.
     private var footnote: some View {
         VStack(spacing: Theme.Spacing.sm) {
-            Label("A student project at SF State", systemImage: "graduationcap.fill")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Theme.Palette.brandPurple)
+            if let profile = AppConfig.developerProfileURL {
+                Link(destination: profile) {
+                    Label("Developed by \(AppConfig.teamName)", systemImage: "link")
+                        .font(.subheadline.weight(.medium))
+                        .multilineTextAlignment(.center)
+                }
+                .tint(Theme.Palette.brandPurple)
+                .accessibilityHint("Opens the developer's LinkedIn profile")
+            }
             Text("Free for everyone on campus.\nNot an official San Francisco State University app.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
-        .accessibilityElement(children: .combine)
     }
 
     /// The App Store version ("1.0"), without the build number.
