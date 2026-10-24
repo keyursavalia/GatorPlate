@@ -151,24 +151,3 @@ struct ReviewDurationPicker: View {
         return min(max(value, range.lowerBound), range.upperBound)
     }
 }
-
-#Preview {
-    @Previewable @State var minutes = 30
-    @Previewable @State var isCustom = false
-    List {
-        Section {
-            ReviewDurationPicker(minutes: $minutes, isCustom: $isCustom)
-        } footer: {
-            Text("\(minutes) min")
-        }
-    }
-}
-
-#Preview("AX5") {
-    @Previewable @State var minutes = 90
-    @Previewable @State var isCustom = true
-    List {
-        ReviewDurationPicker(minutes: $minutes, isCustom: $isCustom)
-    }
-    .dynamicTypeSize(.accessibility5)
-}
