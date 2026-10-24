@@ -38,11 +38,3 @@ struct AuthTextButton: View {
         .accessibilityLabel(title)
     }
 }
-
-#Preview {
-    VStack(spacing: Theme.Spacing.xl) {
-        AuthHeader(title: "Sign in", subtitle: "Sign in to post free food.")
-        AuthTextButton(title: "Create account") {}
-    }
-    .padding()
-}
