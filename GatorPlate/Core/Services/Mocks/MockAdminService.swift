@@ -1,5 +1,6 @@
 import Foundation
 
+#if DEBUG
 /// Admin data for previews and the harness.
 @MainActor
 final class MockAdminService: AdminService {
@@ -52,3 +53,4 @@ extension AdminReport {
                                      authorName: "Sam Lee", orgName: nil),
         aiVerdict: nil, aiConcern: nil, aiRationale: nil)
 }
+#endif
