@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+#if DEBUG
 @MainActor
 @Observable
 final class MockNotificationService: NotificationService {
@@ -71,3 +72,4 @@ final class MockNotificationService: NotificationService {
         alertsEnabled = false
     }
 }
+#endif
