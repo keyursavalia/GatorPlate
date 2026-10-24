@@ -210,11 +210,3 @@ struct AboutView: View {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
     }
 }
-
-#Preview {
-    NavigationStack { AboutView() }
-}
-
-#Preview("AX5") {
-    NavigationStack { AboutView() }.dynamicTypeSize(.accessibility5)
-}
