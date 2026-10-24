@@ -1,5 +1,6 @@
 import Foundation
 
+#if DEBUG
 /// Analyzer for previews: a fixed outcome after a short delay.
 @MainActor
 final class MockFoodAnalyzer: FoodAnalyzing {
@@ -46,3 +47,4 @@ extension FoodAnalysisResult {
             estimatedServings: 10, confidence: 0.82, promptVersion: "mock", modelName: "mock")
     }
 }
+#endif
