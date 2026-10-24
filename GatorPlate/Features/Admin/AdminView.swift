@@ -131,25 +131,6 @@ extension AdminReport {
     }
 }
 
-#Preview {
-    NavigationStack {
-        AdminView(viewModel: AdminViewModel(service: MockAdminService(appeals: [.sample], reports: [.sample])))
-    }
-}
-
-#Preview("Empty") {
-    NavigationStack {
-        AdminView(viewModel: AdminViewModel(service: MockAdminService()))
-    }
-}
-
-#Preview("AX5") {
-    NavigationStack {
-        AdminView(viewModel: AdminViewModel(service: MockAdminService(appeals: [.sample], reports: [.sample])))
-    }
-    .dynamicTypeSize(.accessibility5)
-}
-
 extension View {
     /// "Didn't work" with the reason, on the detail screen the action was run from; it stays there to try again.
     func adminActionFailureAlert(_ viewModel: AdminViewModel) -> some View {
