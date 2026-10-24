@@ -35,17 +35,3 @@ struct ServiceNoticeBanner: View {
         }
     }
 }
-
-#Preview {
-    VStack {
-        ServiceNoticeBanner(message: "Alerts may be delayed tonight while we do maintenance.", level: .info)
-        ServiceNoticeBanner(message: "Posting is paused for a few minutes.", level: .warning, isGlass: true)
-    }
-    .padding()
-}
-
-#Preview("AX5") {
-    ServiceNoticeBanner(message: "Alerts may be delayed tonight while we do maintenance.", level: .warning)
-        .padding()
-        .dynamicTypeSize(.accessibility5)
-}
