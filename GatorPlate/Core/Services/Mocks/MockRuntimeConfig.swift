@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+#if DEBUG
 /// Settable runtime config for previews and the harness.
 @MainActor
 @Observable
@@ -16,3 +17,4 @@ final class MockRuntimeConfig: RuntimeConfigProviding {
         started = true
     }
 }
+#endif
