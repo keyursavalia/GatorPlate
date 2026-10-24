@@ -215,18 +215,3 @@ struct ReviewIssueText: View {
             .accessibilityLabel("\(issue.isBlocking ? "Required" : "Tip"): \(issue.message)")
     }
 }
-
-#Preview("AI draft") {
-    ReviewView(viewModel: ReviewViewModel(photos: [], analysis: .sample,
-                                          author: PostAuthor(uid: "mock-uid", displayName: "Mock Student", orgName: nil),
-                                          posts: MockPostService(), location: MockLocationProvider()),
-               onClose: {}, onEditPhotos: {}, onPublished: { _ in })
-}
-
-#Preview("Manual, AX5") {
-    ReviewView(viewModel: ReviewViewModel(photos: [], analysis: nil,
-                                          author: PostAuthor(uid: "mock-uid", displayName: "Mock Student", orgName: nil),
-                                          posts: MockPostService(), location: MockLocationProvider()),
-               onClose: {}, onEditPhotos: {}, onPublished: { _ in })
-        .dynamicTypeSize(.accessibility5)
-}
