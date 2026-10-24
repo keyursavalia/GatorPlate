@@ -44,12 +44,3 @@ struct UpdateRequiredView: View {
         .background(.background)
     }
 }
-
-#Preview("With App Store link") {
-    UpdateRequiredView(appStoreURL: URL(string: "https://apps.apple.com/app/id0000000000"))
-}
-
-#Preview("No link, AX5") {
-    UpdateRequiredView(appStoreURL: nil)
-        .dynamicTypeSize(.accessibility5)
-}
