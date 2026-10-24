@@ -111,9 +111,3 @@ extension AdminReportDetailView {
         }
     }
 }
-
-#Preview {
-    NavigationStack {
-        AdminReportDetailView(report: .sample, viewModel: AdminViewModel(service: MockAdminService()))
-    }
-}
