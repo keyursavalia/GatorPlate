@@ -92,9 +92,3 @@ struct AdminAppealDetailView: View {
         }
     }
 }
-
-#Preview {
-    NavigationStack {
-        AdminAppealDetailView(appeal: .sample, viewModel: AdminViewModel(service: MockAdminService()))
-    }
-}
