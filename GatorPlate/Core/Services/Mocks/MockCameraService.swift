@@ -3,6 +3,7 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
+#if DEBUG
 /// Camera for previews: configurable permission, a black preview, and a solid-color "photo".
 actor MockCameraService: CameraCapturing {
     nonisolated let previewSource = CameraPreviewSource(session: nil)
@@ -65,3 +66,4 @@ actor MockCameraService: CameraCapturing {
         return CGImageDestinationFinalize(destination) ? output as Data : nil
     }
 }
+#endif
