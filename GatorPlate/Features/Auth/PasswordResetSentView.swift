@@ -57,20 +57,3 @@ struct PasswordResetSentView: View {
         }
     }
 }
-
-#Preview {
-    ScrollView {
-        PasswordResetSentView(model: PasswordResetModel(account: MockAccountService()), email: "student@gmail.com",
-                              isAccount: false, onBack: {}, onEditEmail: {})
-            .padding()
-    }
-}
-
-#Preview("AX5") {
-    ScrollView {
-        PasswordResetSentView(model: PasswordResetModel(account: MockAccountService()), email: "student@gmail.com",
-                              isAccount: true, onBack: {}, onEditEmail: {})
-            .padding()
-    }
-    .dynamicTypeSize(.accessibility5)
-}
