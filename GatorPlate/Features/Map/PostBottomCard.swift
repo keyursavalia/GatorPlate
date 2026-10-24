@@ -65,15 +65,3 @@ struct PostBottomCard: View {
         }
     }
 }
-
-#Preview {
-    Color.clear.sheet(isPresented: .constant(true)) {
-        PostBottomCard(post: .sample, viewModel: .preview)
-            .presentationDetents([.fraction(0.62), .large])
-    }
-}
-
-#Preview("AX5") {
-    PostBottomCard(post: .sample, viewModel: .preview)
-        .dynamicTypeSize(.accessibility5)
-}
