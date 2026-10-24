@@ -152,11 +152,3 @@ struct PrivacyView: View {
         .fixedSize()
     }
 }
-
-#Preview {
-    NavigationStack { PrivacyView() }
-}
-
-#Preview("AX5") {
-    NavigationStack { PrivacyView() }.dynamicTypeSize(.accessibility5)
-}
