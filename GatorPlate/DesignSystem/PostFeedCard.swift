@@ -105,20 +105,3 @@ struct PostFeedCard: View {
         return [post.orgName ?? post.authorName, place].joined(separator: " · ")
     }
 }
-
-#Preview {
-    ScrollView {
-        VStack(spacing: Theme.Spacing.md) {
-            PostFeedCard(post: .sample, distanceText: "0.6 mi away", images: nil)
-            PostFeedCard(post: .sample, distanceText: nil, images: nil)
-        }
-        .padding()
-    }
-}
-
-#Preview("AX3") {
-    ScrollView {
-        PostFeedCard(post: .sample, distanceText: "350 ft", images: nil).padding()
-    }
-    .dynamicTypeSize(.accessibility3)
-}
