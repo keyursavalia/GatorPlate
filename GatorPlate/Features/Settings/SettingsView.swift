@@ -254,28 +254,3 @@ struct SettingsView: View {
         openURL(url)
     }
 }
-
-#Preview("Account") {
-    let session = MainSession.preview
-    SettingsView(session: session,
-                 authSession: AuthSession(profile: UserProfile(uid: "mock-uid", displayName: "Alex Gator",
-                                                               email: "alex@gmail.com", accountType: .student,
-                                                               orgName: nil, acceptedTermsVersion: nil,
-                                                               acceptedTermsAt: nil, notificationsEnabled: true,
-                                                               createdAt: .now),
-                                          isEmailVerified: true),
-                 isSigningOut: false, passwordReset: PasswordResetModel(account: MockAccountService()),
-                 onRequestAccount: { _ in }, onSignOut: {}, onDeleteAccount: { _ in })
-}
-
-#Preview("Guest") {
-    let session = MainSession.preview
-    SettingsView(session: session,
-                 authSession: AuthSession(profile: UserProfile(uid: "mock-uid", displayName: "Guest", email: nil,
-                                                               accountType: .guest, orgName: nil,
-                                                               acceptedTermsVersion: nil, acceptedTermsAt: nil,
-                                                               notificationsEnabled: false, createdAt: .now),
-                                          isEmailVerified: false),
-                 isSigningOut: false, passwordReset: PasswordResetModel(account: MockAccountService()),
-                 onRequestAccount: { _ in }, onSignOut: {}, onDeleteAccount: { _ in })
-}
