@@ -32,18 +32,3 @@ struct FilterButton: View {
             }
     }
 }
-
-#Preview {
-    HStack {
-        FilterButton(activeCount: 0) {}
-        FilterButton(activeCount: 2) {}
-    }
-    .padding()
-    .background(.teal.gradient)
-}
-
-#Preview("AX5") {
-    FilterButton(activeCount: 3) {}
-        .padding()
-        .dynamicTypeSize(.accessibility5)
-}
