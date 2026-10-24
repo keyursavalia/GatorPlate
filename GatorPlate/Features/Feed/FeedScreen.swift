@@ -180,14 +180,3 @@ private struct FeedCardButtonStyle: ButtonStyle {
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
-
-#Preview {
-    let session = MainSession.preview
-    FeedScreen(viewModel: session.feed, onPostFood: {})
-}
-
-#Preview("AX5") {
-    let session = MainSession.preview
-    FeedScreen(viewModel: session.feed, onPostFood: {})
-        .dynamicTypeSize(.accessibility5)
-}
