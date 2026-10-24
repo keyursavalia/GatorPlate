@@ -110,7 +110,3 @@ struct LocationPickerSheet: View {
         return meters.formatted(.measurement(width: .abbreviated, usage: .road)) + " away"
     }
 }
-
-#Preview {
-    LocationPickerSheet(selected: nil, userCoordinate: SFSUCampus.homeCoordinate) { _ in }
-}
