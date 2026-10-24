@@ -42,7 +42,3 @@ struct LegalFootnote: View {
         return link
     }
 }
-
-#Preview {
-    LegalFootnote(lead: "By signing in, I agree to").padding()
-}
