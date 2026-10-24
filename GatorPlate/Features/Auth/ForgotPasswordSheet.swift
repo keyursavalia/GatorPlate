@@ -149,15 +149,3 @@ struct ForgotPasswordSheet: View {
         dismiss()
     }
 }
-
-#Preview("Sign in") {
-    Color.clear.sheet(isPresented: .constant(true)) {
-        ForgotPasswordSheet(model: PasswordResetModel(account: MockAccountService()),
-                            start: .signIn(email: "student@gmail.com"))
-    }
-}
-
-#Preview("AX5") {
-    ForgotPasswordSheet(model: PasswordResetModel(account: MockAccountService()), start: .signIn(email: ""))
-        .dynamicTypeSize(.accessibility5)
-}
