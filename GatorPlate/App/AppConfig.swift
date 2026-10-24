@@ -13,6 +13,8 @@ nonisolated enum AppConfig {
     static let maxEmailLength = 254
     /// Substituted for [TEAM NAME] in the Terms and Privacy Policy.
     static let teamName = "KEYUR DIPAKBHAI SAVALIA"
+    /// About > "Developed by" (opens in the LinkedIn app when installed, else the browser).
+    static let developerProfileURL = URL(string: "https://www.linkedin.com/in/keyursavalia")
     /// In-app default for Remote Config `support_email` (About > Contact support, [CONTACT EMAIL] in the legal text).
     static let supportEmail = "contact@keyursavalia.com"
 
