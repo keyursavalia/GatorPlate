@@ -223,13 +223,3 @@ struct CameraScreen: View {
             })
     }
 }
-
-#Preview("Camera") {
-    CameraScreen(viewModel: CameraViewModel(camera: MockCameraService()), tray: PhotoTrayModel(),
-                 onNext: {}, onClose: {})
-}
-
-#Preview("Not asked yet") {
-    CameraScreen(viewModel: CameraViewModel(camera: MockCameraService(authorization: .notDetermined)),
-                 tray: PhotoTrayModel(), onNext: {}, onClose: {})
-}
