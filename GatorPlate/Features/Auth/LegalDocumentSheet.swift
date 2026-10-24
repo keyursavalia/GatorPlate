@@ -79,11 +79,3 @@ struct LegalDocumentSheet: View {
         return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
     }
 }
-
-#Preview("Terms") {
-    LegalDocumentSheet(kind: .terms, onDismiss: {})
-}
-
-#Preview("Privacy, AX5") {
-    LegalDocumentSheet(kind: .privacy, onDismiss: {}).dynamicTypeSize(.accessibility5)
-}
