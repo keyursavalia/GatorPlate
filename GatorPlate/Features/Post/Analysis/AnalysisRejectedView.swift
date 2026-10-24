@@ -37,11 +37,3 @@ struct AnalysisRejectedView: View {
         }
     }
 }
-
-#Preview("Not food") {
-    AnalysisRejectedView(reason: .notFood, onRetake: {}, onFillManually: {})
-}
-
-#Preview("People") {
-    AnalysisRejectedView(reason: .containsPeople, onRetake: {}, onFillManually: {})
-}
