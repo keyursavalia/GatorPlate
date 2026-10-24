@@ -244,8 +244,3 @@ struct MapScreen: View {
             })
     }
 }
-
-#Preview("On campus") {
-    let session = MainSession.preview
-    MapScreen(viewModel: session.map, permissions: session.permissions, onPostFood: {})
-}
