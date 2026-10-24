@@ -34,16 +34,3 @@ struct PostingUnavailableSheet: View {
         .presentationDetents([.medium, .large])
     }
 }
-
-#Preview {
-    Color.clear.sheet(isPresented: .constant(true)) {
-        PostingUnavailableSheet(notice: "")
-    }
-}
-
-#Preview("Notice, AX5") {
-    Color.clear.sheet(isPresented: .constant(true)) {
-        PostingUnavailableSheet(notice: "We're updating GatorPlate tonight. Posting is back by 9 PM.")
-            .dynamicTypeSize(.accessibility5)
-    }
-}
