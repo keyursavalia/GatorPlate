@@ -106,16 +106,3 @@ struct WelcomeTermsView: View {
         }
     }
 }
-
-#Preview {
-    WelcomeTermsView(onAgree: {})
-}
-
-#Preview("iPad", traits: .fixedLayout(width: 834, height: 1194)) {
-    WelcomeTermsView(onAgree: {})
-        .environment(\.horizontalSizeClass, .regular)
-}
-
-#Preview("AX5") {
-    WelcomeTermsView(onAgree: {}).dynamicTypeSize(.accessibility5)
-}
