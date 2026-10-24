@@ -16,7 +16,10 @@ struct AppEnvironment {
     var blocking: any BlockingService
     var admin: any AdminService
 
-    static var live: AppEnvironment {
+    /// Built once, on first use (after `FirebaseApp.configure()` in `GatorPlateApp.init`).
+    static let live = makeLive()
+
+    private static func makeLive() -> AppEnvironment {
         let images = FirebaseStorageImageStore()
         let notifications = FirebaseNotificationService(
             registerForRemoteNotifications: AppDelegate.registerForRemoteNotifications,
@@ -30,6 +33,7 @@ struct AppEnvironment {
                               blocking: FirestoreBlockingService(), admin: FirebaseAdminService())
     }
 
+    #if DEBUG
     static var mock: AppEnvironment {
         let images = MockImageStore()
         return AppEnvironment(auth: MockAuthService(), posts: MockPostService(images: images),
@@ -39,9 +43,10 @@ struct AppEnvironment {
                               runtime: MockRuntimeConfig(), blocking: MockBlockingService(),
                               admin: MockAdminService(isAdmin: false))
     }
+    #endif
 }
 
 extension EnvironmentValues {
-    /// Defaults to mocks so previews work; the app injects `.live`.
-    @Entry var appEnvironment: AppEnvironment = .mock
+    /// The app injects `.live` at the root; the default is the same instance.
+    @Entry var appEnvironment: AppEnvironment = .live
 }
