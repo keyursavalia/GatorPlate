@@ -220,9 +220,3 @@ private struct CategoryChoice: View {
         }
     }
 }
-
-#Preview {
-    Color.clear.sheet(isPresented: .constant(true)) {
-        ReportReasonSheet(post: .sample, viewModel: .preview)
-    }
-}
