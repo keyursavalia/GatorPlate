@@ -42,14 +42,3 @@ struct FilterChips: View {
         }
     }
 }
-
-#Preview {
-    FilterChips(chips: [.diet(.vegetarian), .place("library"), .timeLeft(10), .allergen(.peanuts)]) { _ in }
-        .padding()
-}
-
-#Preview("AX5") {
-    FilterChips(chips: [.diet(.vegetarian), .place("library"), .timeLeft(10), .allergen(.peanuts)]) { _ in }
-        .padding()
-        .dynamicTypeSize(.accessibility5)
-}
