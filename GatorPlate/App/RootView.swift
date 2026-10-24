@@ -37,8 +37,3 @@ struct RootView: View {
         .task { viewModel.start() }
     }
 }
-
-#Preview("First launch") {
-    RootView(viewModel: AuthViewModel(auth: MockAuthService(), account: MockAccountService(),
-                                      terms: TermsAcceptance(defaults: UserDefaults(suiteName: "preview") ?? .standard)))
-}
