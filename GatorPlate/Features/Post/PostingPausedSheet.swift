@@ -155,25 +155,3 @@ struct PostingPausedSheet: View {
         }
     }
 }
-
-#Preview {
-    Color.clear.sheet(isPresented: .constant(true)) {
-        PostingPausedSheet(ban: PostingBan(bannedUntil: .now.addingTimeInterval(5 * 86_400), hasAppealed: false)) { _ in }
-    }
-}
-
-#Preview("Denied") {
-    PostingPausedSheet(ban: PostingBan(bannedUntil: .now.addingTimeInterval(3 * 86_400), hasAppealed: true,
-                                       appealResolution: .denied,
-                                       resolutionNote: "Two of the removed posts showed people.")) { _ in }
-}
-
-#Preview("Denied, AX5") {
-    PostingPausedSheet(ban: PostingBan(bannedUntil: .now.addingTimeInterval(3 * 86_400), hasAppealed: true,
-                                       appealResolution: .denied, resolutionNote: nil)) { _ in }
-        .dynamicTypeSize(.accessibility5)
-}
-
-#Preview("Appealed") {
-    PostingPausedSheet(ban: PostingBan(bannedUntil: .now.addingTimeInterval(86_400), hasAppealed: true)) { _ in }
-}
