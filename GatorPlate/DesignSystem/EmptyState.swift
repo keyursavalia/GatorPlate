@@ -37,14 +37,3 @@ struct EmptyState: View {
         .accessibilityElement(children: .contain)
     }
 }
-
-#Preview {
-    EmptyState(icon: "fork.knife", title: "No free food yet",
-               message: "New posts show up here.", actionTitle: "Post food") {}
-}
-
-#Preview("Tinted, AX5") {
-    EmptyState(icon: "checkmark.shield", title: "All clear", message: "No reports in the last 90 days.",
-               tint: Theme.Palette.success)
-        .dynamicTypeSize(.accessibility5)
-}
