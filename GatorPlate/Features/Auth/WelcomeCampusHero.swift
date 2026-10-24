@@ -138,9 +138,3 @@ private struct NotificationPreview: View {
         .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
     }
 }
-
-#Preview {
-    WelcomeCampusHero()
-        .frame(height: 320)
-        .padding()
-}
