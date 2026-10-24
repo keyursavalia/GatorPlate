@@ -35,11 +35,3 @@ struct VerifyEmailView: View {
         }
     }
 }
-
-#Preview {
-    ScrollView {
-        VerifyEmailView(viewModel: AuthViewModel(auth: MockAuthService(), account: MockAccountService()),
-                        email: "gator@gmail.com")
-            .padding()
-    }
-}
