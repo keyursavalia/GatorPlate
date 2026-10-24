@@ -73,11 +73,3 @@ struct TimeRemainingPill: View {
         }
     }
 }
-
-#Preview {
-    VStack {
-        TimeRemainingPill(expiresAt: .now.addingTimeInterval(24 * 60))
-        TimeRemainingPill(expiresAt: .now.addingTimeInterval(8 * 60))
-        TimeRemainingPill(expiresAt: .now.addingTimeInterval(3 * 60))
-    }
-}
