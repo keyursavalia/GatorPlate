@@ -240,13 +240,3 @@ private struct PointLabelStyle: LabelStyle {
         }
     }
 }
-
-#Preview {
-    WelcomeFeatureCarousel()
-        .padding(.vertical)
-}
-
-#Preview("AX5") {
-    WelcomeFeatureCarousel()
-        .dynamicTypeSize(.accessibility5)
-}
