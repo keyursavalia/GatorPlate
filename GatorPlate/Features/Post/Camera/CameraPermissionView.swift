@@ -118,15 +118,3 @@ struct CameraPermissionView: View {
         }
     }
 }
-
-#Preview("Explanation") {
-    CameraPermissionView(state: .needsExplanation, pickerItems: .constant([])) {}
-}
-
-#Preview("Denied") {
-    CameraPermissionView(state: .denied, pickerItems: .constant([])) {}
-}
-
-#Preview("Unavailable") {
-    CameraPermissionView(state: .unavailable, pickerItems: .constant([])) {}
-}
