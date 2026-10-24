@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+#if DEBUG
 @MainActor
 @Observable
 final class MockLocationProvider: LocationProviding {
@@ -38,3 +39,4 @@ final class MockLocationProvider: LocationProviding {
         return simulatedCoordinate
     }
 }
+#endif
