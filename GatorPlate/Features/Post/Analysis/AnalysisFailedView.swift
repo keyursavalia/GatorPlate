@@ -41,12 +41,3 @@ struct AnalysisFailedView: View {
         }
     }
 }
-
-#Preview("Unavailable") {
-    AnalysisFailedView(error: .aiUnavailable, onRetry: {}, onFillManually: {})
-}
-
-#Preview("Offline, AX5") {
-    AnalysisFailedView(error: .network, onRetry: {}, onFillManually: {})
-        .dynamicTypeSize(.accessibility5)
-}
