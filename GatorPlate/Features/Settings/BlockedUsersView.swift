@@ -68,17 +68,3 @@ struct BlockedUsersView: View {
         }
     }
 }
-
-#Preview("Blocked people") {
-    let blocked = BlockedUsers(service: MockBlockingService(blocks: [
-        BlockedUser(uid: "a", name: "Pizza Club", blockedAt: .now.addingTimeInterval(-3600)),
-        BlockedUser(uid: "b", name: "Sam Lee", blockedAt: .now.addingTimeInterval(-86_400 * 3)),
-    ]))
-    blocked.start()
-    return NavigationStack { BlockedUsersView(blocked: blocked) }
-}
-
-#Preview("Empty, AX5") {
-    NavigationStack { BlockedUsersView(blocked: BlockedUsers(service: MockBlockingService())) }
-        .dynamicTypeSize(.accessibility5)
-}
