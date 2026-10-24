@@ -1,5 +1,6 @@
 import Foundation
 
+#if DEBUG
 @MainActor
 final class MockImageStore: ImageStore {
     private var storage: [String: Data] = [:]
@@ -16,3 +17,4 @@ final class MockImageStore: ImageStore {
         storage[PostPhotoSlots.objectName(postId: postId, slot: slot)]
     }
 }
+#endif
