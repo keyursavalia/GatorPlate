@@ -1,5 +1,6 @@
 import Foundation
 
+#if DEBUG
 /// In-memory blocks for previews and the harness.
 @MainActor
 final class MockBlockingService: BlockingService {
@@ -39,3 +40,4 @@ final class MockBlockingService: BlockingService {
         for continuation in continuations.values { continuation.yield(blocks) }
     }
 }
+#endif
