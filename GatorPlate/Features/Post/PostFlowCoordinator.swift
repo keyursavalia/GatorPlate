@@ -136,11 +136,3 @@ struct PostFlowCoordinator: View {
         close()
     }
 }
-
-#Preview {
-    PostFlowCoordinator(camera: MockCameraService(), analyzer: MockFoodAnalyzer(), runtime: MockRuntimeConfig(),
-                        posts: MockPostService(),
-                        location: MockLocationProvider(),
-                        author: PostAuthor(uid: "mock-uid", displayName: "Mock Student", orgName: nil),
-                        onViewMap: { _ in })
-}
