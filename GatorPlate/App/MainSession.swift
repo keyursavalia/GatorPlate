@@ -98,23 +98,3 @@ final class MainSession {
         repository.stop()
     }
 }
-
-extension MainSession {
-    /// Mock campus posts for previews.
-    static var preview: MainSession {
-        var environment = AppEnvironment.mock
-        environment.posts = MockPostService(posts: FoodPost.mockCampus)
-        let profile = UserProfile(uid: "mock-uid", displayName: "Mock Student", email: "mock@gmail.com",
-                                  accountType: .student, orgName: nil, acceptedTermsVersion: nil,
-                                  acceptedTermsAt: nil, notificationsEnabled: false, createdAt: .now)
-        let session = MainSession(environment: environment, profile: profile)
-        // Previews never fire the first-run prompts.
-        session.permissions.cancel()
-        session.start()
-        return session
-    }
-}
-
-extension MapViewModel {
-    static var preview: MapViewModel { MainSession.preview.map }
-}
