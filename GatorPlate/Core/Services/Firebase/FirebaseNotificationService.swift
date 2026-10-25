@@ -239,11 +239,6 @@ final class FirebaseNotificationService: NSObject, NotificationService {
             throw FirebaseErrorMapper.map(error)
         }
     }
-
-    /// Post IDs are 20 alphanumeric characters; anything else in a payload is ignored.
-    nonisolated static func postId(from userInfo: [AnyHashable: Any]) -> String? {
-        NotificationTap.postId(from: userInfo)
-    }
 }
 
 extension FirebaseNotificationService: MessagingDelegate {
