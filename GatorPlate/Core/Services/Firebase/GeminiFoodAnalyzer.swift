@@ -10,7 +10,6 @@ import OSLog
 /// A retired model moves to the next one in the chain (`GeminiModelChain`); when all fail, the user fills the post in.
 @MainActor
 final class GeminiFoodAnalyzer: FoodAnalyzing {
-    private(set) var lastDiagnostics: FoodAnalysisDiagnostics?
     private let runtime: any RuntimeConfigProviding
     private let modelMemory = GeminiModelMemory()
     /// Created on first use (after `FirebaseApp.configure()`) and rebuilt when its settings change.
@@ -75,7 +74,7 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
         let deadlineSeconds = FoodAnalysisDeadline.seconds(photoCount: photos.count, base: config.aiTimeoutSeconds,
                                                            max: config.aiMaxTimeoutSeconds)
         let start = ContinuousClock.now
-        /// Requests sent (diagnostics); `attempt` is the retry budget, which model fallbacks don't use up.
+        /// Requests sent (logged); `attempt` is the retry budget, which model fallbacks don't use up.
         var requests = 0
         var attempt = 0
         while true {
@@ -91,8 +90,7 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
                 let outcome = FoodAnalysisSanitizer.sanitize(raw, photoCount: photos.count,
                                                              promptVersion: FoodAnalysisPrompt.promptVersion,
                                                              modelName: modelName, minConfidence: config.aiMinConfidence)
-                finish(start: start, attempts: requests, category: Self.category(for: outcome), model: modelName,
-                       raw: raw, photoCount: photos.count)
+                finish(start: start, attempts: requests, category: Self.category(for: outcome), model: modelName)
                 logDietaryOverride(outcome: outcome, raw: raw)
                 return outcome
             case .blocked:
@@ -288,14 +286,11 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
         }
     }
 
-    // MARK: Diagnostics (no content ever)
+    // MARK: Logs (no content ever)
 
-    private func finish(start: ContinuousClock.Instant, attempts: Int, category: String, model: String,
-                        raw: RawFoodAnalysis? = nil, photoCount: Int? = nil) {
+    /// One log line per analysis: outcome or error category, latency, requests sent and model.
+    private func finish(start: ContinuousClock.Instant, attempts: Int, category: String, model: String) {
         let latencyMs = Int(start.duration(to: .now) / .milliseconds(1))
-        lastDiagnostics = FoodAnalysisDiagnostics(latencyMs: latencyMs, attempts: attempts, category: category,
-                                                  modelDietary: raw?.overallDietary, modelConfidence: raw?.confidence,
-                                                  photoCount: photoCount, modelName: model)
         Logger.services.info("""
             AI analysis: \(category, privacy: .public) latencyMs=\(latencyMs, privacy: .public) \
             attempts=\(attempts, privacy: .public) model=\(model, privacy: .public) \
