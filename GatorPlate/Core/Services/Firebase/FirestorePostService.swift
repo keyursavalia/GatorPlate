@@ -36,7 +36,7 @@ final class FirestorePostService: PostService {
                     .filter { $0.isActive(now: now) }
                 continuation.yield(PostsSnapshot(posts: posts, isFromCache: snapshot?.metadata.isFromCache ?? false))
             }
-            let listener = ListenerHandle(registration)
+            let listener = FirestoreListenerHandle(registration)
             continuation.onTermination = { _ in listener.remove() }
         }
     }
@@ -152,15 +152,26 @@ final class FirestorePostService: PostService {
             "createdAt": FieldValue.serverTimestamp(),
         ]
         if !cleaned.isEmpty { data["reason"] = cleaned }
+        let document = reports.document("\(postId)_\(uid)")
         do {
             // The ID makes it one report per account per post; rules deny overwriting it.
-            try await reports.document("\(postId)_\(uid)").setData(data)
+            try await document.setData(data)
         } catch {
-            let mapped = FirebaseErrorMapper.map(error)
-            if case .permissionDenied = mapped {
-                throw AppError.validation("You've already reported this post, or it's no longer up.")
+            guard case .permissionDenied = FirebaseErrorMapper.map(error) else { throw FirebaseErrorMapper.map(error) }
+            // The rules read the token's `email_verified`, which lags behind a fresh verification until the token
+            // is refreshed. Refresh once and retry before blaming the report.
+            Logger.services.notice("Report denied (\((error as NSError).code, privacy: .public)); refreshing the ID token and retrying")
+            await Self.refreshIDToken()
+            do {
+                try await document.setData(data)
+            } catch {
+                let mapped = FirebaseErrorMapper.map(error)
+                Logger.services.error("Report denied after token refresh (\((error as NSError).code, privacy: .public))")
+                if case .permissionDenied = mapped {
+                    throw AppError.validation("You've already reported this post, or it's no longer up.")
+                }
+                throw mapped
             }
-            throw mapped
         }
     }
 
@@ -189,27 +200,27 @@ final class FirestorePostService: PostService {
               bannedUntil > .now else { return nil }
         let appeal = try? await database.collection("appeals").document(uid).getDocument()
         let appealedFor = (appeal?.get("bannedUntil") as? Timestamp)?.dateValue()
-        return PostingBan(bannedUntil: bannedUntil, hasAppealed: appealedFor == bannedUntil)
+        let hasAppealed = appealedFor == bannedUntil
+        // A decision on an older ban's appeal doesn't apply to this one.
+        let resolution = hasAppealed ? (appeal?.get("resolution") as? String).flatMap(AppealResolution.init) : nil
+        let note = hasAppealed ? (appeal?.get("resolutionNote") as? String).map { String($0.prefix(200)) } : nil
+        return PostingBan(bannedUntil: bannedUntil, hasAppealed: hasAppealed, appealResolution: resolution,
+                          resolutionNote: note?.isEmpty == true ? nil : note)
     }
 
     // MARK: Helpers
 
+    /// Best effort: a new ID token carries the current `email_verified` claim.
+    private static func refreshIDToken() async {
+        guard let user = Auth.auth().currentUser else { return }
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            user.getIDTokenForcingRefresh(true) { _, _ in continuation.resume() }
+        }
+    }
+
     private func isPublished(_ document: DocumentReference, by uid: String) async -> Bool {
         guard let snapshot = try? await document.getDocument(source: .server), snapshot.exists else { return false }
         return snapshot.get(FoodPostDocument.Key.authorUid) as? String == uid
-    }
-}
-
-/// `ListenerRegistration.remove()` is thread-safe, so the handle can be removed from the stream's termination handler.
-private nonisolated final class ListenerHandle: @unchecked Sendable {
-    private let registration: any ListenerRegistration
-
-    init(_ registration: any ListenerRegistration) {
-        self.registration = registration
-    }
-
-    func remove() {
-        registration.remove()
     }
 }
 

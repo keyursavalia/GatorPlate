@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Map sheet for a selected pin. Open in Apple Maps is the main action; the ⋯ menu holds Report for everyone
-/// but the poster, who gets Mark as gone at the bottom instead.
+/// Map sheet for a selected pin. Open in Apple Maps is the main action; the ⋯ menu holds Report and Block for
+/// everyone but the poster, who gets Mark as gone at the bottom instead.
 struct PostBottomCard: View {
     let post: FoodPost
     let viewModel: MapViewModel
@@ -9,6 +9,9 @@ struct PostBottomCard: View {
     @AppStorage(ReviewViewModel.showCaloriesKey) private var showCalories = true
     @State private var isReporting = false
     @State private var isConfirmingGone = false
+    @State private var isConfirmingBlock = false
+
+    private var posterName: String { MapViewModel.posterName(post) }
 
     var body: some View {
         PostDetailContent(post: post, photoSources: PostPhotoSource.sources(for: post), images: viewModel.images,
@@ -31,13 +34,26 @@ struct PostBottomCard: View {
         } message: {
             Text("It disappears from the map and feed for everyone.")
         }
+        .alert("Block \(posterName)?", isPresented: $isConfirmingBlock) {
+            Button("Block", role: .destructive) {
+                Task { await viewModel.block(post) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("You won't see their posts or get alerts for them. They won't be told. We'll also review their posts.")
+        }
     }
 
     @ViewBuilder
     private var menu: some View {
-        if !viewModel.isOwnPost(post), !viewModel.reportedPosts.contains(post.id) {
+        if !viewModel.isOwnPost(post) {
             Menu {
-                Button("Report", systemImage: "flag") { isReporting = true }
+                if !viewModel.reportedPosts.contains(post.id) {
+                    Button("Report", systemImage: "flag") { isReporting = true }
+                }
+                Button("Block \(posterName)", systemImage: "hand.raised.fill", role: .destructive) {
+                    isConfirmingBlock = true
+                }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.body.weight(.semibold))
@@ -45,19 +61,7 @@ struct PostBottomCard: View {
                     .contentShape(.rect)
             }
             .accessibilityLabel("More actions")
-            .accessibilityHint("Report this post")
+            .accessibilityHint("Report this post or block the poster")
         }
     }
-}
-
-#Preview {
-    Color.clear.sheet(isPresented: .constant(true)) {
-        PostBottomCard(post: .sample, viewModel: .preview)
-            .presentationDetents([.fraction(0.62), .large])
-    }
-}
-
-#Preview("AX5") {
-    PostBottomCard(post: .sample, viewModel: .preview)
-        .dynamicTypeSize(.accessibility5)
 }

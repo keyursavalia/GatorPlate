@@ -28,13 +28,3 @@ struct PrimaryButton: View {
         .accessibilityValue(isLoading ? "Loading" : "")
     }
 }
-
-#Preview("Idle") {
-    PrimaryButton(title: "Continue") {}.padding()
-}
-
-#Preview("Loading, large text") {
-    PrimaryButton(title: "Continue", isLoading: true) {}
-        .padding()
-        .dynamicTypeSize(.accessibility5)
-}

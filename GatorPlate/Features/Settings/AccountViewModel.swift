@@ -29,9 +29,14 @@ final class AccountViewModel {
     @ObservationIgnored private let auth: any AuthService
     @ObservationIgnored private let onDelete: (String) async throws -> Void
 
+    /// Remote Config word lists for names (names are public on every post).
+    @ObservationIgnored private let nameFilter: ContentFilter
+
     init(profile: UserProfile, account: any AccountService, auth: any AuthService,
+         nameFilter: ContentFilter,
          onDelete: @escaping (String) async throws -> Void) {
         self.profile = profile
+        self.nameFilter = nameFilter
         self.account = account
         self.auth = auth
         self.onDelete = onDelete
@@ -42,11 +47,12 @@ final class AccountViewModel {
 
     var isOrganization: Bool { profile.accountType == .organization }
 
-    /// Same rules as sign-up: not empty, at most `AppConfig.maxNameLength`.
+    /// Same rules as sign-up: not empty, at most `AppConfig.maxNameLength`, no blocked words.
     var nameError: String? {
         let trimmed = Validation.trimmedName(name)
         if trimmed.isEmpty { return isOrganization ? "Enter your organization's name." : "Enter your name." }
         if trimmed.count > AppConfig.maxNameLength { return "Use \(AppConfig.maxNameLength) characters or fewer." }
+        if nameFilter.check(trimmed) != nil { return Validation.blockedNameMessage }
         return nil
     }
 

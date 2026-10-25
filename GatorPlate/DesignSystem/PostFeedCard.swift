@@ -7,6 +7,8 @@ struct PostFeedCard: View {
     let post: FoodPost
     let distanceText: String?
     let images: PostImageCache?
+    /// Keeps room for two title lines (the iPad grid, so cards in a row match).
+    var reservesTitleLines = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -49,16 +51,25 @@ struct PostFeedCard: View {
 
     private var details: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text(post.title)
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                .multilineTextAlignment(.leading)
+            title
             Text(placeLine)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
             metaRow
+        }
+    }
+
+    @ViewBuilder
+    private var title: some View {
+        let text = Text(post.title)
+            .font(.headline)
+            .foregroundStyle(.primary)
+            .multilineTextAlignment(.leading)
+        if reservesTitleLines {
+            text.lineLimit(2, reservesSpace: true)
+        } else {
+            text.lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
         }
     }
 
@@ -88,26 +99,9 @@ struct PostFeedCard: View {
             .background(.background.tertiary, in: .capsule)
     }
 
-    /// "Org · Chavez Center".
+    /// "Org · Student Center".
     private var placeLine: String {
         let place = CampusBuilding.byId(post.buildingId)?.shortName ?? post.locationName
         return [post.orgName ?? post.authorName, place].joined(separator: " · ")
     }
-}
-
-#Preview {
-    ScrollView {
-        VStack(spacing: Theme.Spacing.md) {
-            PostFeedCard(post: .sample, distanceText: "0.6 mi away", images: nil)
-            PostFeedCard(post: .sample, distanceText: nil, images: nil)
-        }
-        .padding()
-    }
-}
-
-#Preview("AX3") {
-    ScrollView {
-        PostFeedCard(post: .sample, distanceText: "350 ft", images: nil).padding()
-    }
-    .dynamicTypeSize(.accessibility3)
 }

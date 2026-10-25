@@ -1,9 +1,10 @@
 import Foundation
 
+#if DEBUG
 @MainActor
 final class MockImageStore: ImageStore {
     private var storage: [String: Data] = [:]
-    /// Slots that fail to upload, to preview partial failures.
+    /// Slots that fail to upload, to simulate partial failures.
     var failingSlots: Set<Int> = []
 
     func save(jpeg: Data, forPostId postId: String, slot: Int) async throws {
@@ -16,3 +17,4 @@ final class MockImageStore: ImageStore {
         storage[PostPhotoSlots.objectName(postId: postId, slot: slot)]
     }
 }
+#endif

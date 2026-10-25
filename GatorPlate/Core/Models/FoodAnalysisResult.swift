@@ -19,9 +19,4 @@ nonisolated struct FoodAnalysisResult: Codable, Equatable, Sendable {
     var keptPhotoIndices: [Int] = [0]
     var removedForPeople = 0
     var removedNotFood = 0
-
-    /// No allergens reported: the UI shows "Allergen info unverified, ask the host."
-    var allergensUnverified: Bool {
-        allergens.isEmpty
-    }
 }

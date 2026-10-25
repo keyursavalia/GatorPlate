@@ -71,18 +71,3 @@ struct Toast: View {
         if let action { "\(message). \(action.title) is available." } else { message }
     }
 }
-
-#Preview {
-    VStack {
-        Toast(message: "Alerts on for all free food.", action: Toast.Action(title: "Customize") {}, onDismiss: {})
-        Toast(message: "Saved.", onDismiss: {})
-    }
-    .padding()
-    .background(.gray.opacity(0.3))
-}
-
-#Preview("AX5") {
-    Toast(message: "Alerts on for all free food.", action: Toast.Action(title: "Customize") {}, onDismiss: {})
-        .padding()
-        .environment(\.dynamicTypeSize, .accessibility5)
-}

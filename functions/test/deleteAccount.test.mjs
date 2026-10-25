@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isPostId, isRecentLogin, photoPrefix, RECENT_LOGIN_SECONDS } from "../lib/deleteAccount.js";
+import { isPostId, isRecentLogin, photoPrefix, RECENT_LOGIN_SECONDS, uidKeyedDocPaths } from "../lib/deleteAccount.js";
 
 test("delete needs a sign-in within the last 5 minutes", () => {
   const now = Date.UTC(2026, 9, 15, 12, 0, 0);
@@ -27,4 +27,8 @@ test("photo prefix covers the cover and slots 1-3, and never widens", () => {
   assert.equal(photoPrefix(`${id}x`), null);
   assert.equal(photoPrefix("AbCdEfGhIjKlMnOpQr/."), null);
   assert.equal(isPostId(42), false);
+});
+
+test("deletion also covers the user's appeal and moderation record", () => {
+  assert.deepEqual(uidKeyedDocPaths("uid123"), ["appeals/uid123", "moderation/uid123"]);
 });

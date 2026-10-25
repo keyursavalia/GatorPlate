@@ -1,7 +1,8 @@
 import Foundation
 
-/// Mirror of `functions/src/filters.ts` `matchesFilters`, for the live "N of M posts match" preview in Settings.
-/// Both run the shared fixture `functions/test/fixtures/alert-filter-cases.json`; change them together.
+/// Mirror of `functions/src/filters.ts` `matchesFilters`, so the Map/Feed filter (`PostFilterMatcher`) answers exactly
+/// like Custom notifications. Both run the shared fixture `functions/test/fixtures/alert-filter-cases.json`; change
+/// them together.
 /// AND across categories, OR within one; an empty category doesn't restrict; invalid filters mean all free food.
 nonisolated enum AlertFilterMatcher {
     /// The filters that apply, or nil for all free food (mode "all", none saved, or over the limits).
@@ -18,6 +19,11 @@ nonisolated enum AlertFilterMatcher {
 
     static func matches(_ post: FoodPost, filters: AlertFilters?) -> Bool {
         guard let filters = effective(filters) else { return true }
+        return matches(post, effective: filters)
+    }
+
+    /// `matches` for filters already passed through `effective`, so a list of posts validates them once.
+    static func matches(_ post: FoodPost, effective filters: AlertFilters) -> Bool {
         let diets = post.items.isEmpty ? [post.overallDietary] : post.items.map(\.dietary)
 
         if !filters.diets.isEmpty {

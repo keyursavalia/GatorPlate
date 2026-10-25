@@ -21,11 +21,3 @@ struct MonogramAvatar: View {
         return letters.isEmpty ? "?" : String(letters).uppercased()
     }
 }
-
-#Preview {
-    HStack {
-        MonogramAvatar(name: "Alex Gator")
-        MonogramAvatar(name: "Asian Student Union")
-        MonogramAvatar(name: "")
-    }
-}

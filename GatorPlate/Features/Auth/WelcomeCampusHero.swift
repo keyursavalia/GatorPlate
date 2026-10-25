@@ -2,9 +2,14 @@ import MapKit
 import SwiftUI
 
 /// Welcome screen hero: a still, tilted SFSU map where demo posts drop in one by one while a sample "Free food on
-/// campus" notification slides down for each, a preview of what the app does. Decorative (hidden from VoiceOver;
-/// the feature list says the same). With Reduce Motion every pin is placed and one notification shows, still.
+/// campus" notification slides down for each, a preview of what the app does. Runs edge to edge (under the status
+/// bar, with the notification kept below `topInset`) and fades out at the bottom. Decorative (hidden from
+/// VoiceOver; the feature cards say the same). With Reduce Motion every pin is placed and one notification shows,
+/// still.
 struct WelcomeCampusHero: View {
+    /// The status bar's height: the map runs under it, the notification starts below it.
+    var topInset: CGFloat = 0
+
     private struct DemoPost: Identifiable {
         let id: String
         let food: String
@@ -56,7 +61,6 @@ struct WelcomeCampusHero: View {
         .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .excludingAll))
         .allowsHitTesting(false)
         .overlay(alignment: .top) { banner }
-        .clipShape(.rect(cornerRadius: 28))
         // Fades into the page so the app tile can sit across the bottom edge.
         .mask {
             LinearGradient(stops: [.init(color: .black, location: 0.62), .init(color: .clear, location: 1)],
@@ -73,6 +77,8 @@ struct WelcomeCampusHero: View {
             NotificationPreview(title: "Free food on campus",
                                 message: "\(post.food) at \(post.place) · \(post.minutesLeft) min left")
                 .padding(Theme.Spacing.md)
+                .padding(.top, topInset)
+                .frame(maxWidth: 500)
                 .id(post.id)
                 .transition(.move(edge: .top).combined(with: .opacity))
         }
@@ -111,11 +117,7 @@ private struct NotificationPreview: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.md) {
-            Image(systemName: "fork.knife")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 36, height: 36)
-                .background(Theme.Palette.brandPurple, in: .rect(cornerRadius: 9))
+            AppLogoTile(size: 36, cornerRadius: 9)
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(title).font(.subheadline.weight(.semibold))
@@ -131,10 +133,4 @@ private struct NotificationPreview: View {
         .glassEffect(.regular, in: .rect(cornerRadius: 22))
         .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
     }
-}
-
-#Preview {
-    WelcomeCampusHero()
-        .frame(height: 320)
-        .padding()
 }

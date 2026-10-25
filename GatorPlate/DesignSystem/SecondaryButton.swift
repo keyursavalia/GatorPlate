@@ -65,13 +65,3 @@ struct DestructiveButton: View {
         .accessibilityValue(isLoading ? "Loading" : "")
     }
 }
-
-#Preview {
-    VStack(spacing: Theme.Spacing.lg) {
-        PrimaryButton(title: "Join now") {}
-        SecondaryButton(title: "Sign in") {}
-        DestructiveButton(title: "Sign out") {}
-        DestructiveButton(title: "Delete account", isLoading: true) {}
-    }
-    .padding()
-}

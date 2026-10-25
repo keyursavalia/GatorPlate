@@ -1,24 +1,41 @@
 /**
  * Pure moderation rules for `onReportCreated`, kept apart from Firebase so they can be tested with `node --test`.
- * Mirrors AppConfig (report reason lengths) and docs/PROGRESS.md (S09 reporting decisions).
+ * Mirrors AppConfig (report reason lengths) and docs/PROGRESS.md (S09 reporting decisions). Thresholds are
+ * parameters: their values come from Remote Config (`serverConfig()`), with defaults in `SERVER_DEFAULTS`.
  */
 
-export const REPORT_CATEGORIES = ["unsafe", "misleading", "trading"] as const;
+export const REPORT_CATEGORIES = ["unsafe", "offensive", "misleading", "trading"] as const;
 export type ReportCategory = (typeof REPORT_CATEGORIES)[number];
 
-/** Distinct reporters (spam/misleading, trading, and unsafe reports the AI didn't believe) that remove a post. */
-export const REMOVAL_REPORT_THRESHOLD = 3;
-/** Removals are counted over this many days. */
-export const STRIKE_WINDOW_DAYS = 30;
-/** "More than 3" removals in the window: the 4th starts a ban. */
-export const BAN_AFTER_REMOVALS = 4;
-export const BAN_DAYS = 7;
-/** The AI must be at least this sure an unsafe report is credible before the post is removed. */
-export const UNSAFE_CONFIDENCE_MIN = 0.7;
-/** AppConfig.reportReasonMinLength / MaxLength. */
-export const REASON_MIN_LENGTH = 20;
+/** Why a post was removed. Report categories and `admin` are strikes; `screened` and `filtered` are not. */
+export type RemovalCategory = ReportCategory | "screened" | "filtered" | "admin";
+
+/** How a report was closed (`reports.resolution`): its post was removed, or an admin kept the post. */
+export type ReportResolution = "removed" | "dismissed";
+/** Who closed it (`reports.resolvedBy`): an admin in the app, or an automatic removal. */
+export type ReportResolver = "admin" | "auto";
+
+/** Admin removals close a post's reports as the admin's; every other removal closes them automatically. */
+export function removalResolver(category: RemovalCategory): ReportResolver {
+  return category === "admin" ? "admin" : "auto";
+}
+export const STRIKE_CATEGORIES = [...REPORT_CATEGORIES, "admin"] as const;
+export type StrikeCategory = (typeof STRIKE_CATEGORIES)[number];
+
+/** AppConfig.reportReasonMaxLength (the minimum is enforced by the app and `firestore.rules`). */
 export const REASON_MAX_LENGTH = 280;
 export const RATIONALE_MAX_LENGTH = 140;
+
+/** Reports (with their post snapshot) are deleted this long after they're filed (TTL on `reports.deleteAt`). */
+export const REPORT_RETENTION_DAYS = 90;
+
+/** The app's `ReportCategory.label`, for admin pushes. */
+export const CATEGORY_LABELS: Readonly<Record<ReportCategory, string>> = {
+  unsafe: "Unsafe to eat",
+  offensive: "Offensive or inappropriate",
+  misleading: "Spam or misleading",
+  trading: "Selling or trading",
+};
 
 export const UNSAFE_PUSH_TITLE = "Your post was reported: Unsafe";
 export const UNSAFE_PUSH_BODY = "It was removed. Thanks for keeping campus food safe.";
@@ -37,12 +54,58 @@ export interface UnsafeVerdict {
 
 export interface Removal {
   postId: string;
-  category: ReportCategory;
+  category: StrikeCategory;
   atMs: number;
 }
 
 export function isReportCategory(value: unknown): value is ReportCategory {
   return typeof value === "string" && (REPORT_CATEGORIES as readonly string[]).includes(value);
+}
+
+/**
+ * The admin push a report needs, or null. Offensive reports always go to a person; an Unsafe report goes to one when
+ * the AI couldn't check it (`unavailable`) or AI moderation is off (`disabled`), since nothing else looked at it.
+ */
+export function adminReviewPush(category: ReportCategory,
+  aiVerdict: string | null): { title: string; body: string } | null {
+  if (category === "offensive") {
+    return { title: "New report to review", body: `${CATEGORY_LABELS.offensive} report on a live post.` };
+  }
+  if (category === "unsafe" && (aiVerdict === "unavailable" || aiVerdict === "disabled")) {
+    return { title: "Unsafe report needs a look", body: "The AI couldn't check an Unsafe to eat report on a live post." };
+  }
+  return null;
+}
+
+/** When a report filed at `createdAtMs` is deleted by TTL. */
+export function reportDeleteAtMs(createdAtMs: number): number {
+  return createdAtMs + REPORT_RETENTION_DAYS * DAY_MS;
+}
+
+export interface ReportPostSnapshot {
+  title: string;
+  description: string;
+  locationName: string;
+  authorUid: string;
+  authorName: string;
+  orgName: string | null;
+}
+
+/**
+ * What a reviewer needs after the post has ended: text and who posted it, never photos. Stored on the report
+ * (admin-only) and deleted with it after `REPORT_RETENTION_DAYS`.
+ */
+export function reportPostSnapshot(post: Record<string, unknown>): ReportPostSnapshot {
+  const text = (value: unknown, max: number) => (typeof value === "string" ? value.slice(0, max) : "");
+  const org = text(post.orgName, 60);
+  return {
+    title: text(post.title, 140),
+    description: text(post.description, 170),
+    locationName: text(post.locationName, 120),
+    authorUid: text(post.authorUid, 128),
+    authorName: text(post.authorName, 60),
+    orgName: org.length > 0 ? org : null,
+  };
 }
 
 /**
@@ -54,13 +117,21 @@ export function countsTowardThreshold(category: ReportCategory, unsafeCredible: 
   return unsafeCredible === false;
 }
 
-export function reachesRemovalThreshold(countingReports: number): boolean {
-  return countingReports >= REMOVAL_REPORT_THRESHOLD;
+export function isStrikeCategory(value: unknown): value is StrikeCategory {
+  return typeof value === "string" && (STRIKE_CATEGORIES as readonly string[]).includes(value);
 }
 
-/** Keeps removals inside the 30-day window ending now, oldest first, without duplicates of the same post. */
-export function removalsInWindow(removals: readonly Removal[], nowMs: number): Removal[] {
-  const since = nowMs - STRIKE_WINDOW_DAYS * DAY_MS;
+/** True once this many distinct counting reports reach the removal threshold (`report_removal_threshold`). */
+export function reachesRemovalThreshold(countingReports: number, threshold: number): boolean {
+  return countingReports >= threshold;
+}
+
+/**
+ * Keeps removals inside the window (`strike_window_days`) ending now, oldest first, without duplicates of the
+ * same post.
+ */
+export function removalsInWindow(removals: readonly Removal[], nowMs: number, windowDays: number): Removal[] {
+  const since = nowMs - windowDays * DAY_MS;
   const seen = new Set<string>();
   return removals
     .filter((removal) => removal.atMs > since && removal.atMs <= nowMs)
@@ -72,9 +143,12 @@ export function removalsInWindow(removals: readonly Removal[], nowMs: number): R
     });
 }
 
-/** End of the ban in ms when this many removals in the window warrant one, else null. */
-export function banEndMs(removalCountInWindow: number, nowMs: number): number | null {
-  return removalCountInWindow >= BAN_AFTER_REMOVALS ? nowMs + BAN_DAYS * DAY_MS : null;
+/**
+ * End of the ban in ms when this many removals in the window warrant one (`ban_after_removals`, lasting
+ * `ban_days`), else null.
+ */
+export function banEndMs(removalCountInWindow: number, nowMs: number, banAfter: number, banDays: number): number | null {
+  return removalCountInWindow >= banAfter ? nowMs + banDays * DAY_MS : null;
 }
 
 /** Turns stored removal maps back into `Removal`s, dropping anything malformed. */
@@ -83,7 +157,7 @@ export function parseRemovals(value: unknown): Removal[] {
   return value.flatMap((item): Removal[] => {
     if (typeof item !== "object" || item === null) return [];
     const { postId, category, atMs } = item as Record<string, unknown>;
-    if (typeof postId !== "string" || !isReportCategory(category)) return [];
+    if (typeof postId !== "string" || !isStrikeCategory(category)) return [];
     if (typeof atMs !== "number" || !Number.isFinite(atMs)) return [];
     return [{ postId, category, atMs }];
   });
@@ -108,9 +182,12 @@ export function parseUnsafeVerdict(raw: unknown): UnsafeVerdict | null {
   return { credible, confidence, concern: concern as UnsafeConcern, rationale: text };
 }
 
-/** Removes the post only when the AI believes the reason, is sure enough, and names a real concern. */
-export function isCredibleUnsafe(verdict: UnsafeVerdict | null): boolean {
-  return verdict !== null && verdict.credible && verdict.confidence >= UNSAFE_CONFIDENCE_MIN && verdict.concern !== "none";
+/**
+ * Removes the post only when the AI believes the reason, is sure enough (`unsafe_confidence_min`), and names a
+ * real concern.
+ */
+export function isCredibleUnsafe(verdict: UnsafeVerdict | null, minConfidence: number): boolean {
+  return verdict !== null && verdict.credible && verdict.confidence >= minConfidence && verdict.concern !== "none";
 }
 
 /** The reporter's reason, trimmed to the stored limit, with control characters removed. */

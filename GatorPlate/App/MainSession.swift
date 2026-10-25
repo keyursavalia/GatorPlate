@@ -19,6 +19,11 @@ final class MainSession {
     /// Location on/off for Settings > Location and the map's location button.
     let locationAccess: LocationAccess
     let permissions: FirstRunPermissions
+    /// People this user blocked; their posts are hidden on Map and Feed.
+    let blocked: BlockedUsers
+    /// Admin status (accounts only) and the Moderation screen's data.
+    let adminAccess: AdminAccess
+    let admin: AdminViewModel
 
     init(environment: AppEnvironment, profile: UserProfile) {
         self.uid = profile.uid
@@ -31,9 +36,12 @@ final class MainSession {
         let settings = SettingsViewModel(notifications: environment.notifications, profile: profile)
         let filters = PostFilterStore(uid: profile.uid)
         let reported = ReportedPosts(uid: profile.uid)
+        let blocked = BlockedUsers(service: environment.blocking)
+        navigation.isAuthorBlocked = { blocked.contains($0) }
         let locationAccess = LocationAccess(location: environment.location)
         let browse = BrowseResults(filters: filters, repository: repository, navigation: navigation,
-                                   location: environment.location, reported: reported, notificationPicks: {
+                                   location: environment.location, reported: reported, blocked: blocked,
+                                   notificationPicks: {
                                        // "Use my notification filters" shows only while Custom notifications are on.
                                        settings.alertsEnabled ? AlertFilterMatcher.effective(settings.alertFilters) : nil
                                    })
@@ -42,10 +50,13 @@ final class MainSession {
         self.images = images
         self.filters = filters
         self.browse = browse
+        self.blocked = blocked
+        self.adminAccess = AdminAccess(service: environment.admin, isAccount: !profile.isGuest)
+        self.admin = AdminViewModel(service: environment.admin)
         self.map = MapViewModel(repository: repository, navigation: navigation, postService: environment.posts,
                                 routing: environment.routing, location: environment.location,
                                 locationAccess: locationAccess, images: images, browse: browse,
-                                reportedPosts: reported, currentUid: profile.uid)
+                                reportedPosts: reported, blocked: blocked, currentUid: profile.uid)
         self.feed = FeedViewModel(repository: repository, navigation: navigation, location: environment.location,
                                   images: images, browse: browse)
         self.settings = settings
@@ -59,6 +70,8 @@ final class MainSession {
         repository.start()
         browse.start()
         settings.activate()
+        blocked.start()
+        adminAccess.refresh()
     }
 
     /// Stops the listener and removes this device's alert registration while the user can still write.
@@ -80,26 +93,8 @@ final class MainSession {
     func stop() {
         navigation.selectedPostId = nil
         browse.stop()
+        blocked.stop()
+        admin.stop()
         repository.stop()
     }
-}
-
-extension MainSession {
-    /// Mock campus posts for previews.
-    static var preview: MainSession {
-        var environment = AppEnvironment.mock
-        environment.posts = MockPostService(posts: FoodPost.mockCampus)
-        let profile = UserProfile(uid: "mock-uid", displayName: "Mock Student", email: "mock@gmail.com",
-                                  accountType: .student, orgName: nil, acceptedTermsVersion: nil,
-                                  acceptedTermsAt: nil, notificationsEnabled: false, createdAt: .now)
-        let session = MainSession(environment: environment, profile: profile)
-        // Previews never fire the first-run prompts.
-        session.permissions.cancel()
-        session.start()
-        return session
-    }
-}
-
-extension MapViewModel {
-    static var preview: MapViewModel { MainSession.preview.map }
 }

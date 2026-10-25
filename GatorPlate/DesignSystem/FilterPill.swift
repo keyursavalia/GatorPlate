@@ -50,18 +50,3 @@ struct FilterPill: View {
         shown == 0 ? "No posts match your filters" : "Filtered, showing \(shown) of \(total) posts"
     }
 }
-
-#Preview {
-    VStack {
-        FilterPill(shown: 3, total: 7, onOpen: {}, onClear: {})
-        FilterPill(shown: 0, total: 7, onOpen: {}, onClear: {})
-    }
-    .padding()
-    .background(.teal.gradient)
-}
-
-#Preview("AX5") {
-    FilterPill(shown: 0, total: 7, onOpen: {}, onClear: {})
-        .padding()
-        .dynamicTypeSize(.accessibility5)
-}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GatorPlate</title>
+<style>
+  :root { color-scheme: light dark; --text: #1c1c1e; --muted: #5b5b60; --bg: #ffffff; --accent: #5b3fb5; }
+  @media (prefers-color-scheme: dark) {
+    :root { --text: #f2f2f7; --muted: #aeaeb2; --bg: #111113; --accent: #a993ec; }
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 17px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; }
+  nav { max-width: 720px; margin: 0 auto; padding: 16px 16px 0; font-size: 15px; color: var(--muted); }
+  h1 { font-size: 1.8rem; line-height: 1.25; margin: 0.5rem 0 1rem; }
+  h2 { font-size: 1.15rem; margin: 2rem 0 0.5rem; }
+  a { color: var(--accent); }
+  li { margin: 0.35rem 0; }
+  code { font-size: 0.9em; }
+  .muted { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<main>
+<h1>GatorPlate</h1>
+
+<p>Leftover campus food, posted in seconds.</p>
+<ul>
+<li><a href="/support">Support</a></li>
+<li><a href="/terms">Terms of Use</a></li>
+<li><a href="/privacy">Privacy Policy</a></li>
+</ul>
+<p class="muted">Not an official San Francisco State University app.</p>
+
+</main>
+</body>
+</html>

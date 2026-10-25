@@ -1,86 +1,39 @@
 import SwiftUI
 
-/// The photo can't become a post (not food, people, unclear). Offers a retake or the manual path.
+/// The photo can't become a post (not food, people, unclear). Offers a retake or the manual path. Photos showing
+/// people are blurred here and never carried over.
 struct AnalysisRejectedView: View {
     let reason: FoodAnalysisRejection
-    var evalLine: String?
+    var photos: [CapturedPhoto] = []
     let onRetake: () -> Void
     let onFillManually: () -> Void
 
     var body: some View {
-        AnalysisMessageLayout(icon: content.icon, title: content.title, message: content.message, evalLine: evalLine) {
+        AnalysisMessageLayout(photos: photos, obscuresPhotos: reason == .containsPeople, status: content.status,
+                              title: content.title, message: content.message, note: content.note) {
             PrimaryButton(title: reason == .containsPeople ? "Take new photos" : "Back to photos", action: onRetake)
-            Button(action: onFillManually) {
-                Text("Fill it in myself")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: Theme.Size.primaryButtonHeight)
-            }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.capsule)
-            .tint(Theme.Palette.brandPurple)
+            SecondaryButton(title: "Fill it in myself", action: onFillManually)
+                .accessibilityHint("Opens the post form without AI")
         }
     }
 
-    private var content: (icon: String, title: String, message: String) {
+    private var content: (status: AnalysisStatus, title: String, message: String, note: String) {
         switch reason {
         case .notFood:
-            ("questionmark.square.dashed", "That doesn't look like food",
-             "Try another photo of the food, or fill in the post yourself.")
+            (AnalysisStatus(label: "Not food", icon: "questionmark", tint: Theme.Palette.warning),
+             "That doesn't look like food",
+             "Try another photo of the food, or fill in the post yourself.",
+             "Only free, edible food can be posted.")
         case .containsPeople:
-            ("person.crop.square.badge.camera", "Please avoid photographing people",
-             "Take new photos with only the food in frame. These photos won't be used.")
+            (AnalysisStatus(label: "People in photo", icon: "person.fill.xmark", tint: Theme.Palette.danger),
+             "Please avoid photographing people",
+             "Take new photos with only the food in frame.",
+             "These photos are discarded and won't be posted.")
         case .lowConfidence:
-            ("eye.trianglebadge.exclamationmark", "We couldn't tell what this is",
-             "Try a closer, brighter photo of the food, or fill in the post yourself.")
+            (AnalysisStatus(label: "Unclear photo", icon: "eye.slash", tint: Theme.Palette.warning),
+             "We couldn't tell what this is",
+             "Try a closer, brighter photo of the food, or fill in the post yourself.",
+             "Good light and the whole dish in frame help the most.")
         }
     }
-}
-
-/// Shared layout for full-screen analysis messages: icon, title, message and actions.
-struct AnalysisMessageLayout<Actions: View>: View {
-    let icon: String
-    let title: String
-    let message: String
-    var evalLine: String?
-    @ViewBuilder let actions: Actions
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.xl) {
-                Image(systemName: icon)
-                    .font(.system(size: 56))
-                    .foregroundStyle(Theme.Palette.brandPurple)
-                    .accessibilityHidden(true)
-                VStack(spacing: Theme.Spacing.sm) {
-                    Text(title)
-                        .font(.title2.bold())
-                        .accessibilityAddTraits(.isHeader)
-                    Text(message)
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                }
-                .multilineTextAlignment(.center)
-                VStack(spacing: Theme.Spacing.md) { actions }
-                #if DEBUG
-                if let evalLine {
-                    ShareLink("Share eval line", item: evalLine)
-                        .font(.footnote)
-                }
-                #endif
-            }
-            .padding(Theme.Spacing.xl)
-            .frame(maxWidth: 500)
-            .frame(maxWidth: .infinity)
-        }
-        .scrollBounceBehavior(.basedOnSize)
-        .background(.background)
-    }
-}
-
-#Preview("Not food") {
-    AnalysisRejectedView(reason: .notFood, onRetake: {}, onFillManually: {})
-}
-
-#Preview("People") {
-    AnalysisRejectedView(reason: .containsPeople, onRetake: {}, onFillManually: {})
 }

@@ -13,7 +13,3 @@ struct AIBadge: View {
             .accessibilityLabel("Filled by AI")
     }
 }
-
-#Preview {
-    AIBadge()
-}

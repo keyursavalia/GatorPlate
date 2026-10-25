@@ -116,13 +116,30 @@ final class FirebaseAuthService: AuthService {
 
     func refreshSession() async throws {
         if let user = Auth.auth().currentUser {
+            let wasVerified = user.isEmailVerified
             do {
                 try await user.reload()
             } catch {
                 throw FirebaseErrorMapper.map(error)
             }
+            // `reload` updates the user, not the ID token: rules that read `email_verified` (reports) would keep
+            // seeing false for up to an hour. Mint a new token as soon as verification lands.
+            if !wasVerified, user.isEmailVerified {
+                await Self.refreshIDToken(user)
+            }
         }
         await emit(to: Array(continuations.values))
+    }
+
+    /// Best effort; the token refreshes on its own within the hour if this fails.
+    private static func refreshIDToken(_ user: User) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            user.getIDTokenForcingRefresh(true) { _, error in
+                if error != nil { Logger.services.error("ID token refresh after verification failed") }
+                continuation.resume()
+            }
+        }
+        Logger.services.info("ID token refreshed after email verification")
     }
 
     // MARK: Accounts

@@ -75,15 +75,3 @@ struct UnderlinePasswordField: View {
         }
     }
 }
-
-#Preview {
-    @Previewable @State var email = ""
-    @Previewable @State var password = ""
-    VStack(spacing: Theme.Spacing.xl) {
-        UnderlineField(isFocused: true) {
-            TextField("Email", text: $email, prompt: UnderlineField<EmptyView>.prompt("Email", error: nil))
-        }
-        UnderlinePasswordField(label: "Password", text: $password, error: "Password is required.")
-    }
-    .padding()
-}

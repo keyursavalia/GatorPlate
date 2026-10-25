@@ -13,6 +13,11 @@ service cloud.firestore {
       return value is string && value.size() >= minSize && value.size() <= maxSize;
     }
 
+    // An admin: `admin` custom claim, set by the syncAdminClaim function from Remote Config `admin_uids`.
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
     // users/{uid}: owner-only. Written by guest start / sign-up (create), the guest upgrade and Settings/alerts
     // (update). Deleted only by the deleteAccount Cloud Function (Admin SDK bypasses rules). accountType, email,
     // createdAt and uid change only in the one-time guest upgrade.
@@ -119,6 +124,19 @@ service cloud.firestore {
         return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
       }
 
+      // banHolds/{sha256(email)}: a pause kept from a deleted account with this email (deleteAccount writes it;
+      // onProfileEmailSet copies it onto the new profile within seconds, this covers the gap).
+      function banHoldPath() {
+        let id = hashing.sha256(request.auth.token.email.lower()).toHexString().lower();
+        return /databases/$(database)/documents/banHolds/$(id);
+      }
+
+      function isHeld() {
+        return request.auth.token.email is string
+          && exists(banHoldPath())
+          && get(banHoldPath()).data.bannedUntil > request.time;
+      }
+
       function isValidNewPost(post) {
         return post.keys().hasAll([
               'authorUid', 'authorName', 'title', 'description', 'items', 'overallDietary',
@@ -137,6 +155,7 @@ service cloud.firestore {
           // Not during a posting ban (set only by the onReportCreated function after the 4th removal in 30 days).
           && (!('postingBannedUntil' in profile()) || profile().postingBannedUntil == null
               || profile().postingBannedUntil < request.time)
+          && !isHeld()
           && post.authorName == profile().displayName
           && (!('orgName' in post) || post.orgName == profile().get('orgName', null))
           // Content limits (AppConfig: title 120, description 150, items 8, cautions 4, detail 80).
@@ -162,12 +181,13 @@ service cloud.firestore {
                   && post.photoSlots.hasOnly([0, 1, 2, 3])
                   && post.hasPhoto == (post.photoSlots.size() > 0)))
           && post.status == 'active'
-          // Server time only; window 15-60 min with a few minutes of clock-skew slack.
+          // Server time only; window 15 min to 5 h (AppConfig.postDurationRangeMinutes) with a few minutes of
+          // clock-skew slack. The 5 h cap is the hard limit, whatever the client sends.
           && post.createdAt == request.time
           && post.updatedAt == request.time
           && post.expiresAt is timestamp
           && post.expiresAt > request.time + duration.value(10, 'm')
-          && post.expiresAt <= request.time + duration.value(65, 'm')
+          && post.expiresAt <= request.time + duration.value(305, 'm')
           // TTL deletes the post 24 h after it ends.
           && post.deleteAt == post.expiresAt + duration.value(24, 'h');
       }
@@ -185,8 +205,10 @@ service cloud.firestore {
     }
 
     // reports/{postId}_{reporterUid}: one per account per post (the ID dedupes; no updates). Verified accounts
-    // only, never on your own post. Unsafe needs a written reason for the AI check. The onReportCreated function
-    // (Admin SDK) adds its verdict fields and removes posts; clients can't read reports.
+    // only, never on your own post. Unsafe needs a written reason for the AI check; offensive's is optional. The
+    // onReportCreated function (Admin SDK) adds its verdict fields, a post snapshot and a TTL `deleteAt`, and removes
+    // posts; removals and admin dismissals close reports (`resolution`, `resolvedBy`, `resolvedAt`). Only admins read
+    // reports.
     match /reports/{reportId} {
       function reporter() {
         return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
@@ -202,7 +224,7 @@ service cloud.firestore {
         && request.resource.data.reporterUid == request.auth.uid
         && isText(request.resource.data.postId, 1, 40)
         && reportId == request.resource.data.postId + '_' + request.auth.uid
-        && request.resource.data.category in ['unsafe', 'misleading', 'trading']
+        && request.resource.data.category in ['unsafe', 'offensive', 'misleading', 'trading']
         // AppConfig.reportReasonMin/MaxLength (20 / 280) with headroom.
         && (request.resource.data.category != 'unsafe'
             || ('reason' in request.resource.data && isText(request.resource.data.reason, 20, 300)))
@@ -212,7 +234,9 @@ service cloud.firestore {
         && reporter().accountType in ['student', 'organization']
         && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId))
         && reportedPost().authorUid != request.auth.uid;
-      allow read, update, delete: if false;
+      // Admins review reports in the app (Settings > Moderation).
+      allow read: if isAdmin();
+      allow update, delete: if false;
     }
 
     // appeals/{uid}: a banned poster's appeal, one per ban. Reviewed by the admin in the Firebase console, who
@@ -232,14 +256,53 @@ service cloud.firestore {
           && request.resource.data.createdAt == request.time;
       }
 
-      allow read: if signedIn() && request.auth.uid == uid;
+      allow read: if (signedIn() && request.auth.uid == uid) || isAdmin();
       allow create: if signedIn() && request.auth.uid == uid && isValidAppeal();
       allow update: if signedIn() && request.auth.uid == uid && isValidAppeal()
         && resource.data.bannedUntil != request.resource.data.bannedUntil;
       allow delete: if false;
     }
 
-    // moderation/{uid} and postRemovals/{postId}: written only by the onReportCreated function. No match here, so
-    // clients are denied by default.
+    // blocks/{blockerUid}_{blockedUid}: one-directional block. The blocker (guests too) creates, reads and deletes
+    // their own; the blocked person can't see it. The app lists with `where blockerUid == <uid>` so the read rule
+    // can prove access. The onBlockCreated function counts blocks per poster for admin review.
+    match /blocks/{blockId} {
+      allow read: if signedIn() && resource.data.blockerUid == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll(['blockerUid', 'blockedUid', 'blockedName', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['blockerUid', 'blockedUid', 'blockedName', 'postId', 'createdAt'])
+        && request.resource.data.blockerUid == request.auth.uid
+        && isText(request.resource.data.blockedUid, 1, 128)
+        && request.resource.data.blockedUid != request.auth.uid
+        && blockId == request.auth.uid + '_' + request.resource.data.blockedUid
+        && isText(request.resource.data.blockedName, 1, 60)
+        && (!('postId' in request.resource.data) || isText(request.resource.data.postId, 1, 40))
+        && request.resource.data.createdAt == request.time;
+      allow delete: if signedIn() && resource.data.blockerUid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // moderation/{uid}: written only by Cloud Functions; admins read it for context.
+    match /moderation/{uid} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // adminActions/{id}: created by admins (in the app or the Firebase console); onAdminActionCreated does the work
+    // and writes status, result and processedAt. Admins read them to follow the status. Never updated by clients.
+    match /adminActions/{actionId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasAll(['action', 'createdBy', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['action', 'postId', 'uid', 'decision', 'clearStrikes', 'strike',
+                                                 'note', 'createdBy', 'createdAt'])
+        && request.resource.data.action in ['removePost', 'dismissReports', 'resolveAppeal', 'liftBan', 'clearStrikes']
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // postRemovals/{postId} and banHolds/{hash}: written only by Cloud Functions. No match here, so clients are denied
+    // by default.
   }
 }

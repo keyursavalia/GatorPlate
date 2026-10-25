@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// "Where & when": the place (opens the building picker), room / floor / entrance, and how long, one tap each.
+/// "Where & when": the place (opens the building picker), room / floor / entrance, and how long (a preset, or a
+/// custom length up to 5 h).
 struct ReviewWhereSection: View {
     @Bindable var viewModel: ReviewViewModel
     var focus: FocusState<ReviewFocus?>.Binding
@@ -32,21 +33,25 @@ struct ReviewWhereSection: View {
             }
             .listRowBackground(rowHighlight(highlighted == .locationDetail))
             .id(PostDraftValidator.Field.locationDetail)
-
-            Picker("Available for", selection: $viewModel.draft.durationMinutes) {
-                ForEach(AppConfig.postDurationOptionsMinutes, id: \.self) { minutes in
-                    Text("\(minutes) min").tag(minutes)
-                }
+            if let issue = viewModel.warning(for: .locationDetail) {
+                ReviewIssueText(issue: issue)
+                    .listRowBackground(rowHighlight(highlighted == .locationDetail))
             }
-            .pickerStyle(.segmented)
-            .listRowBackground(rowHighlight(highlighted == .duration))
-            .id(PostDraftValidator.Field.duration)
+
+            ReviewDurationPicker(minutes: $viewModel.draft.durationMinutes,
+                                 isCustom: $viewModel.draft.isCustomDuration,
+                                 isHighlighted: highlighted == .duration)
         } header: {
             Text("Where & when")
         } footer: {
             TimelineView(.everyMinute) { context in
                 let until = viewModel.availableUntil(now: context.date).formatted(date: .omitted, time: .shortened)
-                Text("Ends at \(until). Food shouldn't sit out longer than this.")
+                if viewModel.draft.durationMinutes > AppConfig.perishableFoodLimitMinutes {
+                    Text("Ends at \(until). Perishable food like meat, dairy or cut fruit shouldn't sit out more "
+                         + "than 2 hours.")
+                } else {
+                    Text("Ends at \(until). Food shouldn't sit out longer than this.")
+                }
             }
         }
     }

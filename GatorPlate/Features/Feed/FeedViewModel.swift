@@ -9,7 +9,7 @@ final class FeedViewModel {
     enum Content: Equatable {
         case loading
         case failed
-        /// Nothing posted at all.
+        /// Nothing posted, or only posts this account reported or whose posters it blocked.
         case empty
         /// Posts exist but the filter hides every one.
         case allHidden
@@ -42,7 +42,8 @@ final class FeedViewModel {
         switch repository.phase {
         case .loading: repository.hasError ? .failed : .loading
         case .loaded:
-            if repository.activePosts.isEmpty { .empty } else if browse.posts.isEmpty { .allHidden } else { .posts }
+            // Counted after reported and blocked posts are left out: only the filter makes "Nothing matches".
+            if browse.totalCount == 0 { .empty } else if browse.posts.isEmpty { .allHidden } else { .posts }
         }
     }
 

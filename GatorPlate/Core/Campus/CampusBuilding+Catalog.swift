@@ -5,7 +5,7 @@ import Foundation
 /// Never add a building without verifying it the same way (see docs/PROGRESS.md).
 nonisolated extension CampusBuilding {
     static let all: [CampusBuilding] = [
-        CampusBuilding(id: "chavez", name: "Cesar Chavez Student Center", shortName: "Chavez Center",
+        CampusBuilding(id: "chavez", name: "Student Center", shortName: "Student Center",
                        coordinate: Coordinate(latitude: 37.722191, longitude: -122.478631)),
         CampusBuilding(id: "library", name: "J. Paul Leonard Library", shortName: "Library",
                        coordinate: Coordinate(latitude: 37.721213, longitude: -122.478021)),

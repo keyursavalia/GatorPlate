@@ -20,6 +20,8 @@ struct MainTabView: View {
     @State private var notice: String?
     /// An active posting ban found when Post food was tapped: the "Posting paused" sheet instead of the flow.
     @State private var postingBan: PostingBan?
+    /// Remote Config `posting_enabled` is off: "Posting is paused right now" instead of the flow.
+    @State private var isPostingUnavailable = false
 
     private var profile: UserProfile { authSession.profile }
 
@@ -33,10 +35,13 @@ struct MainTabView: View {
         }
         .fullScreenCover(isPresented: $isPostFlowPresented, onDismiss: showPostAfterFlow) {
             PostFlowCoordinator(camera: environment.camera, analyzer: environment.analyzer,
-                                posts: environment.posts, location: environment.location,
+                                runtime: environment.runtime, posts: environment.posts, location: environment.location,
                                 author: PostAuthor(profile: profile)) { postId in
                 postToShowAfterFlow = postId
             }
+        }
+        .sheet(isPresented: $isPostingUnavailable) {
+            PostingUnavailableSheet(notice: environment.runtime.current.serviceNotice)
         }
         .sheet(item: $postingBan) { ban in
             PostingPausedSheet(ban: ban) { message in
@@ -65,12 +70,17 @@ struct MainTabView: View {
             }
             let session = session ?? MainSession(environment: environment, profile: profile)
             self.session = session
+            // A new session starts with reporting off; `canPost` may have turned true before it existed.
+            session.map.canReport = authSession.canPost
             session.start()
             openTappedAlert()
+            showAppealResult()
             if let message = auth.consumeNotice() { notice = message }
         }
         .onDisappear { session?.stop() }
         .onChange(of: authSession.canPost) { _, canPost in
+            // Reporting needs a verified account, like posting.
+            session?.map.canReport = canPost
             guard canPost, let start = accountFlow else { return }
             opensPostAfterAccountFlow = start == .post
             accountFlow = nil
@@ -93,6 +103,22 @@ struct MainTabView: View {
         }
         .onChange(of: environment.notifications.pendingAlert) {
             openTappedAlert()
+        }
+        .onChange(of: environment.notifications.hasPendingAppealResult) {
+            showAppealResult()
+        }
+        .onChange(of: environment.notifications.hasPendingAdminReview) {
+            openModeration()
+        }
+        .onChange(of: session?.adminAccess.isAdmin) {
+            // A cold-start tap arrives before admin status is known.
+            openModeration()
+        }
+        .onChange(of: profile.lastRemoval, initial: true) { _, removal in
+            // Once per removal on this phone, also when push is off.
+            guard let removal, RemovalNoticeTracker.shouldShow(removal, uid: profile.uid) else { return }
+            RemovalNoticeTracker.markSeen(removal, uid: profile.uid)
+            notice = removal.message
         }
         .onChange(of: environment.location.authorization) {
             // Back from iOS Settings after "Turn on location in Settings".
@@ -131,10 +157,6 @@ struct MainTabView: View {
         .onChange(of: permissionConditions(session), initial: true) { _, conditions in
             session.permissions.update(conditions)
         }
-        // Reporting needs a verified account, like posting.
-        .onChange(of: authSession.canPost, initial: true) { _, canPost in
-            session.map.canReport = canPost
-        }
     }
 
     /// The first-run prompts wait for the Map on screen, the app active, nothing covering it and no tapped alert.
@@ -156,9 +178,15 @@ struct MainTabView: View {
         }
     }
 
-    /// Reads the ban fresh (it can start mid-session) and shows "Posting paused" instead of the camera when one is
-    /// running. If it can't be read, the flow opens; rules still refuse a banned post.
+    /// Checks the owner's posting switch first, then reads the ban fresh (it can start mid-session) and shows
+    /// "Posting paused" instead of the camera when one is running. If the ban can't be read, the flow opens; rules
+    /// still refuse a banned post.
     private func openPostFlowUnlessBanned() {
+        guard environment.runtime.current.postingEnabled else {
+            Logger.ui.info("Post food blocked: posting is paused in Remote Config")
+            isPostingUnavailable = true
+            return
+        }
         Task {
             if let ban = await environment.posts.postingBan(), ban.isActive() {
                 Logger.ui.info("Post food blocked by a posting ban")
@@ -189,6 +217,27 @@ struct MainTabView: View {
             return
         }
         session.navigation.openAlert(request)
+    }
+
+    /// A tapped "appeal reviewed" notification: shows Posting paused (with the decision) only while a ban is still
+    /// running; an upheld appeal has nothing to show.
+    private func showAppealResult() {
+        guard environment.notifications.hasPendingAppealResult, session != nil else { return }
+        environment.notifications.appealResultHandled()
+        guard !authSession.isGuest else { return }
+        Task {
+            if let ban = await environment.posts.postingBan(), ban.isActive() { postingBan = ban }
+        }
+    }
+
+    /// A tapped admin push (report, appeal, blocks, AI health): Settings > Moderation, for admins only. Waits while
+    /// the post or account flow is open, and until admin status is known.
+    private func openModeration() {
+        guard environment.notifications.hasPendingAdminReview, let session, session.adminAccess.isAdmin,
+              !isPostFlowPresented, accountFlow == nil else { return }
+        environment.notifications.adminReviewHandled()
+        session.navigation.selectedTab = .settings
+        session.navigation.settingsPath = [.moderation]
     }
 
     private func showPostAfterFlow() {

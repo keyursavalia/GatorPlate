@@ -33,8 +33,3 @@ private struct RuleLine: View {
             .accessibilityValue(isMet ? "Done" : "Not yet")
     }
 }
-
-#Preview {
-    PasswordChecklist(password: "Gator2026", confirm: "Gator2026")
-        .padding()
-}

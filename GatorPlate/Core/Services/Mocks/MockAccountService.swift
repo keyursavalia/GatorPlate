@@ -1,5 +1,6 @@
 import Foundation
 
+#if DEBUG
 @MainActor
 final class MockAccountService: AccountService {
     /// The password the mock accepts.
@@ -38,3 +39,4 @@ final class MockAccountService: AccountService {
         deleted = true
     }
 }
+#endif

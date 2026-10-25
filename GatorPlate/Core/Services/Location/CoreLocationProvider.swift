@@ -67,16 +67,6 @@ final class CoreLocationProvider: NSObject, LocationProviding {
         endUpdates()
     }
 
-    func currentCoordinate() async throws -> Coordinate {
-        if let lastCoordinate { return lastCoordinate }
-        guard authorization.isAuthorized else { throw AppError.permissionDenied }
-        for try await update in CLLocationUpdate.liveUpdates() {
-            if let location = update.location { return Coordinate(location.coordinate) }
-            if update.authorizationDenied || update.authorizationRestricted { throw AppError.permissionDenied }
-        }
-        throw AppError.unknown
-    }
-
     private func beginUpdatesIfPossible() {
         guard wantsUpdates, authorization.isAuthorized, updatesTask == nil else { return }
         session = CLServiceSession(authorization: .whenInUse)

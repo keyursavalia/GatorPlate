@@ -78,14 +78,3 @@ struct Banner: View {
         }
     }
 }
-
-#Preview {
-    VStack {
-        Banner(style: .info, message: "Posts end after 30 minutes by default.")
-        Banner(style: .warning, message: "Double-check allergens with the host.")
-        Banner(style: .error, message: "Couldn't reach the server.")
-        Banner(style: .warning, message: "Location is off. The map still works.",
-               actions: [Banner.Action(title: "Open Settings") {}, Banner.Action(title: "Not now", isPrimary: false) {}])
-    }
-    .padding()
-}

@@ -98,17 +98,3 @@ struct TintedIconLabelStyle: LabelStyle {
         }
     }
 }
-
-#Preview {
-    List {
-        PostRow(post: .sample, distanceText: "350 ft", images: nil)
-        PostRow(post: .sample, distanceText: nil, images: nil)
-    }
-}
-
-#Preview("AX3") {
-    List {
-        PostRow(post: .sample, distanceText: "350 ft", images: nil)
-    }
-    .dynamicTypeSize(.accessibility3)
-}

@@ -58,12 +58,3 @@ struct PostPin: View {
             .overlay(Circle().stroke(.white, lineWidth: 1.5))
     }
 }
-
-#Preview {
-    HStack(spacing: 24) {
-        PostPin(dietary: .vegan, isSelected: false)
-        PostPin(dietary: .nonVegetarian, isSelected: true)
-        PostPin(dietary: .mixed, isSelected: false)
-    }
-    .padding()
-}

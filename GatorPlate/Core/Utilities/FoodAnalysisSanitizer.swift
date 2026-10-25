@@ -15,12 +15,13 @@ nonisolated enum FoodAnalysisSanitizer {
 
     // MARK: Sanitizing
 
+    /// `minConfidence` is `ai_min_confidence` (the "couldn't tell what this is" threshold).
     static func sanitize(_ raw: RawFoodAnalysis, photoCount: Int = 1, promptVersion: String,
-                         modelName: String) -> FoodAnalysisOutcome {
+                         modelName: String, minConfidence: Double = AppConfig.aiMinConfidence) -> FoodAnalysisOutcome {
         // Rules 1-2, per photo. People first: privacy beats everything else.
         let gate = FoodAnalysisPhotoGate.evaluate(raw, photoCount: photoCount)
         if let rejection = gate.rejection { return .rejected(rejection) }
-        guard let confidence = raw.confidence, confidence >= AppConfig.aiMinConfidence else {
+        guard let confidence = raw.confidence, confidence >= minConfidence else {
             return .rejected(.lowConfidence)
         }
 

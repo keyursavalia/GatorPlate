@@ -112,8 +112,11 @@ struct ReviewView: View {
 
     @ViewBuilder
     private var notesSection: some View {
-        if viewModel.aiBaseline != nil || viewModel.removedPhotosNotice != nil {
+        if viewModel.aiBaseline != nil || viewModel.removedPhotosNotice != nil || viewModel.showsAIDisabledNote {
             Section {
+                if viewModel.showsAIDisabledNote {
+                    NoteRow(text: "AI drafting is off right now. Fill in the details yourself.", systemImage: "info.circle")
+                }
                 if viewModel.aiBaseline != nil {
                     NoteRow(text: "AI drafted this post. Give it a quick check, then publish.", systemImage: "sparkles")
                 }
@@ -136,7 +139,11 @@ struct ReviewView: View {
             .listRowBackground(rowHighlight(highlighted == .attestation))
             .id(PostDraftValidator.Field.attestation)
         } footer: {
-            Text("Required to publish.")
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                Text("Required to publish.")
+                Text("Your photos and text are checked by Google's Gemini AI for safety when you post, and again if "
+                     + "someone reports your post.")
+            }
         }
     }
 
@@ -207,19 +214,4 @@ struct ReviewIssueText: View {
             .foregroundStyle(issue.isBlocking ? Theme.Palette.danger : Theme.Palette.warning)
             .accessibilityLabel("\(issue.isBlocking ? "Required" : "Tip"): \(issue.message)")
     }
-}
-
-#Preview("AI draft") {
-    ReviewView(viewModel: ReviewViewModel(photos: [], analysis: .sample,
-                                          author: PostAuthor(uid: "mock-uid", displayName: "Mock Student", orgName: nil),
-                                          posts: MockPostService(), location: MockLocationProvider()),
-               onClose: {}, onEditPhotos: {}, onPublished: { _ in })
-}
-
-#Preview("Manual, AX5") {
-    ReviewView(viewModel: ReviewViewModel(photos: [], analysis: nil,
-                                          author: PostAuthor(uid: "mock-uid", displayName: "Mock Student", orgName: nil),
-                                          posts: MockPostService(), location: MockLocationProvider()),
-               onClose: {}, onEditPhotos: {}, onPublished: { _ in })
-        .dynamicTypeSize(.accessibility5)
 }

@@ -3,11 +3,19 @@ import SwiftUI
 /// Active posts as cards (photo on top, details below), filtered like the map and sorted as chosen. Realtime, so no
 /// pull-to-refresh. Tapping a post opens it on the map. Every state scrolls under the large title, with the live
 /// count and the active filters as removable chips at the top of the content, so the title never disappears.
+/// iPhone: one column up to 600 pt. iPad (regular width, standard text sizes): a grid of 2-3 columns across the
+/// screen, lined up with the large title.
 struct FeedScreen: View {
     let viewModel: FeedViewModel
     let onPostFood: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var showsGrid: Bool {
+        horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize
+    }
 
     var body: some View {
         @Bindable var viewModel = viewModel
@@ -17,14 +25,18 @@ struct FeedScreen: View {
                     header
                     content
                 }
-                .padding(.horizontal, Theme.Spacing.lg)
+                .padding(.horizontal, showsGrid ? 0 : Theme.Spacing.lg)
+                // iPad: the system's margins, so the cards line up with the large title.
+                .scenePadding(showsGrid ? .horizontal : [])
                 .padding(.top, Theme.Spacing.xs)
                 // Room so the last card can scroll clear of the Post food button.
                 .padding(.bottom, Theme.Spacing.xxl * 3)
-                .frame(maxWidth: 600)
+                .frame(maxWidth: showsGrid ? .infinity : 600)
                 .frame(maxWidth: .infinity)
             }
             .scrollBounceBehavior(.basedOnSize)
+            // Centered in the visible area (like Blocked people), not in the scrolling content.
+            .overlay { emptyState }
             .animation(reduceMotion ? .easeOut(duration: 0.2) : .snappy, value: viewModel.posts.map(\.id))
             .animation(reduceMotion ? .easeOut(duration: 0.2) : .snappy, value: viewModel.chips)
             .navigationTitle("Free food")
@@ -49,6 +61,7 @@ struct FeedScreen: View {
     /// Live count (with posts on screen), the retry banner and the filter chips.
     @ViewBuilder
     private var header: some View {
+        RuntimeNotices()
         if viewModel.content == .posts {
             LiveCountLabel(count: viewModel.posts.count)
         }
@@ -65,50 +78,72 @@ struct FeedScreen: View {
 
     @ViewBuilder
     private var content: some View {
+        if viewModel.content == .posts { cards }
+    }
+
+    /// Loading and the empty states, over the scroll view so they sit in the middle of the screen while the title
+    /// and the filter chips stay in place.
+    @ViewBuilder
+    private var emptyState: some View {
         switch viewModel.content {
         case .loading:
             ProgressView("Loading free food...")
-                .frame(maxWidth: .infinity)
-                .containerRelativeFrame(.vertical) { height, _ in height * 0.6 }
         case .failed:
-            centered(EmptyState(icon: "wifi.exclamationmark", title: "Couldn't load posts",
-                                message: "We'll keep trying. Check your connection."))
+            EmptyState(icon: "wifi.exclamationmark", title: "Couldn't load posts",
+                       message: "We'll keep trying. Check your connection.")
         case .empty:
-            centered(EmptyState(icon: "fork.knife", title: "Nothing posted",
-                                message: "No free food right now. Check back soon."))
+            EmptyState(icon: "fork.knife", title: "Nothing posted",
+                       message: "No free food right now. Check back soon.")
         case .allHidden:
-            centered(EmptyState(icon: "line.3.horizontal.decrease", title: "Nothing matches your filters",
-                                message: viewModel.hiddenFooter ?? "", actionTitle: "Clear filters",
-                                action: viewModel.clearFilters))
+            EmptyState(icon: "line.3.horizontal.decrease", title: "Nothing matches your filters",
+                       message: viewModel.hiddenFooter ?? "", actionTitle: "Clear filters",
+                       action: viewModel.clearFilters)
         case .posts:
-            cards
+            EmptyView()
         }
     }
 
-    /// An empty state in the middle of the visible area, inside the scroll view so the title stays.
-    private func centered(_ state: EmptyState) -> some View {
-        state.containerRelativeFrame(.vertical) { height, _ in height * 0.6 }
+    @ViewBuilder
+    private var cards: some View {
+        if showsGrid {
+            VStack(spacing: Theme.Spacing.lg) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 320), spacing: Theme.Spacing.lg, alignment: .top)],
+                          spacing: Theme.Spacing.lg) {
+                    cardButtons
+                }
+                hiddenFooter
+            }
+        } else {
+            LazyVStack(spacing: Theme.Spacing.lg) {
+                cardButtons
+                hiddenFooter
+            }
+        }
     }
 
-    private var cards: some View {
-        LazyVStack(spacing: Theme.Spacing.lg) {
-            ForEach(viewModel.posts) { post in
-                Button {
-                    viewModel.open(post)
-                } label: {
-                    PostFeedCard(post: post, distanceText: viewModel.distanceText(to: post), images: viewModel.images)
-                }
-                .buttonStyle(FeedCardButtonStyle())
-                .accessibilityHint("Opens on the map with details and directions")
-                .transition(.opacity.combined(with: .scale(scale: 0.97)))
+    private var cardButtons: some View {
+        ForEach(viewModel.posts) { post in
+            Button {
+                viewModel.open(post)
+            } label: {
+                // In the grid every title keeps two lines, so the cards in a row are the same height.
+                PostFeedCard(post: post, distanceText: viewModel.distanceText(to: post), images: viewModel.images,
+                             reservesTitleLines: showsGrid)
             }
-            if let hidden = viewModel.hiddenFooter {
-                Text(hidden)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, Theme.Spacing.sm)
-            }
+            .buttonStyle(FeedCardButtonStyle())
+            .accessibilityHint("Opens on the map with details and directions")
+            .transition(.opacity.combined(with: .scale(scale: 0.97)))
+        }
+    }
+
+    @ViewBuilder
+    private var hiddenFooter: some View {
+        if let hidden = viewModel.hiddenFooter {
+            Text(hidden)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.top, Theme.Spacing.sm)
         }
     }
 }
@@ -144,15 +179,4 @@ private struct FeedCardButtonStyle: ButtonStyle {
             .opacity(configuration.isPressed ? 0.85 : 1)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
-}
-
-#Preview {
-    let session = MainSession.preview
-    FeedScreen(viewModel: session.feed, onPostFood: {})
-}
-
-#Preview("AX5") {
-    let session = MainSession.preview
-    FeedScreen(viewModel: session.feed, onPostFood: {})
-        .dynamicTypeSize(.accessibility5)
 }

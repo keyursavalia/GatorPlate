@@ -1,141 +1,100 @@
 import SwiftUI
 
-/// First launch (and after a Terms update): a live campus map preview (`WelcomeCampusHero`) with the app tile across
-/// its bottom edge, the name and tagline, three short feature rows, then "Agree & continue". No account needed;
-/// accepting starts a guest session.
+/// First launch (and after a Terms update): a live campus map preview (`WelcomeCampusHero`) running edge to edge
+/// under the status bar and fading into the page, the app tile across its bottom edge, the name and tagline, the
+/// feature cards (`WelcomeFeatureCarousel`), then "Agree & continue". No account needed; accepting starts a guest
+/// session. On iPad (regular width, standard text sizes) the cards are larger and centered in the space between the
+/// tagline and the footer, and the footer is sized for a tablet; iPhone and accessibility sizes keep the stacked
+/// layout.
 struct WelcomeTermsView: View {
     let onAgree: () -> Void
-
-    private struct Feature: Identifiable {
-        let id: String
-        let icon: String
-        let title: String
-        let detail: String
-        let tint: Color
-    }
-
-    private let features = [
-        Feature(id: "browse", icon: "map.fill", title: "Live campus map",
-                detail: "See free food right now. No account needed.", tint: Theme.Palette.success),
-        Feature(id: "alerts", icon: "bell.badge.fill", title: "Alerts you choose",
-                detail: "Get notified only for the food you care about.", tint: Theme.Palette.brandPurple),
-        Feature(id: "safety", icon: "exclamationmark.shield.fill", title: "Eat smart",
-                detail: "Eat at your own risk; ask about allergens.",
-                tint: Theme.Palette.warning),
-    ]
 
     @State private var hasAppeared = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     /// The app tile's side; half of it overlaps the map.
     private static let tileSize: CGFloat = 96
 
+    /// iPad-sized layout: regular width and a standard text size.
+    private var isRegular: Bool {
+        horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.xl) {
-                VStack(spacing: Theme.Spacing.md) {
-                    WelcomeCampusHero()
-                        .containerRelativeFrame(.vertical) { height, _ in
-                            height * (dynamicTypeSize.isAccessibilitySize ? 0.2 : 0.33)
+        // Read before the scroll view ignores the top safe area: the hero runs under the status bar and keeps its
+        // notification below it.
+        GeometryReader { proxy in
+            let topInset = proxy.safeAreaInsets.top
+            ScrollView {
+                Group {
+                    if isRegular {
+                        // The cards sit centered between the tagline and the footer instead of leaving a gap above
+                        // the footer; taller than the screen (landscape), it scrolls like the iPhone layout.
+                        VStack(spacing: 0) {
+                            heroAndBrand(topInset: topInset, height: proxy.size.height)
+                            Spacer(minLength: Theme.Spacing.xl)
+                            carousel(maxWidth: 640)
+                            Spacer(minLength: Theme.Spacing.xl)
                         }
-                    brand
-                        .padding(.top, -Self.tileSize / 2 - Theme.Spacing.lg)
-                }
-                .padding(.top, Theme.Spacing.sm)
-                VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                    ForEach(Array(features.enumerated()), id: \.element.id) { index, feature in
-                        FeatureRow(icon: feature.icon, title: feature.title, detail: feature.detail,
-                                   tint: feature.tint)
-                            .opacity(hasAppeared ? 1 : 0)
-                            .offset(y: hasAppeared || reduceMotion ? 0 : 16)
-                            .animation(reduceMotion ? .easeOut(duration: 0.3)
-                                                    : .spring(duration: 0.5).delay(0.12 * Double(index + 1)),
-                                       value: hasAppeared)
+                        .frame(minHeight: proxy.size.height + topInset - Theme.Spacing.xl)
+                    } else {
+                        VStack(spacing: Theme.Spacing.xl) {
+                            heroAndBrand(topInset: topInset, height: proxy.size.height)
+                            carousel(maxWidth: 500)
+                        }
                     }
                 }
-                .padding(.horizontal, Theme.Spacing.sm)
+                .padding(.bottom, Theme.Spacing.xl)
             }
-            .padding(.horizontal, Theme.Spacing.lg)
-            .padding(.bottom, Theme.Spacing.xl)
-            .frame(maxWidth: 500)
-            .frame(maxWidth: .infinity)
+            .scrollBounceBehavior(.basedOnSize)
+            .ignoresSafeArea(edges: .top)
         }
-        .scrollBounceBehavior(.basedOnSize)
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: Theme.Spacing.lg) {
                 LegalFootnote(lead: "By tapping Agree & continue, I agree to")
+                // On iPad the line has room for one row; the button keeps a tablet width rather than the card's.
                 PrimaryButton(title: "Agree & continue", action: onAgree)
                     .textCase(.uppercase)
+                    .frame(maxWidth: isRegular ? 420 : .infinity)
             }
             .padding(.horizontal, Theme.Spacing.xl)
             .padding(.vertical, Theme.Spacing.lg)
-            .frame(maxWidth: 500)
+            .frame(maxWidth: isRegular ? 640 : 500)
             .frame(maxWidth: .infinity)
             .background(.background)
         }
         .onAppear { hasAppeared = true }
     }
 
-    /// App mark on a brand gradient tile (across the map's faded edge), the name and the tagline.
+    /// The campus map preview with the app tile, name and tagline across its faded bottom edge.
+    private func heroAndBrand(topInset: CGFloat, height: CGFloat) -> some View {
+        VStack(spacing: Theme.Spacing.md) {
+            WelcomeCampusHero(topInset: topInset)
+                .frame(height: topInset + height * (dynamicTypeSize.isAccessibilitySize ? 0.22 : 0.36))
+            brand
+                .padding(.top, -Self.tileSize / 2 - Theme.Spacing.lg)
+                .padding(.horizontal, Theme.Spacing.lg)
+        }
+    }
+
+    /// The feature cards, rising in after the hero.
+    private func carousel(maxWidth: CGFloat) -> some View {
+        WelcomeFeatureCarousel()
+            .frame(maxWidth: maxWidth)
+            .opacity(hasAppeared ? 1 : 0)
+            .offset(y: hasAppeared || reduceMotion ? 0 : 24)
+            .animation(reduceMotion ? .easeOut(duration: 0.3) : .spring(duration: 0.6).delay(0.2),
+                       value: hasAppeared)
+    }
+
+    /// The app logo tile (across the map's faded edge), the name and the tagline.
     private var brand: some View {
         VStack(spacing: Theme.Spacing.lg) {
-            Image(systemName: "fork.knife")
-                .font(.system(size: 44, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: Self.tileSize, height: Self.tileSize)
-                .background(
-                    LinearGradient(colors: [Theme.Palette.brandPurple, Theme.Palette.brandPurple.opacity(0.7)],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing),
-                    in: .rect(cornerRadius: 24))
+            AppLogoTile(size: Self.tileSize, cornerRadius: 24)
                 .shadow(color: Theme.Palette.brandPurple.opacity(0.35), radius: 16, y: 8)
-                .accessibilityHidden(true)
             AuthHeader(title: AppConfig.appName, subtitle: "Free food on campus, found fast.")
         }
     }
-}
-
-/// One welcome point: a tinted icon tile, a bold title and a short line, with no card behind it so the page stays
-/// light. Stacks the icon above the text at accessibility sizes. Read by VoiceOver as one element.
-private struct FeatureRow: View {
-    let icon: String
-    let title: String
-    let detail: String
-    let tint: Color
-
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .title3) private var tile: CGFloat = 44
-
-    var body: some View {
-        let layout = dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.md))
-            : AnyLayout(HStackLayout(alignment: .top, spacing: Theme.Spacing.lg))
-        layout {
-            Image(systemName: icon)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(tint)
-                .frame(width: tile, height: tile)
-                .background(tint.opacity(0.15), in: .rect(cornerRadius: 12))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                Text(title)
-                    .font(.headline)
-                Text(detail)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-#Preview {
-    WelcomeTermsView(onAgree: {})
-}
-
-#Preview("AX5") {
-    WelcomeTermsView(onAgree: {}).dynamicTypeSize(.accessibility5)
 }

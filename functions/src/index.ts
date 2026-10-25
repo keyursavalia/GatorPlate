@@ -15,7 +15,14 @@ import {
   recipientIds,
 } from "./recipients.js";
 import { alertSubtitle } from "./filters.js";
+import { passesPostChecks } from "./post-checks.js";
 
+export { onAdminActionCreated } from "./adminActions.js";
+export { syncAdminClaim } from "./adminClaim.js";
+export { aiHealthCheck } from "./aiHealth.js";
+export { onAppealWritten } from "./appeals.js";
+export { onProfileEmailSet } from "./banHolds.js";
+export { onBlockCreated } from "./blocks.js";
 export { deleteAccount } from "./deleteAccount.js";
 export { onReportCreated } from "./moderation.js";
 
@@ -25,12 +32,14 @@ initializeApp();
 const ALERT_MARKER_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 /**
- * New post -> one alert per opted-in device whose owner's filters match, except the author's. Payload: title,
- * a subtitle of post facts (the same for everyone), the post title, and `postId` only.
+ * New post -> the content filter and photo screening (`post-checks.ts`; a failing post is removed and alerts no
+ * one), then one alert per opted-in device whose owner's filters match, except the author's and people who blocked
+ * the author. Payload: title, a subtitle of post facts (the same for everyone), the post title, and `postId` only.
  * Runs in us-central1 to match the Firestore location (nam5). Logs counts only, never IDs or content.
  */
 export const onPostCreated = onDocumentCreated(
-  { document: "posts/{postId}", region: "us-central1", retry: false },
+  // Photo screening downloads up to 4 photos and waits for one AI call.
+  { document: "posts/{postId}", region: "us-central1", retry: false, memory: "512MiB", timeoutSeconds: 60 },
   async (event) => {
     const post = event.data?.data();
     const postId = event.params.postId;
@@ -60,18 +69,28 @@ export const onPostCreated = onDocumentCreated(
       throw error;
     }
 
-    const [subscribersSnapshot, authorSnapshot] = await Promise.all([
+    // Checked after the marker so a duplicate delivery never screens twice; before alerts so a flagged post never
+    // alerts anyone.
+    if (!(await passesPostChecks(postId, post))) return;
+
+    const [subscribersSnapshot, authorSnapshot, blockersSnapshot] = await Promise.all([
       db.collection("users")
         .where("notificationsEnabled", "==", true)
         .select("notificationsEnabled", "fcmInstallationId", "quietHoursEnabled", "alertFilters")
         .get(),
       authorUid ? db.collection("users").doc(authorUid).get() : Promise.resolve(null),
+      // People who blocked the author never get alerts for their posts.
+      authorUid ? db.collection("blocks").where("blockedUid", "==", authorUid).select("blockerUid").get()
+        : Promise.resolve(null),
     ]);
     const subscribers: Subscriber[] = subscribersSnapshot.docs.map((doc) => ({ uid: doc.id, ...doc.data() }));
+    const blockers = new Set((blockersSnapshot?.docs ?? [])
+      .map((doc) => doc.get("blockerUid"))
+      .filter((uid): uid is string => typeof uid === "string"));
     const { ids, filteredOut } = recipientIds(subscribers, post, authorUid,
-      authorSnapshot?.get("fcmInstallationId"), new Date());
+      authorSnapshot?.get("fcmInstallationId"), new Date(), blockers);
     if (ids.length === 0) {
-      logger.info("No alert recipients", { postId, subscribers: subscribers.length, filteredOut });
+      logger.info("No alert recipients", { postId, subscribers: subscribers.length, filteredOut, blockers: blockers.size });
       return;
     }
     const subtitle = alertSubtitle(post);

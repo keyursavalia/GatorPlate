@@ -1,5 +1,6 @@
 import Foundation
 
+#if DEBUG
 @MainActor
 final class MockRoutingService: RoutingService {
     private(set) var openedInMaps: [Coordinate] = []
@@ -8,3 +9,4 @@ final class MockRoutingService: RoutingService {
         openedInMaps.append(destination)
     }
 }
+#endif

@@ -173,6 +173,7 @@ struct MapScreen: View {
                     .frame(maxWidth: .infinity)
                     .transition(.opacity)
             }
+            RuntimeNotices(isGlass: true)
             VStack(spacing: Theme.Spacing.sm) {
                 // One sheet at a time: hidden while a post's sheet is open.
                 if viewModel.selectedPost == nil {
@@ -242,9 +243,4 @@ struct MapScreen: View {
                 if !isPresented { viewModel.selectedPostId = nil }
             })
     }
-}
-
-#Preview("On campus") {
-    let session = MainSession.preview
-    MapScreen(viewModel: session.map, permissions: session.permissions, onPostFood: {})
 }

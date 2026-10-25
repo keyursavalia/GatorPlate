@@ -10,7 +10,7 @@ extension FirebaseNotificationService {
         center.removeDeliveredNotifications(withIdentifiers: [notificationId])
         center.getDeliveredNotifications { notifications in
             let ids = notifications
-                .filter { Self.postId(from: $0.request.content.userInfo) == postId }
+                .filter { NotificationTap.postId(from: $0.request.content.userInfo) == postId }
                 .map(\.request.identifier)
             if !ids.isEmpty { UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids) }
         }
@@ -22,7 +22,7 @@ extension FirebaseNotificationService {
     /// "present" / "missing" / "rejected", never the ID itself.
     nonisolated static func postIdCheck(_ userInfo: [AnyHashable: Any]) -> String {
         guard userInfo[AppConfig.notificationPostIdKey] != nil else { return "missing" }
-        return postId(from: userInfo) == nil ? "rejected" : "present"
+        return NotificationTap.postId(from: userInfo) == nil ? "rejected" : "present"
     }
 }
 
@@ -43,7 +43,7 @@ extension FirebaseNotificationService: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping () -> Void) {
         let request = response.notification.request
         let userInfo = request.content.userInfo
-        let postId = Self.postId(from: userInfo)
+        let tap = NotificationTap.parse(userInfo)
         let check = Self.postIdCheck(userInfo)
         let notificationId = request.identifier
         // With the proxy off, FCM learns about the open from here (delivery metrics only).
@@ -51,7 +51,7 @@ extension FirebaseNotificationService: UNUserNotificationCenterDelegate {
         let complete = UncheckedSendable(completionHandler)
         Task { @MainActor in
             Logger.ui.info("Alert postId \(check, privacy: .public)")
-            didOpenNotification(postId: postId, notificationId: notificationId)
+            didOpenNotification(tap, notificationId: notificationId)
             complete.value()
         }
     }

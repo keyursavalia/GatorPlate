@@ -1,0 +1,109 @@
+{
+  "parameters": {
+    "moderation_ai_enabled": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "AI for unsafe-report checks and photo screening. false: unsafe reports count toward the pool; photos aren't screened.",
+      "valueType": "BOOLEAN"
+    },
+    "moderation_ai_model_name": {
+      "defaultValue": {
+        "value": "gemini-3.6-flash"
+      },
+      "description": "First Gemini model for moderation (Agent Platform / Vertex AI API). Must match gemini-[a-z0-9.-].",
+      "valueType": "STRING"
+    },
+    "moderation_ai_fallback_model_names": {
+      "defaultValue": {
+        "value": "[\"gemini-3.8-flash\"]"
+      },
+      "description": "Moderation models tried in order when one is retired. JSON array, max 4.",
+      "valueType": "JSON"
+    },
+    "moderation_ai_location": {
+      "defaultValue": {
+        "value": "global"
+      },
+      "description": "Agent Platform location for moderation calls, e.g. global or us-central1.",
+      "valueType": "STRING"
+    },
+    "moderation_ai_timeout_ms": {
+      "defaultValue": {
+        "value": "20000"
+      },
+      "description": "Total deadline for one moderation AI call, 5000-45000 ms (clamped). A timeout never removes a post.",
+      "valueType": "NUMBER"
+    },
+    "unsafe_confidence_min": {
+      "defaultValue": {
+        "value": "0.7"
+      },
+      "description": "An unsafe report removes the post only at or above this AI confidence, 0.5-0.99.",
+      "valueType": "NUMBER"
+    },
+    "report_removal_threshold": {
+      "defaultValue": {
+        "value": "3"
+      },
+      "description": "Distinct counting reports that remove a post, 2-10.",
+      "valueType": "NUMBER"
+    },
+    "strike_window_days": {
+      "defaultValue": {
+        "value": "30"
+      },
+      "description": "Removals count toward a posting pause for this many days, 7-90.",
+      "valueType": "NUMBER"
+    },
+    "ban_after_removals": {
+      "defaultValue": {
+        "value": "4"
+      },
+      "description": "Removals within the window that pause posting, 2-10.",
+      "valueType": "NUMBER"
+    },
+    "ban_days": {
+      "defaultValue": {
+        "value": "7"
+      },
+      "description": "Length of a posting pause, 1-30 days.",
+      "valueType": "NUMBER"
+    },
+    "photo_screening_enabled": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "Screen photos of every published post with Gemini before alerts. AI failure keeps the post.",
+      "valueType": "BOOLEAN"
+    },
+    "photo_screening_confidence_min": {
+      "defaultValue": {
+        "value": "0.8"
+      },
+      "description": "A screened photo removes the post only at or above this confidence, 0.5-0.99.",
+      "valueType": "NUMBER"
+    },
+    "block_admin_alert_threshold": {
+      "defaultValue": {
+        "value": "3"
+      },
+      "description": "Admins get one push once a poster is blocked by this many people, 1-50.",
+      "valueType": "NUMBER"
+    },
+    "admin_uids": {
+      "defaultValue": {
+        "value": "[\"gbHzRCvpr2elR5750jtWbrCnqOf1\"]"
+      },
+      "description": "Firebase uids that get admin pushes (offensive reports, appeals, blocks, AI health). JSON array, max 10.",
+      "valueType": "JSON"
+    },
+    "ai_health_check_enabled": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "Daily 8 AM check that the configured Gemini models still exist; pushes the admins if not.",
+      "valueType": "BOOLEAN"
+    }
+  }
+}

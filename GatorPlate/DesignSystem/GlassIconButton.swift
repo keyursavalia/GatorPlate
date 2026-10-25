@@ -19,9 +19,3 @@ struct GlassIconButton: View {
         .accessibilityHint(accessibilityHint)
     }
 }
-
-#Preview {
-    GlassIconButton(systemImage: "location", accessibilityLabel: "Recenter map") {}
-        .padding()
-        .background(.teal.gradient)
-}

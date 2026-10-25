@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Settings: profile card (opens Account) or, for guests, a Join / Sign in card; notifications (custom notifications
-/// and quiet hours only while notifications are on); location; display; privacy and legal; about; sign out for accounts.
+/// and quiet hours only while notifications are on); location; display; safety (blocked people); privacy and legal;
+/// help and support; about; sign out for accounts.
 struct SettingsView: View {
     let session: MainSession
     let authSession: AuthSession
@@ -15,9 +16,11 @@ struct SettingsView: View {
     let onDeleteAccount: (String) async throws -> Void
 
     @State private var openDocument: LegalDocument.Kind?
+    @State private var showsSupport = false
     @State private var isConfirmingSignOut = false
     @AppStorage(ReviewViewModel.showCaloriesKey) private var showCalories = true
     @Environment(\.openURL) private var openURL
+    @Environment(\.appEnvironment) private var environment
 
     private var viewModel: SettingsViewModel { session.settings }
     private var profile: UserProfile { authSession.profile }
@@ -45,6 +48,20 @@ struct SettingsView: View {
                         ListRow(title: "Show calorie estimates", systemImage: "flame")
                     }
                 }
+                if session.adminAccess.isAdmin {
+                    Section("Admin") {
+                        NavigationLink(value: AppNavigation.SettingsRoute.moderation) {
+                            ListRow(title: "Moderation", systemImage: "shield.lefthalf.filled",
+                                    subtitle: "Reports and appeals to review")
+                        }
+                    }
+                }
+                Section("Safety") {
+                    NavigationLink { BlockedUsersView(blocked: session.blocked) } label: {
+                        ListRow(title: "Blocked people", systemImage: "hand.raised",
+                                value: session.blocked.users.isEmpty ? nil : String(session.blocked.users.count))
+                    }
+                }
                 Section("Privacy & legal") {
                     NavigationLink { PrivacyView() } label: {
                         ListRow(title: "Your privacy", systemImage: "hand.raised")
@@ -55,6 +72,10 @@ struct SettingsView: View {
                     NavigationLink { AboutView() } label: {
                         ListRow(title: "About GatorPlate", systemImage: "info.circle")
                     }
+                    Button { showsSupport = true } label: {
+                        ListRow(title: "Contact support", systemImage: "envelope", showsDisclosure: true)
+                    }
+                    .accessibilityHint("Choose an email app to write to the GatorPlate team")
                 }
                 if !authSession.isGuest {
                     Section {
@@ -73,10 +94,15 @@ struct SettingsView: View {
                     AlertFiltersView(settings: viewModel)
                 case .account:
                     AccountView(profile: profile, passwordReset: passwordReset, onDeleteAccount: onDeleteAccount)
+                case .moderation:
+                    AdminView(viewModel: session.admin)
                 }
             }
             .sheet(item: $openDocument) { kind in
                 LegalDocumentSheet(kind: kind) { openDocument = nil }
+            }
+            .sheet(isPresented: $showsSupport) {
+                ContactSupportSheet(email: environment.runtime.current.supportEmail)
             }
             .alert("Sign out of GatorPlate?", isPresented: $isConfirmingSignOut) {
                 Button("Sign out", role: .destructive, action: onSignOut)
@@ -227,29 +253,4 @@ struct SettingsView: View {
         guard let url = AppSettingsURL.url else { return }
         openURL(url)
     }
-}
-
-#Preview("Account") {
-    let session = MainSession.preview
-    SettingsView(session: session,
-                 authSession: AuthSession(profile: UserProfile(uid: "mock-uid", displayName: "Alex Gator",
-                                                               email: "alex@gmail.com", accountType: .student,
-                                                               orgName: nil, acceptedTermsVersion: nil,
-                                                               acceptedTermsAt: nil, notificationsEnabled: true,
-                                                               createdAt: .now),
-                                          isEmailVerified: true),
-                 isSigningOut: false, passwordReset: PasswordResetModel(account: MockAccountService()),
-                 onRequestAccount: { _ in }, onSignOut: {}, onDeleteAccount: { _ in })
-}
-
-#Preview("Guest") {
-    let session = MainSession.preview
-    SettingsView(session: session,
-                 authSession: AuthSession(profile: UserProfile(uid: "mock-uid", displayName: "Guest", email: nil,
-                                                               accountType: .guest, orgName: nil,
-                                                               acceptedTermsVersion: nil, acceptedTermsAt: nil,
-                                                               notificationsEnabled: false, createdAt: .now),
-                                          isEmailVerified: false),
-                 isSigningOut: false, passwordReset: PasswordResetModel(account: MockAccountService()),
-                 onRequestAccount: { _ in }, onSignOut: {}, onDeleteAccount: { _ in })
 }

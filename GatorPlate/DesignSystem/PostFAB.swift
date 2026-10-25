@@ -17,9 +17,3 @@ struct PostFAB: View {
         .accessibilityHint("Opens the camera to post leftover food")
     }
 }
-
-#Preview {
-    PostFAB {}
-        .padding()
-        .background(.teal.gradient)
-}

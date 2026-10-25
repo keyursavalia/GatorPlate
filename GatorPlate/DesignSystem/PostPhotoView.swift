@@ -99,8 +99,3 @@ struct PostPhotoView: View {
         withAnimation(.easeOut(duration: 0.2)) { image = loaded }
     }
 }
-
-#Preview {
-    PostPhotoView(source: nil, images: nil)
-        .frame(width: 120, height: 90)
-}

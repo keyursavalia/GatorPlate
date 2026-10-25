@@ -11,29 +11,42 @@ struct AppEnvironment {
     var routing: any RoutingService
     var notifications: any NotificationService
     var account: any AccountService
+    /// Remote Config settings (model names, kill switches, notices, update gates, filter lists).
+    var runtime: any RuntimeConfigProviding
+    var blocking: any BlockingService
+    var admin: any AdminService
 
-    static var live: AppEnvironment {
+    /// Built once, on first use (after `FirebaseApp.configure()` in `GatorPlateApp.init`).
+    static let live = makeLive()
+
+    private static func makeLive() -> AppEnvironment {
         let images = FirebaseStorageImageStore()
         let notifications = FirebaseNotificationService(
             registerForRemoteNotifications: AppDelegate.registerForRemoteNotifications,
             appState: AppDelegate.alertAppState)
         AppDelegate.deviceTokenHandler = { notifications.apnsTokenDidArrive($0) }
+        let runtime = FirebaseRuntimeConfig()
         return AppEnvironment(auth: FirebaseAuthService(), posts: FirestorePostService(images: images),
-                              analyzer: GeminiFoodAnalyzer(), location: CoreLocationProvider(),
+                              analyzer: GeminiFoodAnalyzer(runtime: runtime), location: CoreLocationProvider(),
                               images: images, camera: CameraService(), routing: MapKitRoutingService(),
-                              notifications: notifications, account: FirebaseAccountService())
+                              notifications: notifications, account: FirebaseAccountService(), runtime: runtime,
+                              blocking: FirestoreBlockingService(), admin: FirebaseAdminService())
     }
 
+    #if DEBUG
     static var mock: AppEnvironment {
         let images = MockImageStore()
         return AppEnvironment(auth: MockAuthService(), posts: MockPostService(images: images),
                               analyzer: MockFoodAnalyzer(), location: MockLocationProvider(),
                               images: images, camera: MockCameraService(), routing: MockRoutingService(),
-                              notifications: MockNotificationService(), account: MockAccountService())
+                              notifications: MockNotificationService(), account: MockAccountService(),
+                              runtime: MockRuntimeConfig(), blocking: MockBlockingService(),
+                              admin: MockAdminService(isAdmin: false))
     }
+    #endif
 }
 
 extension EnvironmentValues {
-    /// Defaults to mocks so previews work; the app injects `.live`.
-    @Entry var appEnvironment: AppEnvironment = .mock
+    /// The app injects `.live` at the root; the default is the same instance.
+    @Entry var appEnvironment: AppEnvironment = .live
 }

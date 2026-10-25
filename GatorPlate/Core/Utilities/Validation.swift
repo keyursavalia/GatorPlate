@@ -1,9 +1,9 @@
 import Foundation
 
 nonisolated enum Validation {
+    /// Any domain is allowed: email verification is the gate.
     enum EmailIssue {
         case invalidFormat
-        case domainNotAllowed
     }
 
     /// Trims whitespace and lowercases.
@@ -17,8 +17,11 @@ nonisolated enum Validation {
         guard email.count <= AppConfig.maxEmailLength,
               parts.count == 2,
               !parts[0].isEmpty,
-              !email.contains(where: \.isWhitespace) else { return .invalidFormat }
-        return AppConfig.allowedEmailDomains.contains(String(parts[1])) ? nil : .domainNotAllowed
+              !email.contains(where: \.isWhitespace),
+              parts[1].contains("."),
+              !parts[1].hasPrefix("."),
+              !parts[1].hasSuffix(".") else { return .invalidFormat }
+        return nil
     }
 
     /// The inline message for an email field, or nil when it's fine (Sign in, Create account, Forgot password).
@@ -26,8 +29,6 @@ nonisolated enum Validation {
         if raw.trimmingCharacters(in: .whitespaces).isEmpty { return "Email is required." }
         switch emailIssue(raw) {
         case .invalidFormat: return "Enter a valid email address."
-        case .domainNotAllowed:
-            return "Use an email ending in \(AppConfig.allowedEmailDomains.joined(separator: ", "))."
         case nil: return nil
         }
     }
@@ -41,6 +42,9 @@ nonisolated enum Validation {
     /// A new password that misses a rule (from the app or Firebase's policy).
     static let weakPasswordMessage = "Use at least \(AppConfig.minPasswordLength) characters with an uppercase letter, "
         + "a lowercase letter, a number and a symbol."
+
+    /// A display or organization name with a word the content filter blocks (names are public on every post).
+    static let blockedNameMessage = "Choose a different name."
 
     static func trimmedName(_ raw: String) -> String {
         raw.trimmingCharacters(in: .whitespacesAndNewlines)

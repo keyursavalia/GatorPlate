@@ -24,14 +24,6 @@ protocol PostService {
     func postingBan() async -> PostingBan?
 }
 
-extension PostService {
-    /// Firestore-style ID: 20 alphanumeric characters (also what `storage.rules` accepts).
-    static func randomPostId() -> String {
-        let alphabet = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
-        return String((0..<20).compactMap { _ in alphabet.randomElement() })
-    }
-}
-
 /// The published post plus how many of the chosen photos made it (the success screen says "2 of 3 photos").
 nonisolated struct PublishResult: Equatable, Sendable {
     var post: FoodPost

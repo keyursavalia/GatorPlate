@@ -6,14 +6,27 @@ import OSLog
 
 /// Live food analysis: Gemini through Firebase AI Logic (Gemini Developer API backend, App Check enforced).
 /// The request carries only the stripped JPEGs (each labeled "Photo N:") and fixed instruction text, never user identity.
+/// Model name, fallbacks, thinking level and limits come from Remote Config (`RuntimeConfig`), read once per analysis.
+/// A retired model moves to the next one in the chain (`GeminiModelChain`); when all fail, the user fills the post in.
 @MainActor
 final class GeminiFoodAnalyzer: FoodAnalyzing {
-    private(set) var lastDiagnostics: FoodAnalysisDiagnostics?
-    /// Created on first use, after `FirebaseApp.configure()`.
+    private let runtime: any RuntimeConfigProviding
+    private let modelMemory = GeminiModelMemory()
+    /// Created on first use (after `FirebaseApp.configure()`) and rebuilt when its settings change.
     private var model: GenerativeModel?
+    private var modelKey: ModelKey?
     private var isAnalyzing = false
 
     private static let maxAttempts = 2
+
+    /// The settings a `GenerativeModel` is built with.
+    private struct ModelKey: Equatable {
+        let name: String
+        let thinking: AIThinkingLevel
+        let temperature: Double
+        let maxOutputTokens: Int
+        let timeoutSeconds: Int
+    }
 
     private enum AttemptResult {
         case decoded(RawFoodAnalysis)
@@ -24,7 +37,15 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
         /// token after a failed refresh; a forced refresh and one retry fixes it.
         case unauthenticated(category: String)
         case fatal(AppError, category: String)
+        /// The model is retired or unknown: try the next model in the chain.
+        case modelUnavailable(category: String)
+        /// The model rejected the thinking config: retry once without one.
+        case thinkingRejected
         case cancelled
+    }
+
+    init(runtime: any RuntimeConfigProviding) {
+        self.runtime = runtime
     }
 
     private struct AnalysisTimeout: Error {}
@@ -46,32 +67,61 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
         Logger.services.debug("AI request images metadata clean: \(clean, privacy: .public), count: \(photos.count, privacy: .public)")
         #endif
 
+        // One snapshot per analysis; a publish mid-request applies to the next one.
+        let config = runtime.current
+        var chain = modelMemory.chain(for: config)
+        var thinking = config.aiThinkingLevel
+        let deadlineSeconds = FoodAnalysisDeadline.seconds(photoCount: photos.count, base: config.aiTimeoutSeconds,
+                                                           max: config.aiMaxTimeoutSeconds)
         let start = ContinuousClock.now
+        /// Requests sent (logged); `attempt` is the retry budget, which model fallbacks don't use up.
+        var requests = 0
         var attempt = 0
         while true {
             attempt += 1
-            let result = await runAttempt(photos)
+            requests += 1
+            let key = ModelKey(name: chain.current, thinking: thinking, temperature: config.aiTemperature,
+                               maxOutputTokens: config.aiMaxOutputTokens, timeoutSeconds: config.aiMaxTimeoutSeconds)
+            let result = await runAttempt(photos, model: generativeModel(for: key), deadlineSeconds: deadlineSeconds)
+            let modelName = chain.current
             switch result {
             case .decoded(let raw):
+                modelMemory.markWorking(chain)
                 let outcome = FoodAnalysisSanitizer.sanitize(raw, photoCount: photos.count,
                                                              promptVersion: FoodAnalysisPrompt.promptVersion,
-                                                             modelName: AppConfig.geminiModelName)
-                finish(start: start, attempts: attempt, category: Self.category(for: outcome), raw: raw,
-                       photoCount: photos.count)
+                                                             modelName: modelName, minConfidence: config.aiMinConfidence)
+                finish(start: start, attempts: requests, category: Self.category(for: outcome), model: modelName)
                 logDietaryOverride(outcome: outcome, raw: raw)
                 return outcome
             case .blocked:
-                finish(start: start, attempts: attempt, category: "safety_blocked")
+                modelMemory.markWorking(chain)
+                finish(start: start, attempts: requests, category: "safety_blocked", model: modelName)
                 return .rejected(.notFood)
             case .cancelled:
-                finish(start: start, attempts: attempt, category: "cancelled")
+                finish(start: start, attempts: requests, category: "cancelled", model: modelName)
                 throw .cancelled
             case .fatal(let error, let category):
-                finish(start: start, attempts: attempt, category: category)
+                finish(start: start, attempts: requests, category: category, model: modelName)
                 throw error
+            case .modelUnavailable(let category):
+                // Doesn't use up the retry budget, but stays inside one deadline's worth of time.
+                let withinDeadline = start.duration(to: .now) < .seconds(deadlineSeconds)
+                guard withinDeadline, chain.advance() else {
+                    finish(start: start, attempts: requests, category: category, model: modelName)
+                    throw .aiUnavailable
+                }
+                Logger.services.notice("AI model fallback: \(modelName, privacy: .public) -> \(chain.current, privacy: .public)")
+                attempt -= 1
+            case .thinkingRejected:
+                guard thinking != .off, attempt < Self.maxAttempts else {
+                    finish(start: start, attempts: requests, category: "thinking_rejected", model: modelName)
+                    throw .aiUnavailable
+                }
+                Logger.services.notice("AI thinking config rejected by \(modelName, privacy: .public); retrying without it")
+                thinking = .off
             case .unauthenticated(let category):
                 guard attempt < Self.maxAttempts else {
-                    finish(start: start, attempts: attempt, category: category)
+                    finish(start: start, attempts: requests, category: category, model: modelName)
                     throw .aiUnavailable
                 }
                 Logger.services.notice("AI attempt \(attempt, privacy: .public) failed: \(category, privacy: .public); refreshing App Check and retrying")
@@ -79,14 +129,14 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
                 Logger.services.notice("App Check refresh before retry: \(refreshed ? "ok" : "failed", privacy: .public)")
             case .retryable(let category):
                 guard attempt < Self.maxAttempts else {
-                    finish(start: start, attempts: attempt, category: category)
+                    finish(start: start, attempts: requests, category: category, model: modelName)
                     throw .aiUnavailable
                 }
                 Logger.services.notice("AI attempt \(attempt, privacy: .public) failed: \(category, privacy: .public); retrying")
                 do {
                     try await Task.sleep(for: .seconds(AppConfig.aiRetryDelaySeconds))
                 } catch {
-                    finish(start: start, attempts: attempt, category: "cancelled")
+                    finish(start: start, attempts: requests, category: "cancelled", model: modelName)
                     throw .cancelled
                 }
             }
@@ -96,11 +146,10 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
     // MARK: Request
 
     /// One user turn: "Photo 1:", image, "Photo 2:", image, ..., then the instruction.
-    private func runAttempt(_ photos: [Data]) async -> AttemptResult {
-        let model = generativeModel()
+    private func runAttempt(_ photos: [Data], model: GenerativeModel, deadlineSeconds: Int) async -> AttemptResult {
         let text: String?
         do {
-            text = try await Self.withTimeout(seconds: FoodAnalysisDeadline.seconds(photoCount: photos.count)) {
+            text = try await Self.withTimeout(seconds: deadlineSeconds) {
                 var parts: [any Part] = []
                 for (offset, jpeg) in photos.enumerated() {
                     parts.append(TextPart(FoodAnalysisPrompt.photoLabel(offset + 1)))
@@ -118,21 +167,33 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
         return .decoded(raw)
     }
 
-    private func generativeModel() -> GenerativeModel {
-        if let model { return model }
+    /// The cached model, rebuilt only when its settings change.
+    private func generativeModel(for key: ModelKey) -> GenerativeModel {
+        if let model, modelKey == key { return model }
         let config = GenerationConfig(
-            temperature: AppConfig.aiTemperature,
-            maxOutputTokens: AppConfig.aiMaxOutputTokens,
+            temperature: Float(key.temperature),
+            maxOutputTokens: key.maxOutputTokens,
             responseMIMEType: "application/json",
             responseSchema: FoodAnalysisSchema.response,
-            thinkingConfig: ThinkingConfig(thinkingLevel: AppConfig.aiThinkingMinimal ? .minimal : .low))
+            thinkingConfig: Self.thinkingConfig(key.thinking))
         let newModel = FirebaseAI.firebaseAI(backend: .googleAI()).generativeModel(
-            modelName: AppConfig.geminiModelName,
+            modelName: key.name,
             generationConfig: config,
             systemInstruction: ModelContent(role: "system", parts: FoodAnalysisPrompt.systemInstruction),
-            requestOptions: RequestOptions(timeout: TimeInterval(AppConfig.aiMaxTimeoutSeconds)))
+            requestOptions: RequestOptions(timeout: TimeInterval(key.timeoutSeconds)))
         model = newModel
+        modelKey = key
         return newModel
+    }
+
+    private static func thinkingConfig(_ level: AIThinkingLevel) -> ThinkingConfig? {
+        switch level {
+        case .minimal: ThinkingConfig(thinkingLevel: .minimal)
+        case .low: ThinkingConfig(thinkingLevel: .low)
+        case .medium: ThinkingConfig(thinkingLevel: .medium)
+        case .high: ThinkingConfig(thinkingLevel: .high)
+        case .off: nil
+        }
     }
 
     /// Races the request against a total deadline; `RequestOptions.timeout` alone is an idle timeout.
@@ -187,24 +248,25 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
         }
     }
 
-    /// Backend errors surface as `NSError` whose code is the HTTP status.
+    /// Backend errors surface as `NSError` whose code is the HTTP status (`GeminiBackendError`).
     private static func classifyUnderlying(_ error: any Error) -> AttemptResult {
         if let urlError = error as? URLError { return classify(urlError) }
         let nsError = error as NSError
-        guard nsError.domain.hasSuffix("BackendError") else {
-            return .fatal(.aiUnavailable, category: "unexpected_error")
-        }
-        if (400...499).contains(nsError.code) {
-            // The backend's explanation (e.g. App Check or API key problems); never contains the photo or prompt.
+        let kind = GeminiBackendError.classify(nsError)
+        if kind != .notBackend, (400...499).contains(nsError.code) {
+            // The backend's explanation (e.g. App Check, API key or model problems); never contains the photo or prompt.
             let reason = String(nsError.localizedDescription.prefix(300))
             Logger.services.error("AI backend \(nsError.code, privacy: .public): \(reason, privacy: .public)")
         }
-        switch nsError.code {
-        case 429: return .fatal(.aiBusy, category: "rate_limited")
-        case 401: return .unauthenticated(category: "forbidden_401")
-        case 403: return .fatal(.aiUnavailable, category: "forbidden_403")
-        case 500...599: return .retryable(category: "server_\(nsError.code)")
-        default: return .fatal(.aiUnavailable, category: "http_\(nsError.code)")
+        switch kind {
+        case .notBackend: return .fatal(.aiUnavailable, category: "unexpected_error")
+        case .modelUnavailable(let category): return .modelUnavailable(category: category)
+        case .thinkingRejected: return .thinkingRejected
+        case .rateLimited: return .fatal(.aiBusy, category: "rate_limited")
+        case .unauthenticated: return .unauthenticated(category: "forbidden_401")
+        case .forbidden: return .fatal(.aiUnavailable, category: "forbidden_403")
+        case .server(let code): return .retryable(category: "server_\(code)")
+        case .other(let code): return .fatal(.aiUnavailable, category: "http_\(code)")
         }
     }
 
@@ -224,17 +286,14 @@ final class GeminiFoodAnalyzer: FoodAnalyzing {
         }
     }
 
-    // MARK: Diagnostics (no content ever)
+    // MARK: Logs (no content ever)
 
-    private func finish(start: ContinuousClock.Instant, attempts: Int, category: String, raw: RawFoodAnalysis? = nil,
-                        photoCount: Int? = nil) {
+    /// One log line per analysis: outcome or error category, latency, requests sent and model.
+    private func finish(start: ContinuousClock.Instant, attempts: Int, category: String, model: String) {
         let latencyMs = Int(start.duration(to: .now) / .milliseconds(1))
-        lastDiagnostics = FoodAnalysisDiagnostics(latencyMs: latencyMs, attempts: attempts, category: category,
-                                                  modelDietary: raw?.overallDietary, modelConfidence: raw?.confidence,
-                                                  photoCount: photoCount)
         Logger.services.info("""
             AI analysis: \(category, privacy: .public) latencyMs=\(latencyMs, privacy: .public) \
-            attempts=\(attempts, privacy: .public) model=\(AppConfig.geminiModelName, privacy: .public) \
+            attempts=\(attempts, privacy: .public) model=\(model, privacy: .public) \
             prompt=\(FoodAnalysisPrompt.promptVersion, privacy: .public)
             """)
     }

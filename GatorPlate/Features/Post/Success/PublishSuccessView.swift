@@ -67,8 +67,3 @@ struct PublishSuccessView: View {
             : "\(result.uploadedPhotos) of \(result.requestedPhotos) photos uploaded."
     }
 }
-
-#Preview {
-    PublishSuccessView(result: PublishResult(post: .sample, requestedPhotos: 2), photos: [],
-                       onViewMap: {}, onDone: {})
-}

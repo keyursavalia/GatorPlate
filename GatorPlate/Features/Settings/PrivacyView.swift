@@ -16,22 +16,27 @@ struct PrivacyView: View {
         Entry(id: "guest", icon: "person.crop.circle.badge.questionmark", title: "Guest browsing",
               detail: "An anonymous ID. No name or email.", keep: "Until sign-up"),
         Entry(id: "account", icon: "person.crop.circle", title: "Your account",
-              detail: "Email, name and account type. Only needed to post.", keep: "Until deleted"),
+              detail: "Email and name. Only needed to post or report.", keep: "Until deleted"),
         Entry(id: "alerts", icon: "bell.badge", title: "Notification settings",
               detail: "What you want notifications about. Only you can read them.", keep: "Until changed"),
         Entry(id: "posts", icon: "fork.knife", title: "Posts and photos",
               detail: "Text, place, times and up to 4 food photos.", keep: "24 h after end"),
         Entry(id: "reports", icon: "flag", title: "Reports you send",
-              detail: "The post and your reason.", keep: "Until deleted"),
+              detail: "The post, its text and your reason, for a person to review.", keep: "90 days"),
+        Entry(id: "blocks", icon: "hand.raised", title: "People you block",
+              detail: "Who you blocked and their name. They aren't told.", keep: "Until unblocked"),
+        Entry(id: "appeals", icon: "envelope.open", title: "Appeals",
+              detail: "Your message if you appeal a posting pause.", keep: "Until pause ends"),
     ]
 
     private let notKept = [
         Entry(id: "location", icon: "location", title: "Your location",
-              detail: "Distances and routes, only while the app is open.", keep: "On device"),
+              detail: "Distances, only while the app is open.", keep: "On device"),
         Entry(id: "filters", icon: "line.3.horizontal.decrease", title: "Map and Feed filters",
               detail: "Stay on this phone. Never sent anywhere; removed if you delete your account.", keep: "On device"),
         Entry(id: "ai", icon: "sparkles", title: "AI drafts",
-              detail: "Food photos only. No location, name or account.", keep: "Not stored"),
+              detail: "Food photos only, through Firebase AI Logic. No location, name or account.",
+              keep: "Not stored"),
     ]
 
     private let promises = [
@@ -146,12 +151,4 @@ struct PrivacyView: View {
         .background(Theme.Palette.brandPurple.opacity(0.14), in: .capsule)
         .fixedSize()
     }
-}
-
-#Preview {
-    NavigationStack { PrivacyView() }
-}
-
-#Preview("AX5") {
-    NavigationStack { PrivacyView() }.dynamicTypeSize(.accessibility5)
 }

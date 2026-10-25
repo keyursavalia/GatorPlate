@@ -5,23 +5,32 @@ nonisolated enum AppConfig {
     static let appName = "GatorPlate"
 
     // Auth
-    static let allowedEmailDomains = ["gmail.com", "outlook.com", "icloud.com"]
     static let requireEmailVerification = true
-    static let termsVersion = "2026-10-demo-1"
+    /// Terms of Use and Privacy Policy version (both files carry it). A bump shows the Terms gate to everyone once.
+    static let termsVersion = "2026-11-2"
     static let minPasswordLength = 8
     static let maxNameLength = 60
     static let maxEmailLength = 254
-    /// Substituted for [TEAM NAME] / [CONTACT EMAIL] in the Terms. Empty keeps the bracketed placeholder visible.
-    static let teamName = ""
-    static let contactEmail = ""
+    /// Substituted for [TEAM NAME] in the Terms and Privacy Policy.
+    static let teamName = "KEYUR DIPAKBHAI SAVALIA"
+    /// About > "Developed by" (opens in the LinkedIn app when installed, else the browser).
+    static let developerProfileURL = URL(string: "https://www.linkedin.com/in/keyursavalia")
+    /// In-app default for Remote Config `support_email` (About > Contact support, [CONTACT EMAIL] in the legal text).
+    static let supportEmail = "contact@keyursavalia.com"
 
-    // AI (Firebase AI Logic)
-    /// 2026-10-14: switched from gemini-3.5-flash, which Google deprecated; 3.6 Flash is active.
-    /// Never hardcode the model name elsewhere.
-    static let geminiModelName = "gemini-3.6-flash"
-    /// `true` uses thinking level `.minimal` (faster; not supported on 3.7/3.8 Flash), `false` the default `.low`.
-    static let aiThinkingMinimal = false
-    static let aiTemperature: Float = 0.2
+    // Safety
+    /// Blocked people per user (`blocks` docs where `blockerUid` is the user).
+    static let maxBlockedUsers = 500
+
+    // AI (Firebase AI Logic). Every value below is the in-app default of a Remote Config key; what runs is
+    // `RuntimeConfig` (see `RuntimeConfig.Key` and docs/06-OPERATIONS.md).
+    /// In-app default only; `RuntimeConfig.aiModelName` is what runs. Never hardcode the model name elsewhere.
+    static let defaultGeminiModelName = "gemini-3.6-flash"
+    /// Tried in order when a model is retired or unavailable (`ai_fallback_model_names`).
+    static let defaultGeminiFallbackModelNames = ["gemini-3.8-flash"]
+    /// `.minimal` is faster but rejected by 3.7/3.8 Flash; `.off` sends no thinking config.
+    static let defaultAIThinkingLevel = AIThinkingLevel.low
+    static let aiTemperature = 0.2
     /// Covers thinking tokens plus the JSON answer.
     static let aiMaxOutputTokens = 2048
     static let aiTimeoutSeconds = 25
@@ -50,9 +59,16 @@ nonisolated enum AppConfig {
     static let aiChecklistStepSeconds = 2.0
 
     // Posts
+    /// The one-tap lengths; "+ Custom" picks anything in `postDurationRangeMinutes` instead.
     static let postDurationOptionsMinutes = [15, 30, 45, 60]
     static let defaultPostDurationMinutes = 30
-    static let maxPostDurationMinutes = 60
+    /// Custom lengths: 15 min to 5 h, in `postDurationStepMinutes` steps. `firestore.rules` caps posts at 5 h too.
+    static let postDurationRangeMinutes = 15...300
+    static let postDurationStepMinutes = 5
+    /// What "+ Custom" starts at.
+    static let defaultCustomPostDurationMinutes = 90
+    /// Past this the Review footer warns that perishable food shouldn't sit out longer (the 2-hour food-safety rule).
+    static let perishableFoodLimitMinutes = 120
     /// Client-side anti-spam.
     static let postCooldownSeconds = 60
     /// Posts and photos are deleted this long after `expiresAt` (Firestore TTL on `deleteAt`).
@@ -130,9 +146,6 @@ nonisolated enum AppConfig {
     static let notificationWriteTimeoutSeconds = 10
     /// Sign-out waits at most this long to remove the installation ID.
     static let notificationSignOutTimeoutSeconds = 5
-    /// Quiet hours, campus time (America/Los_Angeles). `functions/src/recipients.ts` mirrors these.
-    static let quietHoursStartHour = 23
-    static let quietHoursEndHour = 7
 
     // Alert filters (users/{uid}.alertFilters; `functions/src/filters.ts` mirrors these limits)
     static let alertFilterMaxPlaces = 15
@@ -152,8 +165,6 @@ nonisolated enum AppConfig {
     // Account
     /// "Resend link" in Forgot password is disabled this long after each send.
     static let passwordResetResendSeconds = 60
-    /// The server requires a sign-in this recent to delete an account (`auth_time`).
-    static let accountRecentLoginSeconds = 300
     /// Deadline for the delete-account callable.
     static let accountDeleteTimeoutSeconds = 30
     static let accountWriteTimeoutSeconds = 10
@@ -188,7 +199,18 @@ nonisolated enum AppConfig {
     /// Key in `NSLocationTemporaryUsageDescriptionDictionary` (Info.plist).
     static let preciseLocationPurposeKey = "FoodNearby"
 
-    // Feature flags
-    /// Sprint 08: canned AI result if network/AI is down.
-    static let demoFallbackEnabled = false
+    // Admin moderation (Settings > Moderation, for the `admin` claim)
+    static let adminSyncTimeoutSeconds = 10
+    /// Appeals and reports shown at most.
+    static let adminListLimit = 100
+    /// An admin action waits this long for `onAdminActionCreated` to write its status.
+    static let adminActionTimeoutSeconds = 20
+    /// Reports are deleted after this many days (TTL); the admin list covers the same window.
+    static let reportRetentionDays = 90
+
+    // Runtime config (Firebase Remote Config)
+    /// The launch fetch gives up after this long; the UI never waits for it (cached or default values show first).
+    static let runtimeConfigFetchTimeoutSeconds = 5
+    /// Release builds fetch at most this often; realtime updates arrive sooner anyway. DEBUG uses 0.
+    static let runtimeConfigMinimumFetchIntervalSeconds = 3600.0
 }

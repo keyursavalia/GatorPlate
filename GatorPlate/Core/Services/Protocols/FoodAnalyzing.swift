@@ -2,9 +2,6 @@ import Foundation
 
 @MainActor
 protocol FoodAnalyzing {
-    /// Content-free diagnostics of the most recent analysis.
-    var lastDiagnostics: FoodAnalysisDiagnostics? { get }
-
     /// Call when the post flow opens: gets credentials (App Check) ready before the photo is taken.
     func prepare()
 
@@ -16,9 +13,10 @@ protocol FoodAnalyzing {
 
 /// Multi-photo requests take longer: the total deadline grows per extra photo, capped.
 nonisolated enum FoodAnalysisDeadline {
-    /// `aiTimeoutSeconds` plus `aiPerExtraPhotoSeconds` per extra photo, at most `aiMaxTimeoutSeconds`.
-    static func seconds(photoCount: Int) -> Int {
-        min(AppConfig.aiTimeoutSeconds + AppConfig.aiPerExtraPhotoSeconds * max(0, photoCount - 1),
-            AppConfig.aiMaxTimeoutSeconds)
+    /// `base` (`ai_timeout_seconds`) plus `aiPerExtraPhotoSeconds` per extra photo, at most `max`
+    /// (`ai_max_timeout_seconds`).
+    static func seconds(photoCount: Int, base: Int = AppConfig.aiTimeoutSeconds,
+                        max maximum: Int = AppConfig.aiMaxTimeoutSeconds) -> Int {
+        min(base + AppConfig.aiPerExtraPhotoSeconds * max(0, photoCount - 1), maximum)
     }
 }

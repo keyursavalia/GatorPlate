@@ -76,9 +76,3 @@ struct PinDropMapView: View {
         return "Near \(nearest.name)"
     }
 }
-
-#Preview {
-    NavigationStack {
-        PinDropMapView(initial: nil) { _ in }
-    }
-}

@@ -16,7 +16,3 @@ struct AuthErrorView: View {
         }
     }
 }
-
-#Preview {
-    AuthErrorView(message: "No connection. Check your internet and try again.", onRetry: {}, onSignOut: {})
-}

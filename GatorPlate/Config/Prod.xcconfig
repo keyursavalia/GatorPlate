@@ -1,0 +1,11 @@
+// PROD environment: the Release configuration, used for every TestFlight and App Store build. Its own Firebase
+// project; never pointed at dev data. Set as the GatorPlate target's base configuration for Release.
+
+PRODUCT_BUNDLE_IDENTIFIER = com.keyurdipakbhaisavalia.GatorPlate
+INFOPLIST_KEY_CFBundleDisplayName = Gator Plate
+// Folder under GatorPlate/Config/Firebase/ whose GoogleService-Info.plist is copied into the app (scripts/copy-firebase-config.sh).
+GATORPLATE_ENV = Prod
+// The plist must belong to this Firebase project, or the build fails. Fill in once the prod project exists.
+GATORPLATE_FIREBASE_PROJECT_ID = gatorplate-prod
+// Home-screen icon: the Icon Composer file GatorPlate/GatorPlateLogo.icon.
+ASSETCATALOG_COMPILER_APPICON_NAME = GatorPlateLogo

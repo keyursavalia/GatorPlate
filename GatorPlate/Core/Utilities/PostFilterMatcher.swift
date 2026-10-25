@@ -13,7 +13,14 @@ nonisolated enum PostFilterMatcher {
     }
 
     static func matches(_ post: FoodPost, filter: PostFilter, now: Date, userLocation: Coordinate?) -> Bool {
-        guard AlertFilterMatcher.matches(post, filters: filter.picks) else { return false }
+        matches(post, filter: filter, picks: AlertFilterMatcher.effective(filter.picks), now: now,
+                userLocation: userLocation)
+    }
+
+    /// `picks` is `AlertFilterMatcher.effective(filter.picks)`, worked out once per list.
+    private static func matches(_ post: FoodPost, filter: PostFilter, picks: AlertFilters?, now: Date,
+                                userLocation: Coordinate?) -> Bool {
+        if let picks, !AlertFilterMatcher.matches(post, effective: picks) { return false }
         if let minimum = filter.minMinutesLeft, minutesLeft(post, now: now) < minimum { return false }
         // Without a location the distance filter is ignored: it must never hide every post.
         if let maximum = filter.maxWalkMinutes, let userLocation,
@@ -26,9 +33,11 @@ nonisolated enum PostFilterMatcher {
     static func visible(_ posts: [FoodPost], filter: PostFilter, now: Date, userLocation: Coordinate?,
                         keeping keptId: String? = nil) -> Result {
         guard !filter.isEmpty else { return Result(posts: posts) }
+        let picks = AlertFilterMatcher.effective(filter.picks)
         var result = Result()
         for post in posts {
-            if post.id == keptId || matches(post, filter: filter, now: now, userLocation: userLocation) {
+            if post.id == keptId
+                || matches(post, filter: filter, picks: picks, now: now, userLocation: userLocation) {
                 result.posts.append(post)
             } else {
                 result.hiddenCount += 1

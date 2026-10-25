@@ -15,7 +15,6 @@ protocol LocationProviding: AnyObject {
     /// Start when the map appears, stop when it disappears. Safe to call before permission is granted.
     func startUpdates()
     func stopUpdates()
-    func currentCoordinate() async throws -> Coordinate
 }
 
 extension LocationProviding {

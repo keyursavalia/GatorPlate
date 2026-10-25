@@ -61,14 +61,3 @@ struct AccountFlowView: View {
         Task { await viewModel.submit(prepareSwitch: prepareSwitch, restore: restore) }
     }
 }
-
-#Preview("Sign in") {
-    AccountFlowView(start: .post, viewModel: AuthViewModel(auth: MockAuthService(), account: MockAccountService()),
-                    prepareSwitch: {}, restore: {}, onClose: {})
-}
-
-#Preview("Create account, AX5") {
-    AccountFlowView(start: .join, viewModel: AuthViewModel(auth: MockAuthService(), account: MockAccountService()),
-                    prepareSwitch: {}, restore: {}, onClose: {})
-        .dynamicTypeSize(.accessibility5)
-}

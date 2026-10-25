@@ -27,6 +27,8 @@ final class ReviewViewModel {
     var photos: [CapturedPhoto]
     /// "We left out 1 photo that showed people." Dismissible.
     var removedPhotosNotice: String?
+    /// Remote Config turned AI drafting off, so this manual draft says why.
+    var showsAIDisabledNote = false
 
     /// Settings > Display > Show calorie estimates (`@AppStorage` in the views).
     static let showCaloriesKey = "display.showCalories"
@@ -42,10 +44,14 @@ final class ReviewViewModel {
     @ObservationIgnored var encodedPhotos: [UUID: Data?] = [:]
     /// The draft as first shown, to tell whether the user changed anything.
     @ObservationIgnored var initialDraft = PostDraft()
+    /// Remote Config word lists, as they were when Review opened.
+    private let contentFilter: ContentFilter
 
     init(photos: [CapturedPhoto], analysis: FoodAnalysisResult?, author: PostAuthor,
-         posts: any PostService, location: any LocationProviding, cooldown: PostCooldown = PostCooldown()) {
+         posts: any PostService, location: any LocationProviding, cooldown: PostCooldown = PostCooldown(),
+         contentFilter: ContentFilter) {
         self.photos = photos
+        self.contentFilter = contentFilter
         self.aiBaseline = analysis
         self.removedPhotosNotice = analysis.flatMap(Self.removedNotice)
         self.author = author
@@ -133,13 +139,13 @@ final class ReviewViewModel {
     }
 
     var issues: [PostDraftValidator.Issue] {
-        PostDraftValidator.issues(for: draft)
+        PostDraftValidator.issues(for: draft, filter: contentFilter)
     }
 
-    /// Soft tips shown under a field. Blocking issues are listed above Publish instead, so an untouched
-    /// form isn't covered in red.
+    /// Shown under a field: soft tips, and content-filter issues (blocking, but the poster must see which field).
+    /// Other blocking issues are listed above Publish instead, so an untouched form isn't covered in red.
     func warning(for field: PostDraftValidator.Field) -> PostDraftValidator.Issue? {
-        issues.first { $0.field == field && !$0.isBlocking }
+        issues.first { $0.field == field && $0.showsInline } ?? issues.first { $0.field == field && !$0.isBlocking }
     }
 
     var blockingIssues: [PostDraftValidator.Issue] {
@@ -217,7 +223,8 @@ final class ReviewViewModel {
         refreshAutoTitle()
         guard let submission = PostDraftValidator.submission(from: draft, postId: postId, author: author,
                                                              aiGenerated: aiBaseline != nil,
-                                                             editedAfterAI: editedAfterAI) else { return nil }
+                                                             editedAfterAI: editedAfterAI,
+                                                             filter: contentFilter) else { return nil }
         publishState = .publishing
         do {
             let result = try await posts.publish(submission, photos: await encodedPhotoData())

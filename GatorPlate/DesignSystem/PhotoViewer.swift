@@ -114,8 +114,3 @@ struct PhotoViewer: View {
             }
     }
 }
-
-#Preview {
-    PhotoViewer(sources: [.stored(postId: "a", slot: 0), .stored(postId: "a", slot: 1)], images: nil,
-                selection: .constant(0))
-}

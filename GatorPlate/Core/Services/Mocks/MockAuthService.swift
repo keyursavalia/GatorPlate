@@ -1,5 +1,6 @@
 import Foundation
 
+#if DEBUG
 @MainActor
 final class MockAuthService: AuthService {
     private typealias Event = Result<AuthSession?, AppError>
@@ -72,3 +73,4 @@ final class MockAuthService: AuthService {
         for continuation in continuations.values { continuation.yield(.success(newSession)) }
     }
 }
+#endif

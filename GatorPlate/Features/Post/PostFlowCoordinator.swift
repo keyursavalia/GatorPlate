@@ -10,9 +10,10 @@ struct PostFlowCoordinator: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(camera: any CameraCapturing, analyzer: any FoodAnalyzing, posts: any PostService,
-         location: any LocationProviding, author: PostAuthor, onViewMap: @escaping (String) -> Void) {
-        _model = State(initialValue: PostFlowModel(camera: camera, analyzer: analyzer, posts: posts,
+    init(camera: any CameraCapturing, analyzer: any FoodAnalyzing, runtime: any RuntimeConfigProviding,
+         posts: any PostService, location: any LocationProviding, author: PostAuthor,
+         onViewMap: @escaping (String) -> Void) {
+        _model = State(initialValue: PostFlowModel(camera: camera, analyzer: analyzer, runtime: runtime, posts: posts,
                                                    location: location, author: author))
         self.onViewMap = onViewMap
     }
@@ -66,10 +67,10 @@ struct PostFlowCoordinator: View {
             case .idle, .analyzing, .success:
                 AnalyzingScreen(viewModel: analysis, onCancel: model.cancelAnalysis, onFillManually: model.fillManually)
             case .rejected(let reason):
-                AnalysisRejectedView(reason: reason, evalLine: analysis.evalLine,
+                AnalysisRejectedView(reason: reason, photos: analysis.photos,
                                      onRetake: model.retake, onFillManually: model.fillManually)
             case .failed(let error):
-                AnalysisFailedView(error: error, evalLine: analysis.evalLine,
+                AnalysisFailedView(error: error, photos: analysis.photos,
                                    onRetry: analysis.retry, onFillManually: model.fillManually)
             }
         }
@@ -134,11 +135,4 @@ struct PostFlowCoordinator: View {
         if let post = model.publishResult?.post { onViewMap(post.id) }
         close()
     }
-}
-
-#Preview {
-    PostFlowCoordinator(camera: MockCameraService(), analyzer: MockFoodAnalyzer(), posts: MockPostService(),
-                        location: MockLocationProvider(),
-                        author: PostAuthor(uid: "mock-uid", displayName: "Mock Student", orgName: nil),
-                        onViewMap: { _ in })
 }

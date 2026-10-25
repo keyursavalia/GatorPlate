@@ -14,6 +14,8 @@ import UserNotifications
 final class FirebaseNotificationService: NSObject, NotificationService {
     private(set) var authorization = NotificationAuthorization.notDetermined
     private(set) var pendingAlert: AlertOpenRequest?
+    private(set) var hasPendingAppealResult = false
+    private(set) var hasPendingAdminReview = false
 
     @ObservationIgnored private let registerForRemoteNotifications: () -> Void
     @ObservationIgnored private let appState: () -> AlertOpenRequest.AppState
@@ -201,11 +203,27 @@ final class FirebaseNotificationService: NSObject, NotificationService {
     // MARK: Tapped alerts
 
     /// From the delegate (`FirebaseNotificationService+Taps`): keeps the tap until navigation handles it.
-    func didOpenNotification(postId: String?, notificationId: String) {
+    func didOpenNotification(_ tap: NotificationTap, notificationId: String) {
         let state = appState()
         Logger.ui.info("Alert tapped (state: \(state.rawValue, privacy: .public))")
-        guard let postId else { return }
-        pendingAlert = AlertOpenRequest(postId: postId, appState: state, notificationId: notificationId)
+        switch tap {
+        case .openPost(let postId):
+            pendingAlert = AlertOpenRequest(postId: postId, appState: state, notificationId: notificationId)
+        case .appealResolved:
+            hasPendingAppealResult = true
+        case .adminReview:
+            hasPendingAdminReview = true
+        case .openApp:
+            break
+        }
+    }
+
+    func appealResultHandled() {
+        hasPendingAppealResult = false
+    }
+
+    func adminReviewHandled() {
+        hasPendingAdminReview = false
     }
 
     private func write(_ fields: [String: Any], uid: String,
@@ -220,14 +238,6 @@ final class FirebaseNotificationService: NSObject, NotificationService {
         } catch {
             throw FirebaseErrorMapper.map(error)
         }
-    }
-
-    /// Post IDs are 20 alphanumeric characters; anything else in a payload is ignored.
-    nonisolated static func postId(from userInfo: [AnyHashable: Any]) -> String? {
-        guard let postId = userInfo[AppConfig.notificationPostIdKey] as? String,
-              (1...40).contains(postId.count),
-              postId.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) }) else { return nil }
-        return postId
     }
 }
 
