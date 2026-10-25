@@ -2,10 +2,10 @@ import Foundation
 import Observation
 
 /// The filtered posts both tabs show (one filter for Map and Feed). `PostsRepository` stays unfiltered; posts this
-/// account reported are left out (unless open), and posts by people this user blocked are always left out. This re-filters when the posts, the filter, the reported posts or
-/// the open post change, every expiry tick while "Time left" is on, and
-/// after the student moves `AppConfig.browseLocationChangeMeters` while distance matters. `result` is reassigned
-/// only when it really changes, so nothing re-renders per location fix or per frame.
+/// account reported are left out (unless open), and posts by people this user blocked are always left out. This
+/// re-filters when the posts, the filter, the reported posts, the blocked people or the open post change, every
+/// expiry tick while "Time left" is on, and after the student moves `AppConfig.browseLocationChangeMeters`.
+/// `result` is reassigned only when it really changes, so nothing re-renders per location fix or per frame.
 @MainActor
 @Observable
 final class BrowseResults {
