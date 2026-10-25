@@ -29,7 +29,7 @@ final class FirestoreBlockingService: BlockingService {
                 }
                 continuation.yield(users.sorted { $0.blockedAt > $1.blockedAt })
             }
-            let listener = BlockListenerHandle(registration)
+            let listener = FirestoreListenerHandle(registration)
             continuation.onTermination = { _ in listener.remove() }
         }
     }
@@ -67,17 +67,5 @@ final class FirestoreBlockingService: BlockingService {
         } catch {
             throw FirebaseErrorMapper.map(error)
         }
-    }
-}
-
-private nonisolated final class BlockListenerHandle: @unchecked Sendable {
-    private let registration: any ListenerRegistration
-
-    init(_ registration: any ListenerRegistration) {
-        self.registration = registration
-    }
-
-    func remove() {
-        registration.remove()
     }
 }
