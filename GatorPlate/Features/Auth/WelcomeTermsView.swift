@@ -89,19 +89,11 @@ struct WelcomeTermsView: View {
                        value: hasAppeared)
     }
 
-    /// App mark on a brand gradient tile (across the map's faded edge), the name and the tagline.
+    /// The app logo tile (across the map's faded edge), the name and the tagline.
     private var brand: some View {
         VStack(spacing: Theme.Spacing.lg) {
-            Image(systemName: "fork.knife")
-                .font(.system(size: 44, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: Self.tileSize, height: Self.tileSize)
-                .background(
-                    LinearGradient(colors: [Theme.Palette.brandPurple, Theme.Palette.brandPurple.opacity(0.7)],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing),
-                    in: .rect(cornerRadius: 24))
+            AppLogoTile(size: Self.tileSize, cornerRadius: 24)
                 .shadow(color: Theme.Palette.brandPurple.opacity(0.35), radius: 16, y: 8)
-                .accessibilityHidden(true)
             AuthHeader(title: AppConfig.appName, subtitle: "Free food on campus, found fast.")
         }
     }
