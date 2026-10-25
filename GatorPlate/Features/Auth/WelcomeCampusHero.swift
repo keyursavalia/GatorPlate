@@ -117,11 +117,7 @@ private struct NotificationPreview: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.md) {
-            Image(systemName: "fork.knife")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 36, height: 36)
-                .background(Theme.Palette.brandPurple, in: .rect(cornerRadius: 9))
+            AppLogoTile(size: 36, cornerRadius: 9)
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(title).font(.subheadline.weight(.semibold))
