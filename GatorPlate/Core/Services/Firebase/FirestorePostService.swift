@@ -36,7 +36,7 @@ final class FirestorePostService: PostService {
                     .filter { $0.isActive(now: now) }
                 continuation.yield(PostsSnapshot(posts: posts, isFromCache: snapshot?.metadata.isFromCache ?? false))
             }
-            let listener = ListenerHandle(registration)
+            let listener = FirestoreListenerHandle(registration)
             continuation.onTermination = { _ in listener.remove() }
         }
     }
@@ -221,19 +221,6 @@ final class FirestorePostService: PostService {
     private func isPublished(_ document: DocumentReference, by uid: String) async -> Bool {
         guard let snapshot = try? await document.getDocument(source: .server), snapshot.exists else { return false }
         return snapshot.get(FoodPostDocument.Key.authorUid) as? String == uid
-    }
-}
-
-/// `ListenerRegistration.remove()` is thread-safe, so the handle can be removed from the stream's termination handler.
-private nonisolated final class ListenerHandle: @unchecked Sendable {
-    private let registration: any ListenerRegistration
-
-    init(_ registration: any ListenerRegistration) {
-        self.registration = registration
-    }
-
-    func remove() {
-        registration.remove()
     }
 }
 
