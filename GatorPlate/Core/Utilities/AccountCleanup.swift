@@ -1,13 +1,12 @@
 import Foundation
 
-/// After an account is deleted, forget this device's per-user state: the post cooldown, the map banner
-/// dismissals, the Map/Feed filters and sort, and the posts hidden after reporting. Per-install preferences (calorie display, the camera hint) stay.
+/// After an account is deleted, forget this device's per-user state: the post cooldown, the Map/Feed filters and
+/// sort, the posts hidden after reporting and the removal notices seen. Per-install preferences (calorie display,
+/// the camera hint) stay.
 nonisolated enum AccountCleanup {
     static let perUserKeys = ["post.lastPublishedAt"]
-    /// `map.dismissedLocationBanner.` is from the old map location banner; still cleared on devices that have it.
-    static let perUserKeyPrefixes = ["map.dismissedLocationBanner.", PostFilterStore.filterKeyPrefix,
-                                     PostFilterStore.sortKeyPrefix, ReportedPosts.keyPrefix,
-                                     RemovalNoticeTracker.keyPrefix]
+    static let perUserKeyPrefixes = [PostFilterStore.filterKeyPrefix, PostFilterStore.sortKeyPrefix,
+                                     ReportedPosts.keyPrefix, RemovalNoticeTracker.keyPrefix]
 
     static func clearPerUserDefaults(_ defaults: UserDefaults = .standard) {
         for key in perUserKeys { defaults.removeObject(forKey: key) }
