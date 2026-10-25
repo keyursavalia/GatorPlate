@@ -33,7 +33,7 @@ final class AccountViewModel {
     @ObservationIgnored private let nameFilter: ContentFilter
 
     init(profile: UserProfile, account: any AccountService, auth: any AuthService,
-         nameFilter: ContentFilter = RuntimeConfig.defaults.contentFilter,
+         nameFilter: ContentFilter,
          onDelete: @escaping (String) async throws -> Void) {
         self.profile = profile
         self.nameFilter = nameFilter
