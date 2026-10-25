@@ -6,7 +6,7 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { banHoldId, shouldHoldBan } from "./ban-hold-logic.js";
 import { chunk, errorCode } from "./recipients.js";
 
-/** Deleting needs a sign-in this recent (AppConfig.accountRecentLoginSeconds); the app reauthenticates first. */
+/** Deleting needs a sign-in this recent; the app reauthenticates right before calling. */
 export const RECENT_LOGIN_SECONDS = 300;
 /** Tolerated clock skew when `auth_time` looks slightly in the future. */
 const CLOCK_SKEW_SECONDS = 60;
