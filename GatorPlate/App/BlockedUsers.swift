@@ -109,7 +109,7 @@ final class BlockedUsers {
 
     private func apply() {
         var list = confirmed.filter { !pendingUnblocks.contains($0.uid) && pendingBlocks[$0.uid] == nil }
-        list.insert(contentsOf: pendingBlocks.values.sorted { $0.blockedAt > $1.blockedAt }, at: 0)
+        list.append(contentsOf: pendingBlocks.values)
         list.sort { $0.blockedAt > $1.blockedAt }
         if list != users { users = list }
         let ids = Set(list.map(\.uid))
