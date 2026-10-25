@@ -5,7 +5,7 @@
 import { CAMPUS_TIME_ZONE, type FilterablePost, matchesFilters } from "./filters.js";
 
 export { CAMPUS_TIME_ZONE };
-/** Quiet hours mirror AppConfig.quietHoursStartHour / quietHoursEndHour in the app (campus time). */
+/** Quiet hours in campus time; the app's Settings label ("Mute notifications 11 PM – 7 AM") states the same. */
 export const QUIET_HOURS_START = 23;
 export const QUIET_HOURS_END = 7;
 
