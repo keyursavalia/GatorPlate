@@ -9,15 +9,7 @@ struct UpdateRequiredView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xl) {
-                Image(systemName: "fork.knife")
-                    .font(.system(size: 40, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 88, height: 88)
-                    .background(
-                        LinearGradient(colors: [Theme.Palette.brandPurple, Theme.Palette.brandPurple.opacity(0.7)],
-                                       startPoint: .topLeading, endPoint: .bottomTrailing),
-                        in: .rect(cornerRadius: 22))
-                    .accessibilityHidden(true)
+                AppLogoTile(size: 88, cornerRadius: 22)
                 VStack(spacing: Theme.Spacing.md) {
                     Text("Update GatorPlate")
                         .font(.title.bold())
