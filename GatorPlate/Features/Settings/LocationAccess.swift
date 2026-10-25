@@ -18,7 +18,6 @@ final class LocationAccess {
 
     var authorization: LocationAuthorization { location.authorization }
     var isOn: Bool { authorization.isAuthorized }
-    var isRestricted: Bool { authorization == .restricted }
     var isApproximate: Bool { authorization == .authorized(precise: false) }
 
     /// The Settings switch. Not asked yet: the system prompt; otherwise the alert to show, if any.
