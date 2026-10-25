@@ -44,12 +44,12 @@ final class ReviewViewModel {
     @ObservationIgnored var encodedPhotos: [UUID: Data?] = [:]
     /// The draft as first shown, to tell whether the user changed anything.
     @ObservationIgnored var initialDraft = PostDraft()
-    /// Remote Config word lists, as they were when Review opened. Nil skips the check (previews).
-    private let contentFilter: ContentFilter?
+    /// Remote Config word lists, as they were when Review opened.
+    private let contentFilter: ContentFilter
 
     init(photos: [CapturedPhoto], analysis: FoodAnalysisResult?, author: PostAuthor,
          posts: any PostService, location: any LocationProviding, cooldown: PostCooldown = PostCooldown(),
-         contentFilter: ContentFilter? = nil) {
+         contentFilter: ContentFilter) {
         self.photos = photos
         self.contentFilter = contentFilter
         self.aiBaseline = analysis
