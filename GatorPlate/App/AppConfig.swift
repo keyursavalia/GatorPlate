@@ -146,9 +146,6 @@ nonisolated enum AppConfig {
     static let notificationWriteTimeoutSeconds = 10
     /// Sign-out waits at most this long to remove the installation ID.
     static let notificationSignOutTimeoutSeconds = 5
-    /// Quiet hours, campus time (America/Los_Angeles). `functions/src/recipients.ts` mirrors these.
-    static let quietHoursStartHour = 23
-    static let quietHoursEndHour = 7
 
     // Alert filters (users/{uid}.alertFilters; `functions/src/filters.ts` mirrors these limits)
     static let alertFilterMaxPlaces = 15
@@ -168,8 +165,6 @@ nonisolated enum AppConfig {
     // Account
     /// "Resend link" in Forgot password is disabled this long after each send.
     static let passwordResetResendSeconds = 60
-    /// The server requires a sign-in this recent to delete an account (`auth_time`).
-    static let accountRecentLoginSeconds = 300
     /// Deadline for the delete-account callable.
     static let accountDeleteTimeoutSeconds = 30
     static let accountWriteTimeoutSeconds = 10
@@ -218,8 +213,4 @@ nonisolated enum AppConfig {
     static let runtimeConfigFetchTimeoutSeconds = 5
     /// Release builds fetch at most this often; realtime updates arrive sooner anyway. DEBUG uses 0.
     static let runtimeConfigMinimumFetchIntervalSeconds = 3600.0
-
-    // Feature flags
-    /// Sprint 08: canned AI result if network/AI is down.
-    static let demoFallbackEnabled = false
 }
