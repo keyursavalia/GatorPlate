@@ -45,7 +45,7 @@ final class AuthViewModel {
     @ObservationIgnored private let nameFilter: @MainActor () -> ContentFilter
 
     init(auth: any AuthService, account: any AccountService, terms: TermsAcceptance = TermsAcceptance(),
-         nameFilter: @escaping @MainActor () -> ContentFilter = { RuntimeConfig.defaults.contentFilter }) {
+         nameFilter: @escaping @MainActor () -> ContentFilter) {
         self.auth = auth
         self.nameFilter = nameFilter
         self.account = account
