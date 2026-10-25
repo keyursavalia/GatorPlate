@@ -130,7 +130,7 @@ final class FirebaseAdminService: AdminService {
                                                       message: snapshot?.get("result") as? String ?? status))
                 continuation.finish()
             }
-            let handle = AdminListenerHandle(registration)
+            let handle = FirestoreListenerHandle(registration)
             let timeout = Task {
                 try? await Task.sleep(for: .seconds(AppConfig.adminActionTimeoutSeconds))
                 continuation.finish()
@@ -157,20 +157,8 @@ final class FirebaseAdminService: AdminService {
                 }
                 continuation.yield((snapshot?.documents ?? []).compactMap(map))
             }
-            let handle = AdminListenerHandle(registration)
+            let handle = FirestoreListenerHandle(registration)
             continuation.onTermination = { _ in handle.remove() }
         }
-    }
-}
-
-private nonisolated final class AdminListenerHandle: @unchecked Sendable {
-    private let registration: any ListenerRegistration
-
-    init(_ registration: any ListenerRegistration) {
-        self.registration = registration
-    }
-
-    func remove() {
-        registration.remove()
     }
 }
