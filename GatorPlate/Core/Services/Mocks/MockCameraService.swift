@@ -4,7 +4,7 @@ import ImageIO
 import UniformTypeIdentifiers
 
 #if DEBUG
-/// Camera for previews: configurable permission, a black preview, and a solid-color "photo".
+/// Camera without hardware: configurable permission, a black preview, and a solid-color "photo".
 actor MockCameraService: CameraCapturing {
     nonisolated let previewSource = CameraPreviewSource(session: nil)
     nonisolated let isCameraAvailable: Bool
