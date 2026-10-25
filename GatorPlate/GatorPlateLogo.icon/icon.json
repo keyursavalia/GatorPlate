@@ -1,0 +1,35 @@
+{
+  "fill" : {
+    "solid" : "display-p3:0.25288,0.17655,0.52495,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "babyGator3.jpg",
+          "name" : "babyGator3",
+          "position" : {
+            "scale" : 0.56,
+            "translation-in-points" : [
+              0,
+              -25
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.3
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : [
+      "iOS"
+    ]
+  }
+}
