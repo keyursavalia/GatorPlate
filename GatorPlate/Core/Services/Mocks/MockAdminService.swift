@@ -1,7 +1,7 @@
 import Foundation
 
 #if DEBUG
-/// Admin data for previews and the harness.
+/// In-memory admin data.
 @MainActor
 final class MockAdminService: AdminService {
     var isAdmin: Bool
