@@ -1,12 +1,11 @@
 import Foundation
 
 #if DEBUG
-/// Analyzer for previews: a fixed outcome after a short delay.
+/// Analyzer for debugging without the backend: a fixed outcome after a short delay.
 @MainActor
 final class MockFoodAnalyzer: FoodAnalyzing {
     var result: Result<FoodAnalysisOutcome, AppError>
     var delay: Duration
-    private(set) var lastDiagnostics: FoodAnalysisDiagnostics?
 
     init(result: Result<FoodAnalysisOutcome, AppError> = .success(.accepted(.sample)), delay: Duration = .seconds(2)) {
         self.result = result
@@ -21,11 +20,8 @@ final class MockFoodAnalyzer: FoodAnalyzing {
         } catch {
             throw .cancelled
         }
-        lastDiagnostics = FoodAnalysisDiagnostics(latencyMs: Int(delay / .milliseconds(1)), attempts: 1,
-                                                  category: "mock", modelDietary: nil, modelConfidence: nil,
-                                                  photoCount: photos.count)
         let outcome = try result.get()
-        // Every photo kept, so the multi-photo flow can be previewed.
+        // Every photo kept, so the multi-photo flow can be exercised.
         guard case .accepted(var accepted) = outcome else { return outcome }
         accepted.keptPhotoIndices = Array(photos.indices)
         return .accepted(accepted)
