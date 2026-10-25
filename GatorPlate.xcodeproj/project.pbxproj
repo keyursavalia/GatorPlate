@@ -25,6 +25,10 @@
 		3CC85EF03075B97400FDE182 /* Exceptions for "GatorPlate" folder in "GatorPlate" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Config/Dev.xcconfig,
+				"Config/Firebase/Dev/GoogleService-Info.plist",
+				"Config/Firebase/Prod/GoogleService-Info.plist",
+				Config/Prod.xcconfig,
 				Info.plist,
 			);
 			target = 000000000000000100000000 /* GatorPlate */;
@@ -93,6 +97,7 @@
 				000000000000000120000000 /* Sources */,
 				000000000000000130000000 /* Frameworks */,
 				000000000000000140000000 /* Resources */,
+				3C3B8503308D8C0A009F7679 /* Copy Firebase config */,
 			);
 			buildRules = (
 			);
@@ -158,6 +163,25 @@
 			);
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		3C3B8503308D8C0A009F7679 /* Copy Firebase config */ = {
+			isa = PBXShellScriptBuildPhase;
+			inputPaths = (
+				"$(SRCROOT)/scripts/copy-firebase-config.sh",
+				"$(SRCROOT)/GatorPlate/Config/Firebase/$(GATORPLATE_ENV)/GoogleService-Info.plist",
+			);
+			name = "Copy Firebase config";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+			);
+			shellPath = /bin/sh;
+			shellScript = (
+				"\"${SRCROOT}/scripts/copy-firebase-config.sh\"",
+				"",
+			);
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		000000000000000120000000 /* Sources */ = {
@@ -304,6 +328,8 @@
 		};
 		000000000000000111000000 /* Debug configuration for PBXNativeTarget "GatorPlate" */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 000000000000000000000010 /* GatorPlate */;
+			baseConfigurationReferenceRelativePath = Config/Dev.xcconfig;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = GatorPlate/GatorPlate.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -314,7 +340,6 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GatorPlate/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Gator Plate";
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -326,7 +351,6 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.keyurdipakbhaisavalia.GatorPlate;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -344,6 +368,8 @@
 		};
 		000000000000000112000000 /* Release configuration for PBXNativeTarget "GatorPlate" */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 000000000000000000000010 /* GatorPlate */;
+			baseConfigurationReferenceRelativePath = Config/Prod.xcconfig;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = GatorPlate/GatorPlate.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -354,7 +380,6 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = GatorPlate/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Gator Plate";
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -366,7 +391,6 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.keyurdipakbhaisavalia.GatorPlate;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
