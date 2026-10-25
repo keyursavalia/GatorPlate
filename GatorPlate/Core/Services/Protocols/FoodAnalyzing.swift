@@ -2,9 +2,6 @@ import Foundation
 
 @MainActor
 protocol FoodAnalyzing {
-    /// Content-free diagnostics of the most recent analysis.
-    var lastDiagnostics: FoodAnalysisDiagnostics? { get }
-
     /// Call when the post flow opens: gets credentials (App Check) ready before the photo is taken.
     func prepare()
 
