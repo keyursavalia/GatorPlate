@@ -1,7 +1,7 @@
 import Foundation
 
 #if DEBUG
-/// In-memory blocks for previews and the harness.
+/// In-memory blocks.
 @MainActor
 final class MockBlockingService: BlockingService {
     private(set) var blocks: [BlockedUser]
