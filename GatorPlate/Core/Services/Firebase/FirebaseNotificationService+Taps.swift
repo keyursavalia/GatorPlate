@@ -10,7 +10,7 @@ extension FirebaseNotificationService {
         center.removeDeliveredNotifications(withIdentifiers: [notificationId])
         center.getDeliveredNotifications { notifications in
             let ids = notifications
-                .filter { Self.postId(from: $0.request.content.userInfo) == postId }
+                .filter { NotificationTap.postId(from: $0.request.content.userInfo) == postId }
                 .map(\.request.identifier)
             if !ids.isEmpty { UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids) }
         }
@@ -22,7 +22,7 @@ extension FirebaseNotificationService {
     /// "present" / "missing" / "rejected", never the ID itself.
     nonisolated static func postIdCheck(_ userInfo: [AnyHashable: Any]) -> String {
         guard userInfo[AppConfig.notificationPostIdKey] != nil else { return "missing" }
-        return postId(from: userInfo) == nil ? "rejected" : "present"
+        return NotificationTap.postId(from: userInfo) == nil ? "rejected" : "present"
     }
 }
 
