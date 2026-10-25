@@ -6,16 +6,13 @@ final class MockPostService: PostService {
     private(set) var posts: [FoodPost]
     private let images: any ImageStore
     private var continuations: [UUID: AsyncThrowingStream<PostsSnapshot, Error>.Continuation] = [:]
-    /// Set to make `publish` fail, for previews of the error state.
+    /// Set to make `publish` fail.
     var publishError: AppError?
 
     init(posts: [FoodPost] = [.sample], images: any ImageStore = MockImageStore()) {
         self.posts = posts
         self.images = images
     }
-
-    /// Number of open listeners, for tests.
-    var listenerCount: Int { continuations.count }
 
     func observeActivePosts() -> AsyncThrowingStream<PostsSnapshot, Error> {
         let (stream, continuation) = AsyncThrowingStream<PostsSnapshot, Error>.makeStream()
@@ -33,12 +30,6 @@ final class MockPostService: PostService {
         for continuation in continuations.values { continuation.yield(snapshot) }
     }
 
-    /// Ends every listener with an error, like a rules or auth failure.
-    func fail(_ error: AppError) {
-        for continuation in continuations.values { continuation.finish(throwing: error) }
-        continuations.removeAll()
-    }
-
     private func broadcast() {
         send(PostsSnapshot(posts: posts, isFromCache: false))
     }
@@ -47,7 +38,11 @@ final class MockPostService: PostService {
         posts.first { $0.id == id }
     }
 
-    func makePostId() -> String { Self.randomPostId() }
+    /// Firestore-style ID: 20 alphanumeric characters (also what `storage.rules` accepts).
+    func makePostId() -> String {
+        let alphabet = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+        return String((0..<20).compactMap { _ in alphabet.randomElement() })
+    }
 
     func publish(_ submission: PostSubmission, photos: [Data?]) async throws -> PublishResult {
         try await Task.sleep(for: .milliseconds(600))
@@ -77,7 +72,7 @@ final class MockPostService: PostService {
 
     func report(postId: String, category: ReportCategory, reason: String) async throws {}
     func appeal(message: String, bannedUntil: Date) async throws {}
-    /// What `postingBan()` returns (previews of the "Posting paused" sheet).
+    /// What `postingBan()` returns (to show the "Posting paused" sheet).
     var ban: PostingBan?
     func postingBan() async -> PostingBan? { ban }
 }
