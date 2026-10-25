@@ -69,16 +69,8 @@ struct AboutView: View {
     /// The Welcome screen's app tile, the name, the tagline and the version in a capsule.
     private var header: some View {
         VStack(spacing: Theme.Spacing.md) {
-            Image(systemName: "fork.knife")
-                .font(.system(size: 36, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 80, height: 80)
-                .background(
-                    LinearGradient(colors: [Theme.Palette.brandPurple, Theme.Palette.brandPurple.opacity(0.7)],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing),
-                    in: .rect(cornerRadius: 20))
+            AppLogoTile(size: 80, cornerRadius: 20)
                 .shadow(color: Theme.Palette.brandPurple.opacity(0.35), radius: 14, y: 6)
-                .accessibilityHidden(true)
             VStack(spacing: Theme.Spacing.xs) {
                 Text(AppConfig.appName)
                     .font(.largeTitle.weight(.heavy).width(.condensed))
