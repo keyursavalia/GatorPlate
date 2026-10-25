@@ -3,7 +3,7 @@
 
 PRODUCT_BUNDLE_IDENTIFIER = com.keyurdipakbhaisavalia.GatorPlate
 INFOPLIST_KEY_CFBundleDisplayName = Gator Plate
-// Folder under Config/Firebase/ whose GoogleService-Info.plist is copied into the app (scripts/copy-firebase-config.sh).
+// Folder under GatorPlate/Config/Firebase/ whose GoogleService-Info.plist is copied into the app (scripts/copy-firebase-config.sh).
 GATORPLATE_ENV = Prod
 // The plist must belong to this Firebase project, or the build fails. Fill in once the prod project exists.
-GATORPLATE_FIREBASE_PROJECT_ID =
+GATORPLATE_FIREBASE_PROJECT_ID = gatorplate-prod
