@@ -19,8 +19,8 @@ nonisolated enum PostDraftValidator {
         var showsInline = false
     }
 
-    /// `filter` is the Remote Config word lists; nil skips the language check (previews).
-    static func issues(for draft: PostDraft, filter: ContentFilter? = nil) -> [Issue] {
+    /// `filter` is the Remote Config word lists.
+    static func issues(for draft: PostDraft, filter: ContentFilter) -> [Issue] {
         var issues: [Issue] = []
         func block(_ field: Field, _ message: String) { issues.append(Issue(field: field, message: message, isBlocking: true)) }
         func warn(_ field: Field, _ message: String) { issues.append(Issue(field: field, message: message, isBlocking: false)) }
@@ -86,24 +86,22 @@ nonisolated enum PostDraftValidator {
             block(.attestation, "Confirm the food has been kept safe.")
         }
 
-        if let filter {
-            // The poster's final text, AI-drafted or typed: they edit it and publish. Never blocks posting as a whole.
-            let fields: [(Field, [String])] = [
-                (.title, [draft.title]), (.description, [draft.description]), (.items, items.map(\.name)),
-                (.cautions, cautions), (.locationDetail, [draft.locationDetail]),
-            ]
-            for (field, texts) in fields {
-                guard let verdict = texts.lazy.compactMap(filter.check).first else { continue }
-                issues.append(Issue(field: field, message: verdict == .trading ? tradingMessage : blockedLanguageMessage,
-                                    isBlocking: true, showsInline: true))
-            }
+        // The poster's final text, AI-drafted or typed: they edit it and publish. Never blocks posting as a whole.
+        let fields: [(Field, [String])] = [
+            (.title, [draft.title]), (.description, [draft.description]), (.items, items.map(\.name)),
+            (.cautions, cautions), (.locationDetail, [draft.locationDetail]),
+        ]
+        for (field, texts) in fields {
+            guard let verdict = texts.lazy.compactMap(filter.check).first else { continue }
+            issues.append(Issue(field: field, message: verdict == .trading ? tradingMessage : blockedLanguageMessage,
+                                isBlocking: true, showsInline: true))
         }
         return issues
     }
 
     /// Nil while any blocking issue remains.
     static func submission(from draft: PostDraft, postId: String, author: PostAuthor,
-                           aiGenerated: Bool, editedAfterAI: Bool, filter: ContentFilter? = nil) -> PostSubmission? {
+                           aiGenerated: Bool, editedAfterAI: Bool, filter: ContentFilter) -> PostSubmission? {
         guard !issues(for: draft, filter: filter).contains(where: \.isBlocking), let location = draft.location else {
             return nil
         }
