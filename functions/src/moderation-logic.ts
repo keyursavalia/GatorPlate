@@ -22,8 +22,7 @@ export function removalResolver(category: RemovalCategory): ReportResolver {
 export const STRIKE_CATEGORIES = [...REPORT_CATEGORIES, "admin"] as const;
 export type StrikeCategory = (typeof STRIKE_CATEGORIES)[number];
 
-/** AppConfig.reportReasonMinLength / MaxLength. */
-export const REASON_MIN_LENGTH = 20;
+/** AppConfig.reportReasonMaxLength (the minimum is enforced by the app and `firestore.rules`). */
 export const REASON_MAX_LENGTH = 280;
 export const RATIONALE_MAX_LENGTH = 140;
 
