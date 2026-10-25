@@ -23,19 +23,20 @@ nonisolated struct ContentFilter: Equatable, Sendable {
     ]
     private static let pricePatterns = [#"\$\s?\d"#, #"\d\s?(dollars?|bucks)"#]
 
-    private let terms: [[String]]
-    private let tradingTerms: [[String]]
+    private let terms: TermIndex
+    private let tradingTerms: TermIndex
 
-    /// Term lists are normalized once; empty terms are dropped.
+    /// Term lists are normalized and indexed once; empty terms are dropped.
     init(terms: [String], tradingTerms: [String]) {
-        self.terms = terms.map(Self.tokens).filter { !$0.isEmpty }
-        self.tradingTerms = tradingTerms.map(Self.tokens).filter { !$0.isEmpty }
+        self.terms = TermIndex(terms.map(Self.tokens))
+        self.tradingTerms = TermIndex(tradingTerms.map(Self.tokens))
     }
 
+    /// Runs on every keystroke in names and post fields, so matching uses the index instead of scanning every term.
     func check(_ text: String) -> Verdict? {
         let textTokens = Self.tokens(text)
-        if Self.matchesAny(textTokens, terms) { return .terms }
-        if Self.hasPrice(text) || Self.matchesAny(textTokens, tradingTerms) { return .trading }
+        if terms.matches(textTokens) { return .terms }
+        if Self.hasPrice(text) || tradingTerms.matches(textTokens) { return .trading }
         return nil
     }
 
@@ -68,17 +69,37 @@ nonisolated struct ContentFilter: Equatable, Sendable {
         pricePatterns.contains { text.range(of: $0, options: [.regularExpression, .caseInsensitive]) != nil }
     }
 
-    private static func matchesAny(_ textTokens: [String], _ terms: [[String]]) -> Bool {
-        terms.contains { term in
-            if term.count == 1 {
-                let word = term[0]
-                let allowSubstring = word.count >= substringMinLetters
-                return textTokens.contains { $0 == word || (allowSubstring && $0.contains(word)) }
+    /// Normalized terms grouped for lookup: one-word terms in a set (plus the long ones again for substring
+    /// matches) and multi-word terms by their first word.
+    private struct TermIndex: Equatable, Sendable {
+        private var words: Set<String> = []
+        private var substringWords: [String] = []
+        private var phrasesByFirstWord: [String: [[String]]] = [:]
+
+        init(_ terms: [[String]]) {
+            for term in terms {
+                switch term.count {
+                case 0: continue
+                case 1:
+                    guard words.insert(term[0]).inserted else { continue }
+                    if term[0].count >= ContentFilter.substringMinLetters { substringWords.append(term[0]) }
+                default:
+                    phrasesByFirstWord[term[0], default: []].append(term)
+                }
             }
-            guard textTokens.count >= term.count else { return false }
-            return (0...(textTokens.count - term.count)).contains { start in
-                term.indices.allSatisfy { textTokens[start + $0] == term[$0] }
+        }
+
+        func matches(_ textTokens: [String]) -> Bool {
+            if textTokens.contains(where: words.contains) { return true }
+            if textTokens.contains(where: { token in substringWords.contains { token.contains($0) } }) { return true }
+            guard !phrasesByFirstWord.isEmpty else { return false }
+            for start in textTokens.indices {
+                guard let phrases = phrasesByFirstWord[textTokens[start]] else { continue }
+                for phrase in phrases where start + phrase.count <= textTokens.count {
+                    if phrase.indices.allSatisfy({ textTokens[start + $0] == phrase[$0] }) { return true }
+                }
             }
+            return false
         }
     }
 }
