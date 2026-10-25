@@ -1,6 +1,6 @@
 GatorPlate/GoogleService-Info.plist
 # Per-environment Firebase configs (copied into the app by scripts/copy-firebase-config.sh)
-Config/Firebase/
+GatorPlate/Config/Firebase/
 docs/
 CLAUDE.md
 xcschememanagement.plist
