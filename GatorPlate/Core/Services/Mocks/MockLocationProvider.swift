@@ -33,10 +33,5 @@ final class MockLocationProvider: LocationProviding {
     }
 
     func stopUpdates() {}
-
-    func currentCoordinate() async throws -> Coordinate {
-        guard authorization.isAuthorized else { throw AppError.permissionDenied }
-        return simulatedCoordinate
-    }
 }
 #endif
