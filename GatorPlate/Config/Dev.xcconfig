@@ -7,3 +7,5 @@ INFOPLIST_KEY_CFBundleDisplayName = GatorPlate Dev
 GATORPLATE_ENV = Dev
 // The plist must belong to this Firebase project, or the build fails.
 GATORPLATE_FIREBASE_PROJECT_ID = gatorplate-9fa58
+// Asset catalog icon set used as the home-screen icon.
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
