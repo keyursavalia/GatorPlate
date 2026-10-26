@@ -1,0 +1,17 @@
+GatorPlate/GoogleService-Info.plist
+# Per-environment Firebase configs (copied into the app by scripts/copy-firebase-config.sh)
+GatorPlate/Config/Firebase/
+docs/
+CLAUDE.md
+xcschememanagement.plist
+*.xcodeproj/xcshareddata/xcschemes/
+xcuserdata/
+.firebase/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.development
+.env.test
+.env.production

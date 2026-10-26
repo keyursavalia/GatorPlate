@@ -1,0 +1,308 @@
+rules_version = '2';
+
+// GatorPlate Firestore rules (Sprint 05, tightened and guests added in Sprint 08). Deny by default; every allowed write is validated.
+// Limits mirror AppConfig with a little headroom (rules count characters slightly differently than Swift).
+// Test in the Rules Playground before publishing. Never ship test-mode (open) rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isText(value, minSize, maxSize) {
+      return value is string && value.size() >= minSize && value.size() <= maxSize;
+    }
+
+    // An admin: `admin` custom claim, set by the syncAdminClaim function from Remote Config `admin_uids`.
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    // users/{uid}: owner-only. Written by guest start / sign-up (create), the guest upgrade and Settings/alerts
+    // (update). Deleted only by the deleteAccount Cloud Function (Admin SDK bypasses rules). accountType, email,
+    // createdAt and uid change only in the one-time guest upgrade.
+    match /users/{uid} {
+      function isOwner() {
+        return signedIn() && request.auth.uid == uid;
+      }
+
+      function isValidName(value) {
+        return isText(value, 1, 60);
+      }
+
+      // Lists: rules can't loop over elements, so keyword lengths and building IDs are checked in the app and
+      // again by the onPostCreated function (AppConfig.alertFilter*).
+      function isValidAlertFilters(filters) {
+        return filters is map
+          && filters.keys().hasAll(['mode', 'diets', 'includeUnknownDiet', 'places', 'avoidAllergens',
+                                    'skipUnverifiedAllergens', 'foods', 'updatedAt'])
+          && filters.keys().hasOnly(['mode', 'diets', 'includeUnknownDiet', 'places', 'avoidAllergens',
+                                     'skipUnverifiedAllergens', 'foods', 'updatedAt'])
+          && filters.mode in ['all', 'custom']
+          && filters.diets is list && filters.diets.size() <= 3
+          && filters.diets.hasOnly(['vegan', 'vegetarian', 'nonVegetarian'])
+          && filters.includeUnknownDiet is bool
+          && filters.places is list && filters.places.size() <= 15
+          && filters.avoidAllergens is list && filters.avoidAllergens.size() <= 9
+          && filters.avoidAllergens.hasOnly(['milk', 'eggs', 'fish', 'shellfish', 'treeNuts', 'peanuts', 'wheat', 'soy', 'sesame'])
+          && filters.skipUnverifiedAllergens is bool
+          && filters.foods is list && filters.foods.size() <= 10
+          && filters.updatedAt == request.time;
+      }
+
+      function isValidProfileFields(data) {
+        return isValidName(data.displayName)
+          && (!('orgName' in data) || data.orgName == null
+              || (data.accountType == 'organization' && isValidName(data.orgName)))
+          && data.notificationsEnabled is bool
+          && (!('quietHoursEnabled' in data) || data.quietHoursEnabled is bool)
+          && (!('fcmInstallationId' in data) || isText(data.fcmInstallationId, 10, 256))
+          && (!('acceptedTermsVersion' in data) || isText(data.acceptedTermsVersion, 1, 40))
+          && (!('acceptedTermsAt' in data) || data.acceptedTermsAt is timestamp);
+      }
+
+      function isValidAccountCreate() {
+        return request.resource.data.keys().hasAll(['uid', 'displayName', 'email', 'accountType',
+                                                    'notificationsEnabled', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['uid', 'displayName', 'email', 'accountType', 'orgName',
+                                                   'notificationsEnabled', 'createdAt'])
+          && isText(request.resource.data.email, 3, 254);
+      }
+
+      // Guests (Sprint 08): anonymous users browse and get alerts without an account. No email; the Terms
+      // version accepted on the device is recorded at creation.
+      function isValidGuestCreate() {
+        return request.auth.token.firebase.sign_in_provider == 'anonymous'
+          && request.resource.data.keys().hasAll(['uid', 'displayName', 'accountType', 'notificationsEnabled',
+                                                  'createdAt'])
+          && request.resource.data.keys().hasOnly(['uid', 'displayName', 'accountType', 'notificationsEnabled',
+                                                   'createdAt', 'acceptedTermsVersion', 'acceptedTermsAt']);
+      }
+
+      // Settings, alerts and Terms. accountType, email, createdAt and uid never change here.
+      function isValidSettingsUpdate() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'displayName', 'orgName', 'notificationsEnabled', 'quietHoursEnabled', 'fcmInstallationId',
+              'fcmInstallationIdUpdatedAt', 'acceptedTermsVersion', 'acceptedTermsAt', 'alertFilters']);
+      }
+
+      // Sign-up as a guest links an email to the same uid, then turns the guest profile into an account once.
+      // The email must be the one now on the ID token; "member since" is the upgrade time.
+      function isValidGuestUpgrade() {
+        return resource.data.accountType == 'guest'
+          && request.resource.data.accountType in ['student', 'organization']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'displayName', 'email', 'accountType', 'orgName', 'createdAt'])
+          && request.resource.data.email == request.auth.token.email
+          && isText(request.resource.data.email, 3, 254)
+          && request.resource.data.createdAt == request.time;
+      }
+
+      allow read: if isOwner();
+      // Sign-up writes these keys (nil optionals are omitted). Alerts start off.
+      allow create: if isOwner()
+        && ((request.resource.data.accountType in ['student', 'organization'] && isValidAccountCreate())
+            || (request.resource.data.accountType == 'guest' && isValidGuestCreate()))
+        && request.resource.data.uid == uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.notificationsEnabled == false
+        && isValidProfileFields(request.resource.data);
+      allow update: if isOwner()
+        && (isValidSettingsUpdate() || isValidGuestUpgrade())
+        && isValidProfileFields(request.resource.data)
+        // Validated only when written (it carries updatedAt == request.time).
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['alertFilters'])
+            || isValidAlertFilters(request.resource.data.alertFilters));
+      allow delete: if false;
+    }
+
+    // postAlerts/{postId}: "alert already sent" markers written only by the onPostCreated Cloud Function
+    // (Admin SDK bypasses rules). No match here, so clients are denied by default.
+
+    match /posts/{postId} {
+      function profile() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      }
+
+      // banHolds/{sha256(email)}: a pause kept from a deleted account with this email (deleteAccount writes it;
+      // onProfileEmailSet copies it onto the new profile within seconds, this covers the gap).
+      function banHoldPath() {
+        let id = hashing.sha256(request.auth.token.email.lower()).toHexString().lower();
+        return /databases/$(database)/documents/banHolds/$(id);
+      }
+
+      function isHeld() {
+        return request.auth.token.email is string
+          && exists(banHoldPath())
+          && get(banHoldPath()).data.bannedUntil > request.time;
+      }
+
+      function isValidNewPost(post) {
+        return post.keys().hasAll([
+              'authorUid', 'authorName', 'title', 'description', 'items', 'overallDietary',
+              'allergenWarnings', 'cautions', 'buildingId', 'locationName', 'locationDetail',
+              'latitude', 'longitude', 'hasPhoto', 'aiGenerated', 'editedAfterAI', 'status',
+              'createdAt', 'expiresAt', 'updatedAt', 'deleteAt'])
+          && post.keys().hasOnly([
+              'authorUid', 'authorName', 'orgName', 'title', 'description', 'items', 'overallDietary',
+              'allergenWarnings', 'cautions', 'estimatedServings', 'buildingId', 'locationName',
+              'locationDetail', 'latitude', 'longitude', 'hasPhoto', 'photoSlots', 'aiGenerated', 'editedAfterAI',
+              'status', 'createdAt', 'expiresAt', 'updatedAt', 'deleteAt'])
+          // Author is the signed-in user with an account (guests can't post), named as in their own profile
+          // (no impersonating orgs).
+          && post.authorUid == request.auth.uid
+          && profile().accountType in ['student', 'organization']
+          // Not during a posting ban (set only by the onReportCreated function after the 4th removal in 30 days).
+          && (!('postingBannedUntil' in profile()) || profile().postingBannedUntil == null
+              || profile().postingBannedUntil < request.time)
+          && !isHeld()
+          && post.authorName == profile().displayName
+          && (!('orgName' in post) || post.orgName == profile().get('orgName', null))
+          // Content limits (AppConfig: title 120, description 150, items 8, cautions 4, detail 80).
+          && isText(post.title, 1, 140)
+          && isText(post.description, 1, 170)
+          && post.items is list && post.items.size() >= 1 && post.items.size() <= 8
+          && post.overallDietary in ['vegan', 'vegetarian', 'nonVegetarian', 'mixed', 'unknown']
+          && post.allergenWarnings is list && post.allergenWarnings.size() <= 9
+          && post.allergenWarnings.hasOnly(['milk', 'eggs', 'fish', 'shellfish', 'treeNuts', 'peanuts', 'wheat', 'soy', 'sesame'])
+          && post.cautions is list && post.cautions.size() <= 4
+          && (!('estimatedServings' in post)
+              || (post.estimatedServings is int && post.estimatedServings >= 1 && post.estimatedServings <= 500))
+          // Location: inside the SFSU campus rectangle (SFSUCampus.region). The app also checks the outline.
+          && isText(post.buildingId, 1, 40)
+          && isText(post.locationName, 1, 120)
+          && isText(post.locationDetail, 1, 100)
+          && post.latitude is number && post.latitude >= 37.71935 && post.latitude <= 37.72975
+          && post.longitude is number && post.longitude >= -122.48546 && post.longitude <= -122.47476
+          && post.hasPhoto is bool && post.aiGenerated is bool && post.editedAfterAI is bool
+          // Uploaded photo slots (postImages/{id}.jpg = 0, {id}_1..3.jpg). Optional for older app builds.
+          && (!('photoSlots' in post)
+              || (post.photoSlots is list && post.photoSlots.size() <= 4
+                  && post.photoSlots.hasOnly([0, 1, 2, 3])
+                  && post.hasPhoto == (post.photoSlots.size() > 0)))
+          && post.status == 'active'
+          // Server time only; window 15 min to 5 h (AppConfig.postDurationRangeMinutes) with a few minutes of
+          // clock-skew slack. The 5 h cap is the hard limit, whatever the client sends.
+          && post.createdAt == request.time
+          && post.updatedAt == request.time
+          && post.expiresAt is timestamp
+          && post.expiresAt > request.time + duration.value(10, 'm')
+          && post.expiresAt <= request.time + duration.value(305, 'm')
+          // TTL deletes the post 24 h after it ends.
+          && post.deleteAt == post.expiresAt + duration.value(24, 'h');
+      }
+
+      allow read: if signedIn();
+      allow create: if signedIn() && isValidNewPost(request.resource.data);
+      // Only "Mark as gone" by the author. Published posts are otherwise not editable.
+      allow update: if signedIn()
+        && resource.data.authorUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status == 'gone'
+        && request.resource.data.updatedAt == request.time;
+      // Cleanup is done by the TTL policy on deleteAt.
+      allow delete: if false;
+    }
+
+    // reports/{postId}_{reporterUid}: one per account per post (the ID dedupes; no updates). Verified accounts
+    // only, never on your own post. Unsafe needs a written reason for the AI check; offensive's is optional. The
+    // onReportCreated function (Admin SDK) adds its verdict fields, a post snapshot and a TTL `deleteAt`, and removes
+    // posts; removals and admin dismissals close reports (`resolution`, `resolvedBy`, `resolvedAt`). Only admins read
+    // reports.
+    match /reports/{reportId} {
+      function reporter() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      }
+
+      function reportedPost() {
+        return get(/databases/$(database)/documents/posts/$(request.resource.data.postId)).data;
+      }
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll(['postId', 'reporterUid', 'category', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['postId', 'reporterUid', 'category', 'reason', 'createdAt'])
+        && request.resource.data.reporterUid == request.auth.uid
+        && isText(request.resource.data.postId, 1, 40)
+        && reportId == request.resource.data.postId + '_' + request.auth.uid
+        && request.resource.data.category in ['unsafe', 'offensive', 'misleading', 'trading']
+        // AppConfig.reportReasonMin/MaxLength (20 / 280) with headroom.
+        && (request.resource.data.category != 'unsafe'
+            || ('reason' in request.resource.data && isText(request.resource.data.reason, 20, 300)))
+        && (!('reason' in request.resource.data) || isText(request.resource.data.reason, 1, 300))
+        && request.resource.data.createdAt == request.time
+        && request.auth.token.email_verified == true
+        && reporter().accountType in ['student', 'organization']
+        && exists(/databases/$(database)/documents/posts/$(request.resource.data.postId))
+        && reportedPost().authorUid != request.auth.uid;
+      // Admins review reports in the app (Settings > Moderation).
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // appeals/{uid}: a banned poster's appeal, one per ban. Reviewed by the admin in the Firebase console, who
+    // lifts the ban there (runbook in docs/PROGRESS.md). A new ban allows a new appeal.
+    match /appeals/{uid} {
+      function bannedUntil() {
+        return get(/databases/$(database)/documents/users/$(uid)).data.get('postingBannedUntil', null);
+      }
+
+      function isValidAppeal() {
+        return request.resource.data.keys().hasAll(['message', 'bannedUntil', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['message', 'bannedUntil', 'createdAt'])
+          && isText(request.resource.data.message, 20, 520)
+          && bannedUntil() != null
+          && bannedUntil() > request.time
+          && request.resource.data.bannedUntil == bannedUntil()
+          && request.resource.data.createdAt == request.time;
+      }
+
+      allow read: if (signedIn() && request.auth.uid == uid) || isAdmin();
+      allow create: if signedIn() && request.auth.uid == uid && isValidAppeal();
+      allow update: if signedIn() && request.auth.uid == uid && isValidAppeal()
+        && resource.data.bannedUntil != request.resource.data.bannedUntil;
+      allow delete: if false;
+    }
+
+    // blocks/{blockerUid}_{blockedUid}: one-directional block. The blocker (guests too) creates, reads and deletes
+    // their own; the blocked person can't see it. The app lists with `where blockerUid == <uid>` so the read rule
+    // can prove access. The onBlockCreated function counts blocks per poster for admin review.
+    match /blocks/{blockId} {
+      allow read: if signedIn() && resource.data.blockerUid == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll(['blockerUid', 'blockedUid', 'blockedName', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['blockerUid', 'blockedUid', 'blockedName', 'postId', 'createdAt'])
+        && request.resource.data.blockerUid == request.auth.uid
+        && isText(request.resource.data.blockedUid, 1, 128)
+        && request.resource.data.blockedUid != request.auth.uid
+        && blockId == request.auth.uid + '_' + request.resource.data.blockedUid
+        && isText(request.resource.data.blockedName, 1, 60)
+        && (!('postId' in request.resource.data) || isText(request.resource.data.postId, 1, 40))
+        && request.resource.data.createdAt == request.time;
+      allow delete: if signedIn() && resource.data.blockerUid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // moderation/{uid}: written only by Cloud Functions; admins read it for context.
+    match /moderation/{uid} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // adminActions/{id}: created by admins (in the app or the Firebase console); onAdminActionCreated does the work
+    // and writes status, result and processedAt. Admins read them to follow the status. Never updated by clients.
+    match /adminActions/{actionId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasAll(['action', 'createdBy', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['action', 'postId', 'uid', 'decision', 'clearStrikes', 'strike',
+                                                 'note', 'createdBy', 'createdAt'])
+        && request.resource.data.action in ['removePost', 'dismissReports', 'resolveAppeal', 'liftBan', 'clearStrikes']
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // postRemovals/{postId} and banHolds/{hash}: written only by Cloud Functions. No match here, so clients are denied
+    // by default.
+  }
+}

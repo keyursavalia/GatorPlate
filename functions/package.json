@@ -1,0 +1,22 @@
+{
+  "name": "gatorplate-functions",
+  "private": true,
+  "description": "GatorPlate Cloud Functions: free food alerts.",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test \"test/**/*.test.mjs\"",
+    "deploy": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "@google/genai": "^2.30.0",
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

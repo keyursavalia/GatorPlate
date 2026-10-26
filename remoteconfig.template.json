@@ -1,0 +1,130 @@
+{
+  "parameters": {
+    "ai_enabled": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "AI drafting on Post food. false: Review opens empty with \"AI drafting is off right now.\" Values: true / false.",
+      "valueType": "BOOLEAN"
+    },
+    "ai_model_name": {
+      "defaultValue": {
+        "value": "gemini-3.6-flash"
+      },
+      "description": "First Gemini model the app tries (Firebase AI Logic). Must match gemini-[a-z0-9.-]. Shared with the functions' health check.",
+      "valueType": "STRING"
+    },
+    "ai_fallback_model_names": {
+      "defaultValue": {
+        "value": "[\"gemini-3.8-flash\"]"
+      },
+      "description": "Models tried in order when a model is retired or unknown. JSON array, max 4 names; the primary and duplicates are dropped.",
+      "valueType": "JSON"
+    },
+    "ai_thinking_level": {
+      "defaultValue": {
+        "value": "low"
+      },
+      "description": "Analyzer thinking level: minimal, low, medium, high, or default (no thinking config). 3.7/3.8 Flash reject minimal.",
+      "valueType": "STRING"
+    },
+    "ai_temperature": {
+      "defaultValue": {
+        "value": "0.2"
+      },
+      "description": "Analyzer temperature, 0.0-1.0 (clamped).",
+      "valueType": "NUMBER"
+    },
+    "ai_max_output_tokens": {
+      "defaultValue": {
+        "value": "2048"
+      },
+      "description": "Analyzer max output tokens incl. thinking, 512-8192 (clamped).",
+      "valueType": "NUMBER"
+    },
+    "ai_timeout_seconds": {
+      "defaultValue": {
+        "value": "25"
+      },
+      "description": "Analysis deadline for one photo, 10-60 s (clamped). Grows 4 s per extra photo.",
+      "valueType": "NUMBER"
+    },
+    "ai_max_timeout_seconds": {
+      "defaultValue": {
+        "value": "35"
+      },
+      "description": "Cap on the analysis deadline with extra photos, at least ai_timeout_seconds, max 90 s.",
+      "valueType": "NUMBER"
+    },
+    "ai_min_confidence": {
+      "defaultValue": {
+        "value": "0.4"
+      },
+      "description": "Below this the AI result is rejected as \"couldn't tell\", 0.1-0.9 (clamped).",
+      "valueType": "NUMBER"
+    },
+    "posting_enabled": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "false: Post food shows \"Posting is paused right now\" with service_notice. Browsing, alerts, reports and blocks keep working.",
+      "valueType": "BOOLEAN"
+    },
+    "service_notice": {
+      "defaultValue": {
+        "value": ""
+      },
+      "description": "Banner on top of Map and Feed, max 200 characters. Empty hides it. Also shown on the posting-paused sheet.",
+      "valueType": "STRING"
+    },
+    "service_notice_level": {
+      "defaultValue": {
+        "value": "info"
+      },
+      "description": "Banner style: info or warning.",
+      "valueType": "STRING"
+    },
+    "minimum_app_version": {
+      "defaultValue": {
+        "value": ""
+      },
+      "description": "Below this version the app shows Update required (no way past). e.g. 1.2. Empty = no gate. NEVER set above the live App Store version.",
+      "valueType": "STRING"
+    },
+    "recommended_app_version": {
+      "defaultValue": {
+        "value": ""
+      },
+      "description": "Below this version Map and Feed show a dismissible \"new version\" banner (once per version). Empty = none.",
+      "valueType": "STRING"
+    },
+    "app_store_url": {
+      "defaultValue": {
+        "value": ""
+      },
+      "description": "Update button target, must start with https://apps.apple.com/. Empty hides the button.",
+      "valueType": "STRING"
+    },
+    "support_email": {
+      "defaultValue": {
+        "value": "contact@keyursavalia.com"
+      },
+      "description": "Support mailbox: Settings > Help & support, About, and [CONTACT EMAIL] in Terms and Privacy.",
+      "valueType": "STRING"
+    },
+    "content_filter_terms": {
+      "defaultValue": {
+        "value": "[\"fuck\", \"fucks\", \"fucker\", \"fuckers\", \"fucking\", \"fucked\", \"fuckface\", \"fuckhead\", \"motherfucker\", \"motherfuckers\", \"shit\", \"shits\", \"shitty\", \"shithead\", \"shitface\", \"bullshit\", \"horseshit\", \"dipshit\", \"bitch\", \"bitches\", \"bitchy\", \"son of a bitch\", \"bastard\", \"bastards\", \"ass\", \"asses\", \"asshole\", \"assholes\", \"arsehole\", \"dumbass\", \"jackass\", \"smartass\", \"piss off\", \"prick\", \"pricks\", \"dickhead\", \"dickheads\", \"dickface\", \"cock\", \"cocks\", \"cocksucker\", \"cocksuckers\", \"cunt\", \"cunts\", \"twat\", \"twats\", \"wank\", \"wanker\", \"wankers\", \"bollocks\", \"bellend\", \"douche\", \"douchebag\", \"douchebags\", \"scumbag\", \"skank\", \"skanky\", \"slut\", \"sluts\", \"slutty\", \"whore\", \"whores\", \"thot\", \"thots\", \"tits\", \"titties\", \"boobs\", \"boobies\", \"nipple\", \"nipples\", \"pussy\", \"pussies\", \"penis\", \"penises\", \"vagina\", \"vaginas\", \"anus\", \"anal\", \"butthole\", \"buttplug\", \"dildo\", \"dildos\", \"vibrator\", \"porn\", \"porno\", \"pornography\", \"pornhub\", \"onlyfans\", \"nude\", \"nudes\", \"sex\", \"sexy\", \"sexting\", \"horny\", \"orgasm\", \"orgy\", \"blowjob\", \"blowjobs\", \"blow job\", \"handjob\", \"hand job\", \"rimjob\", \"cum\", \"cumshot\", \"jizz\", \"semen\", \"erection\", \"boner\", \"masturbate\", \"masturbating\", \"jerk off\", \"jack off\", \"milf\", \"hentai\", \"nigger\", \"niggers\", \"nigga\", \"niggas\", \"negro\", \"sandnigger\", \"jigaboo\", \"porch monkey\", \"coon\", \"coons\", \"chink\", \"chinks\", \"gook\", \"gooks\", \"zipperhead\", \"spic\", \"spics\", \"wetback\", \"wetbacks\", \"beaner\", \"beaners\", \"kike\", \"kikes\", \"raghead\", \"ragheads\", \"towelhead\", \"camel jockey\", \"paki\", \"pakis\", \"faggot\", \"faggots\", \"fag\", \"fags\", \"dyke\", \"dykes\", \"tranny\", \"trannies\", \"shemale\", \"retard\", \"retards\", \"retarded\", \"spaz\", \"honky\", \"squaw\", \"nazi\", \"nazis\", \"heil hitler\", \"sieg heil\", \"kkk\", \"white power\", \"kill yourself\", \"kys\"]"
+      },
+      "description": "Blocked words (app + onPostCreated). JSON array, max 2000, each 2-40 chars. Never add food words (breast, buns, nuts). Server picks changes up within ~5 min.",
+      "valueType": "JSON"
+    },
+    "content_filter_trading_terms": {
+      "defaultValue": {
+        "value": "[\"venmo\", \"cash app\", \"cashapp\", \"zelle\", \"paypal\", \"for sale\", \"per slice\", \"per plate\", \"price\", \"pay me\", \"donation required\"]"
+      },
+      "description": "Price and payment terms (\"Posts must be free\"). JSON array, max 200. $5 / 5 bucks are caught by a built-in pattern.",
+      "valueType": "JSON"
+    }
+  }
+}

@@ -1,0 +1,1198 @@
+[
+  {
+    "name": "no filters field means all",
+    "post": {
+      "title": "FREE: Pad thai",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Pad thai",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "mixed",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": null,
+    "expected": true
+  },
+  {
+    "name": "mode all ignores selections",
+    "post": {
+      "title": "FREE: Chicken wings",
+      "description": "Buffalo wings.",
+      "items": [
+        {
+          "name": "Chicken wings",
+          "dietary": "nonVegetarian"
+        }
+      ],
+      "overallDietary": "nonVegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "all",
+      "diets": [
+        "vegan"
+      ],
+      "includeUnknownDiet": false,
+      "places": [
+        "chavez"
+      ],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "custom with nothing selected passes",
+    "post": {
+      "title": "FREE: Chicken wings",
+      "description": "Buffalo wings.",
+      "items": [
+        {
+          "name": "Chicken wings",
+          "dietary": "nonVegetarian"
+        }
+      ],
+      "overallDietary": "nonVegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "device test (a): vegetarian at the Library",
+    "post": {
+      "title": "FREE: Pad thai",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Veggie curry",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "vegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [
+        "library"
+      ],
+      "avoidAllergens": [
+        "peanuts"
+      ],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "device test (b): chicken at the Library",
+    "post": {
+      "title": "FREE: Chicken wings",
+      "description": "Buffalo wings.",
+      "items": [
+        {
+          "name": "Chicken wings",
+          "dietary": "nonVegetarian"
+        }
+      ],
+      "overallDietary": "nonVegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [
+        "library"
+      ],
+      "avoidAllergens": [
+        "peanuts"
+      ],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": false
+  },
+  {
+    "name": "device test (c): vegetarian at Chavez",
+    "post": {
+      "title": "FREE: Pad thai",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Veggie curry",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "vegetarian",
+      "allergenWarnings": [],
+      "buildingId": "chavez"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [
+        "library"
+      ],
+      "avoidAllergens": [
+        "peanuts"
+      ],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": false
+  },
+  {
+    "name": "device test (d): vegetarian at the Library with peanuts",
+    "post": {
+      "title": "FREE: Pad thai",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Satay tofu",
+          "dietary": "vegan"
+        }
+      ],
+      "overallDietary": "vegan",
+      "allergenWarnings": [
+        "peanuts",
+        "soy"
+      ],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [
+        "library"
+      ],
+      "avoidAllergens": [
+        "peanuts"
+      ],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": false
+  },
+  {
+    "name": "vegetarian allows vegan items",
+    "post": {
+      "title": "FREE: Pad thai",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Satay tofu",
+          "dietary": "vegan"
+        }
+      ],
+      "overallDietary": "vegan",
+      "allergenWarnings": [
+        "peanuts",
+        "soy"
+      ],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "vegan does not allow vegetarian items",
+    "post": {
+      "title": "FREE: Pad thai",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Veggie curry",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "vegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegan"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": false
+  },
+  {
+    "name": "vegan allows vegan items",
+    "post": {
+      "title": "FREE: Pad thai",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Satay tofu",
+          "dietary": "vegan"
+        }
+      ],
+      "overallDietary": "vegan",
+      "allergenWarnings": [
+        "peanuts",
+        "soy"
+      ],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegan"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "mixed table with a veggie item alerts vegetarians",
+    "post": {
+      "title": "FREE: Pizza party",
+      "description": "Pepperoni and veggie pizzas.",
+      "items": [
+        {
+          "name": "Pepperoni pizza",
+          "dietary": "nonVegetarian"
+        },
+        {
+          "name": "Veggie pizza",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "mixed",
+      "allergenWarnings": [
+        "milk",
+        "wheat"
+      ],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "unknown item fails a diet filter by default",
+    "post": {
+      "title": "FREE: Pad thai",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Mystery stew",
+          "dietary": "unknown"
+        }
+      ],
+      "overallDietary": "unknown",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": false
+  },
+  {
+    "name": "unknown item passes with includeUnknownDiet",
+    "post": {
+      "title": "FREE: Pad thai",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Mystery stew",
+          "dietary": "unknown"
+        }
+      ],
+      "overallDietary": "unknown",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegetarian"
+      ],
+      "includeUnknownDiet": true,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "no items falls back to overall diet",
+    "post": {
+      "title": "FREE: Pad thai",
+      "description": "Noodles and spring rolls.",
+      "items": [],
+      "overallDietary": "vegan",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegan"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "place matches one of several",
+    "post": {
+      "title": "FREE: Pad thai",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Veggie curry",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "vegetarian",
+      "allergenWarnings": [],
+      "buildingId": "chavez"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [
+        "library",
+        "chavez"
+      ],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "place mismatch",
+    "post": {
+      "title": "FREE: Pad thai",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Veggie curry",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "vegetarian",
+      "allergenWarnings": [],
+      "buildingId": "chavez"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [
+        "library"
+      ],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": false
+  },
+  {
+    "name": "avoided allergen excludes the whole post",
+    "post": {
+      "title": "FREE: Pizza party",
+      "description": "Pepperoni and veggie pizzas.",
+      "items": [
+        {
+          "name": "Pepperoni pizza",
+          "dietary": "nonVegetarian"
+        },
+        {
+          "name": "Veggie pizza",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "mixed",
+      "allergenWarnings": [
+        "milk",
+        "wheat"
+      ],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [
+        "milk"
+      ],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": false
+  },
+  {
+    "name": "other allergen is fine",
+    "post": {
+      "title": "FREE: Pizza party",
+      "description": "Pepperoni and veggie pizzas.",
+      "items": [
+        {
+          "name": "Pepperoni pizza",
+          "dietary": "nonVegetarian"
+        },
+        {
+          "name": "Veggie pizza",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "mixed",
+      "allergenWarnings": [
+        "milk",
+        "wheat"
+      ],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [
+        "peanuts"
+      ],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "skip unverified: no allergen info",
+    "post": {
+      "title": "FREE: Pad thai",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Veggie curry",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "vegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": true,
+      "foods": []
+    },
+    "expected": false
+  },
+  {
+    "name": "skip unverified: has allergen info",
+    "post": {
+      "title": "FREE: Pizza party",
+      "description": "Pepperoni and veggie pizzas.",
+      "items": [
+        {
+          "name": "Pepperoni pizza",
+          "dietary": "nonVegetarian"
+        },
+        {
+          "name": "Veggie pizza",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "mixed",
+      "allergenWarnings": [
+        "milk",
+        "wheat"
+      ],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": true,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "keyword pizza matches veggie pizzas (plural)",
+    "post": {
+      "title": "FREE: Veggie pizzas",
+      "description": "Cheese and veggie pizzas.",
+      "items": [
+        {
+          "name": "Veggie pizza",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "mixed",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": [
+        "pizza"
+      ]
+    },
+    "expected": true
+  },
+  {
+    "name": "keyword pizzas matches pizza (plural either way)",
+    "post": {
+      "title": "FREE: Pizza",
+      "description": "Cheese pizza.",
+      "items": [
+        {
+          "name": "Cheese pizza",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "mixed",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": [
+        "pizzas"
+      ]
+    },
+    "expected": true
+  },
+  {
+    "name": "keyword is case insensitive",
+    "post": {
+      "title": "FREE: BOBA tea",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Pad thai",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "mixed",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": [
+        "boba"
+      ]
+    },
+    "expected": true
+  },
+  {
+    "name": "keyword is diacritic insensitive",
+    "post": {
+      "title": "FREE: Crème brûlée",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Crème brûlée",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "mixed",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": [
+        "creme brulee"
+      ]
+    },
+    "expected": true
+  },
+  {
+    "name": "keyword on word boundaries: pie is not pierogi",
+    "post": {
+      "title": "FREE: Pierogi",
+      "description": "Potato pierogi.",
+      "items": [
+        {
+          "name": "Pierogi",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "mixed",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": [
+        "pie"
+      ]
+    },
+    "expected": false
+  },
+  {
+    "name": "multi-word keyword red bull",
+    "post": {
+      "title": "FREE: Energy drinks",
+      "description": "Cans of Red Bull and water.",
+      "items": [
+        {
+          "name": "Energy drink",
+          "dietary": "vegan"
+        }
+      ],
+      "overallDietary": "mixed",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": [
+        "red bull"
+      ]
+    },
+    "expected": true
+  },
+  {
+    "name": "keyword matches an item name only",
+    "post": {
+      "title": "FREE: Snacks",
+      "description": "Assorted snacks.",
+      "items": [
+        {
+          "name": "Coffee",
+          "dietary": "vegan"
+        }
+      ],
+      "overallDietary": "mixed",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": [
+        "coffee"
+      ]
+    },
+    "expected": true
+  },
+  {
+    "name": "no keyword matches",
+    "post": {
+      "title": "FREE: Pad thai",
+      "description": "Noodles and spring rolls.",
+      "items": [
+        {
+          "name": "Veggie curry",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "vegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": [
+        "sushi",
+        "boba"
+      ]
+    },
+    "expected": false
+  },
+  {
+    "name": "all categories AND together",
+    "post": {
+      "title": "FREE: Pizza party",
+      "description": "Pepperoni and veggie pizzas.",
+      "items": [
+        {
+          "name": "Pepperoni pizza",
+          "dietary": "nonVegetarian"
+        },
+        {
+          "name": "Veggie pizza",
+          "dietary": "vegetarian"
+        }
+      ],
+      "overallDietary": "mixed",
+      "allergenWarnings": [
+        "milk",
+        "wheat"
+      ],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [
+        "ssb"
+      ],
+      "avoidAllergens": [
+        "peanuts"
+      ],
+      "skipUnverifiedAllergens": false,
+      "foods": [
+        "pizza"
+      ]
+    },
+    "expected": true
+  },
+  {
+    "name": "malformed: not an object",
+    "post": {
+      "title": "FREE: Chicken wings",
+      "description": "Buffalo wings.",
+      "items": [
+        {
+          "name": "Chicken wings",
+          "dietary": "nonVegetarian"
+        }
+      ],
+      "overallDietary": "nonVegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": "custom",
+    "expected": true
+  },
+  {
+    "name": "malformed: unknown mode",
+    "post": {
+      "title": "FREE: Chicken wings",
+      "description": "Buffalo wings.",
+      "items": [
+        {
+          "name": "Chicken wings",
+          "dietary": "nonVegetarian"
+        }
+      ],
+      "overallDietary": "nonVegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "some",
+      "diets": [
+        "vegan"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "malformed: unknown diet value",
+    "post": {
+      "title": "FREE: Chicken wings",
+      "description": "Buffalo wings.",
+      "items": [
+        {
+          "name": "Chicken wings",
+          "dietary": "nonVegetarian"
+        }
+      ],
+      "overallDietary": "nonVegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "halal"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "malformed: unknown allergen",
+    "post": {
+      "title": "FREE: Chicken wings",
+      "description": "Buffalo wings.",
+      "items": [
+        {
+          "name": "Chicken wings",
+          "dietary": "nonVegetarian"
+        }
+      ],
+      "overallDietary": "nonVegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [
+        "gluten"
+      ],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "malformed: diets is not a list",
+    "post": {
+      "title": "FREE: Chicken wings",
+      "description": "Buffalo wings.",
+      "items": [
+        {
+          "name": "Chicken wings",
+          "dietary": "nonVegetarian"
+        }
+      ],
+      "overallDietary": "nonVegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": "vegan",
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "malformed: keyword too long",
+    "post": {
+      "title": "FREE: Chicken wings",
+      "description": "Buffalo wings.",
+      "items": [
+        {
+          "name": "Chicken wings",
+          "dietary": "nonVegetarian"
+        }
+      ],
+      "overallDietary": "nonVegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": [
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ]
+    },
+    "expected": true
+  },
+  {
+    "name": "malformed: too many places",
+    "post": {
+      "title": "FREE: Chicken wings",
+      "description": "Buffalo wings.",
+      "items": [
+        {
+          "name": "Chicken wings",
+          "dietary": "nonVegetarian"
+        }
+      ],
+      "overallDietary": "nonVegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [],
+      "includeUnknownDiet": false,
+      "places": [
+        "p0",
+        "p1",
+        "p2",
+        "p3",
+        "p4",
+        "p5",
+        "p6",
+        "p7",
+        "p8",
+        "p9",
+        "p10",
+        "p11",
+        "p12",
+        "p13",
+        "p14",
+        "p15"
+      ],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "malformed: bool field of the wrong type",
+    "post": {
+      "title": "FREE: Chicken wings",
+      "description": "Buffalo wings.",
+      "items": [
+        {
+          "name": "Chicken wings",
+          "dietary": "nonVegetarian"
+        }
+      ],
+      "overallDietary": "nonVegetarian",
+      "allergenWarnings": [],
+      "buildingId": "library"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegan"
+      ],
+      "includeUnknownDiet": "yes",
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "non-vegetarian diet matches a meat item",
+    "post": {
+      "title": "Leftovers",
+      "description": "",
+      "items": [
+        {
+          "name": "Chicken wings",
+          "dietary": "nonVegetarian"
+        }
+      ],
+      "overallDietary": "nonVegetarian",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "nonVegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "non-vegetarian diet skips a vegan-only post",
+    "post": {
+      "title": "Leftovers",
+      "description": "",
+      "items": [
+        {
+          "name": "Hummus",
+          "dietary": "vegan"
+        }
+      ],
+      "overallDietary": "vegan",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "nonVegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": false
+  },
+  {
+    "name": "non-vegetarian diet matches a mixed post with no items",
+    "post": {
+      "title": "Leftovers",
+      "description": "",
+      "items": [],
+      "overallDietary": "mixed",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "nonVegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  },
+  {
+    "name": "vegan or non-vegetarian matches either",
+    "post": {
+      "title": "Leftovers",
+      "description": "",
+      "items": [
+        {
+          "name": "Salad",
+          "dietary": "vegan"
+        }
+      ],
+      "overallDietary": "vegan",
+      "allergenWarnings": [],
+      "buildingId": "ssb"
+    },
+    "filters": {
+      "mode": "custom",
+      "diets": [
+        "vegan",
+        "nonVegetarian"
+      ],
+      "includeUnknownDiet": false,
+      "places": [],
+      "avoidAllergens": [],
+      "skipUnverifiedAllergens": false,
+      "foods": []
+    },
+    "expected": true
+  }
+]

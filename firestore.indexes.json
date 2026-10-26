@@ -1,0 +1,41 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "posts",
+      "fieldPath": "deleteAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "postAlerts",
+      "fieldPath": "deleteAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "postRemovals",
+      "fieldPath": "deleteAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "reports",
+      "fieldPath": "deleteAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "banHolds",
+      "fieldPath": "bannedUntil",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "appeals",
+      "fieldPath": "bannedUntil",
+      "ttl": true,
+      "indexes": []
+    }
+  ]
+}

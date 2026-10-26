@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+	<key>FirebaseMessagingInstallationIdEnabled</key>
+	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>message</string>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Take photos of leftover food so GatorPlate can draft your post. Photograph the food, not people.</string>
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>FoodNearby</key>
+		<string>Precise location helps you find the exact building and room with free food.</string>
+	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>GatorPlate shows how far free food is on-campus. Your location stays on your phone and is used only while the app is open.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+</dict>
+</plist>

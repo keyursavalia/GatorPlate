@@ -1,0 +1,53 @@
+import Foundation
+
+@MainActor
+protocol PostService {
+    /// Emits the current set of posts on every change, cache first, then server. Cancel the consuming task
+    /// to unsubscribe.
+    func observeActivePosts() -> AsyncThrowingStream<PostsSnapshot, Error>
+    /// One read of `posts/{id}` from the server (a tapped alert's post that the listener doesn't have yet).
+    /// Nil when the document doesn't exist; throws `.network` when the server can't be reached in time.
+    func fetchPost(id: String) async throws -> FoodPost?
+    /// A new post ID. Create it once per draft and reuse it when retrying, so a retry never duplicates a post.
+    func makePostId() -> String
+    /// Uploads the photos in parallel (index = slot; nil = couldn't be encoded), then writes the post with the
+    /// slots that uploaded. A failed photo never blocks publishing: its slot is left out of `photoSlots`.
+    func publish(_ submission: PostSubmission, photos: [Data?]) async throws -> PublishResult
+    func markGone(postId: String) async throws
+    /// One report per account per post (`reports/{postId}_{uid}`). A second one throws `.validation`.
+    /// `reason` is required for `.unsafe` (`AppConfig.reportReasonMinLength`...`MaxLength`), optional otherwise.
+    func report(postId: String, category: ReportCategory, reason: String) async throws
+    /// A banned poster's appeal for the ban ending `bannedUntil` (`appeals/{uid}`).
+    func appeal(message: String, bannedUntil: Date) async throws
+    /// The signed-in account's active posting ban, read fresh when Post food is tapped (a ban can start
+    /// mid-session). Nil when there's none or it can't be read: rules still refuse a banned post.
+    func postingBan() async -> PostingBan?
+}
+
+/// The published post plus how many of the chosen photos made it (the success screen says "2 of 3 photos").
+nonisolated struct PublishResult: Equatable, Sendable {
+    var post: FoodPost
+    var requestedPhotos: Int
+
+    var uploadedPhotos: Int { post.photoSlots.count }
+    var hasPhotoFailures: Bool { uploadedPhotos < requestedPhotos }
+}
+
+nonisolated extension FoodPost {
+    /// The post as written for a submission. Server timestamps replace the dates in Firestore.
+    init(submission: PostSubmission, photoSlots: [Int], createdAt: Date, expiresAt: Date) {
+        self.init(
+            id: submission.postId,
+            authorUid: submission.author.uid, authorName: submission.author.displayName,
+            orgName: submission.author.orgName,
+            title: submission.title, description: submission.description,
+            items: submission.items, overallDietary: submission.overallDietary,
+            allergenWarnings: submission.allergens, cautions: submission.cautions,
+            estimatedServings: submission.estimatedServings,
+            buildingId: submission.location.building.id, locationName: submission.location.displayName,
+            locationDetail: submission.locationDetail,
+            latitude: submission.location.coordinate.latitude, longitude: submission.location.coordinate.longitude,
+            photoSlots: photoSlots, aiGenerated: submission.aiGenerated, editedAfterAI: submission.editedAfterAI,
+            status: .active, createdAt: createdAt, expiresAt: expiresAt, updatedAt: createdAt)
+    }
+}

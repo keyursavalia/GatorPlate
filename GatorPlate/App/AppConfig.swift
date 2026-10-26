@@ -1,0 +1,216 @@
+import Foundation
+
+/// Single source of truth for constants and feature flags. No magic numbers elsewhere.
+nonisolated enum AppConfig {
+    static let appName = "GatorPlate"
+
+    // Auth
+    static let requireEmailVerification = true
+    /// Terms of Use and Privacy Policy version (both files carry it). A bump shows the Terms gate to everyone once.
+    static let termsVersion = "2026-11-2"
+    static let minPasswordLength = 8
+    static let maxNameLength = 60
+    static let maxEmailLength = 254
+    /// Substituted for [TEAM NAME] in the Terms and Privacy Policy.
+    static let teamName = "KEYUR DIPAKBHAI SAVALIA"
+    /// About > "Developed by" (opens in the LinkedIn app when installed, else the browser).
+    static let developerProfileURL = URL(string: "https://www.linkedin.com/in/keyursavalia")
+    /// In-app default for Remote Config `support_email` (About > Contact support, [CONTACT EMAIL] in the legal text).
+    static let supportEmail = "contact@keyursavalia.com"
+
+    // Safety
+    /// Blocked people per user (`blocks` docs where `blockerUid` is the user).
+    static let maxBlockedUsers = 500
+
+    // AI (Firebase AI Logic). Every value below is the in-app default of a Remote Config key; what runs is
+    // `RuntimeConfig` (see `RuntimeConfig.Key` and docs/06-OPERATIONS.md).
+    /// In-app default only; `RuntimeConfig.aiModelName` is what runs. Never hardcode the model name elsewhere.
+    static let defaultGeminiModelName = "gemini-3.6-flash"
+    /// Tried in order when a model is retired or unavailable (`ai_fallback_model_names`).
+    static let defaultGeminiFallbackModelNames = ["gemini-3.8-flash"]
+    /// `.minimal` is faster but rejected by 3.7/3.8 Flash; `.off` sends no thinking config.
+    static let defaultAIThinkingLevel = AIThinkingLevel.low
+    static let aiTemperature = 0.2
+    /// Covers thinking tokens plus the JSON answer.
+    static let aiMaxOutputTokens = 2048
+    static let aiTimeoutSeconds = 25
+    static let aiRetryDelaySeconds = 1
+    static let aiMaxImageLongEdge = 1024
+    static let aiJPEGQuality = 0.7
+    /// Below this the result is rejected as "couldn't tell what this is".
+    static let aiMinConfidence = 0.4
+    static let aiTitleMaxLength = 80
+    static let aiDescriptionMaxLength = 150
+    static let aiItemNameMaxLength = 60
+    static let aiCautionMaxLength = 120
+    static let aiMaxItems = 8
+    static let aiMaxCautions = 4
+    static let aiMaxCalories = 3000
+    static let aiServingsRange = 1...500
+    /// Analyzing screen: the "Still working..." threshold.
+    static let aiSlowThresholdSeconds = 10
+    /// With this many photos or more, each is downscaled to `aiMultiPhotoLongEdge` (fewer image tokens).
+    static let aiMultiPhotoDownscaleThreshold = 3
+    static let aiMultiPhotoLongEdge = 768
+    /// The deadline grows by this much per extra photo, up to `aiMaxTimeoutSeconds`.
+    static let aiPerExtraPhotoSeconds = 4
+    static let aiMaxTimeoutSeconds = 35
+    /// Analyzing checklist: a step is checked off this often until the result arrives.
+    static let aiChecklistStepSeconds = 2.0
+
+    // Posts
+    /// The one-tap lengths; "+ Custom" picks anything in `postDurationRangeMinutes` instead.
+    static let postDurationOptionsMinutes = [15, 30, 45, 60]
+    static let defaultPostDurationMinutes = 30
+    /// Custom lengths: 15 min to 5 h, in `postDurationStepMinutes` steps. `firestore.rules` caps posts at 5 h too.
+    static let postDurationRangeMinutes = 15...300
+    static let postDurationStepMinutes = 5
+    /// What "+ Custom" starts at.
+    static let defaultCustomPostDurationMinutes = 90
+    /// Past this the Review footer warns that perishable food shouldn't sit out longer (the 2-hour food-safety rule).
+    static let perishableFoodLimitMinutes = 120
+    /// Client-side anti-spam.
+    static let postCooldownSeconds = 60
+    /// Posts and photos are deleted this long after `expiresAt` (Firestore TTL on `deleteAt`).
+    static let postRetentionHours = 24
+    /// Review form limits; `firestore.rules` mirrors them (with a little headroom).
+    static let postTitleMaxLength = 120
+    static let postDescriptionMaxLength = 150
+    /// Below this the description shows a soft warning (school best practice is 100-150).
+    static let postDescriptionTargetMinLength = 100
+    static let postItemNameMaxLength = 60
+    static let postMaxItems = 8
+    static let postCautionMaxLength = 120
+    static let postMaxCautions = 4
+    static let postLocationDetailMaxLength = 80
+    static let postServingsRange = 1...500
+    /// Report reason (required for "Unsafe to eat", one or two sentences). `firestore.rules` and the
+    /// `onReportCreated` function mirror these.
+    static let reportReasonMinLength = 20
+    static let reportReasonMaxLength = 280
+    /// A banned poster's appeal (`appeals/{uid}`).
+    static let appealMinLength = 20
+    static let appealMaxLength = 500
+    /// Total deadline for the post write to be confirmed by the server.
+    static let postPublishTimeoutSeconds = 15
+    static let postImageUploadTimeoutSeconds = 10
+
+    // Post photos (Cloud Storage `postImages/{postId}.jpg` for the cover, `{postId}_{slot}.jpg` for slots 1-3)
+    /// Photos per post, camera and library combined. `storage.rules` and `firestore.rules` allow slots 0-3.
+    static let postMaxPhotos = 4
+    static let postImageMaxLongEdge = 800
+    static let postImageJPEGQuality = 0.6
+    /// Tried in order when the photo is over the cap, first at `postImageMaxLongEdge`, then at the fallback edge.
+    static let postImageFallbackQualities = [0.5, 0.4]
+    static let postImageFallbackLongEdge = 640
+    /// Hard cap, also enforced by `storage.rules`.
+    static let postImageMaxBytes = 300_000
+
+    /// Deadline for "Mark as gone" to be confirmed by the server.
+    static let postMarkGoneTimeoutSeconds = 10
+
+    // Live posts (map + feed)
+    /// Expiry re-check without a server: expired posts drop off within this interval.
+    static let postsExpiryTickSeconds = 15
+    /// An empty cache snapshot waits this long for the server before the empty state shows.
+    static let postsCacheGraceSeconds = 3
+    /// Back in the foreground after this long, the listener restarts so its `expiresAt` bound is fresh.
+    static let postsResubscribeAfterBackgroundSeconds = 300
+    /// Listener retry backoff: 2, 4, 8, ... seconds, capped here.
+    static let postsRetryMaxDelaySeconds = 30
+    /// A post opened by ID (deep link, "View on map") waits this long to arrive before it counts as ended.
+    static let postSelectionPendingSeconds = 5
+    /// A post opened from an alert waits at most this long for the listener (a resumed app may need to reconnect).
+    static let alertOpenMaxWaitSeconds = 20
+    /// A tapped alert's post is looked up once on the server (so "no longer available" shows at once).
+    static let alertLookupTimeoutSeconds = 5
+    /// The "no longer available" card hides after this long (not while VoiceOver is on it).
+    static let alertUnavailableCardSeconds = 10.0
+    /// Latitude span of the map region shown when an alert opens a post; the pin sits above the sheet.
+    static let alertOpenRegionSpanDegrees = 0.006
+    /// Photos kept in memory for the map card and the feed.
+    static let postImageCacheLimit = 60
+    /// Map pins show the post's cover photo (diet ring + badge); false keeps the glyph pins.
+    static let mapPhotoPins = true
+    /// 44 pt @3x.
+    static let mapPinThumbnailPixels = 132
+    static let mapPinThumbnailCacheLimit = 120
+    /// Info notices on the map (e.g. "That food post has ended.") hide after this long.
+    static let mapNoticeSeconds = 4
+
+    // Notifications (FCM per-device installation IDs; the `onPostCreated` Cloud Function sends the alerts)
+    /// Data payload key for the post to open. The function writes the same key.
+    static let notificationPostIdKey = "postId"
+    /// Deadline for `Messaging.register`.
+    static let notificationRegisterTimeoutSeconds = 10
+    static let notificationWriteTimeoutSeconds = 10
+    /// Sign-out waits at most this long to remove the installation ID.
+    static let notificationSignOutTimeoutSeconds = 5
+
+    // Alert filters (users/{uid}.alertFilters; `functions/src/filters.ts` mirrors these limits)
+    static let alertFilterMaxPlaces = 15
+    static let alertFilterMaxFoods = 10
+    static let alertFilterFoodMaxLength = 30
+
+    // Map/Feed filter (device only: `PostFilterStore`, UserDefaults per uid)
+    /// "Time left" choices besides Any: at least this many minutes left.
+    static let browseFilterMinutesLeftOptions = [10, 20]
+    /// "Distance" choices besides Any: at most this many minutes' walk.
+    static let browseFilterWalkMinutesOptions = [5, 10, 15]
+    /// A new location fix re-filters only after moving this far (no work on every fix).
+    static let browseLocationChangeMeters = 25.0
+    /// "Showing 3 of 7 posts" is announced this long after the last change.
+    static let browseAnnouncementDelaySeconds = 1.0
+
+    // Account
+    /// "Resend link" in Forgot password is disabled this long after each send.
+    static let passwordResetResendSeconds = 60
+    /// Deadline for the delete-account callable.
+    static let accountDeleteTimeoutSeconds = 30
+    static let accountWriteTimeoutSeconds = 10
+    /// Cloud Functions region (matches Firestore nam5 and `onPostCreated`).
+    static let functionsRegion = "us-central1"
+
+    // First-run permissions (location, then notifications, on the first Map appearance)
+    /// The campus map renders before the location prompt.
+    static let permissionSettleSeconds = 0.6
+    /// Pause between the location answer and the notification prompt.
+    static let permissionGapSeconds = 1.0
+    /// The camera prompt waits for the post-flow cover to finish presenting.
+    static let cameraPromptDelaySeconds = 0.35
+    /// "Starting camera" shows only if the session takes longer than this.
+    static let cameraSpinnerDelaySeconds = 0.3
+    /// Map toasts (e.g. "Alerts on for all free food") hide after this long.
+    static let toastSeconds = 6.0
+
+    // Campus
+    /// Dropped pins may sit this far outside the campus outline (sidewalks, entrances).
+    static let campusPinEdgeToleranceMeters = 25.0
+
+    // Map camera (north visible edge stops at Stonestown; see `CampusViewport`)
+    /// `false` keeps the static center bounds and relies on the rubber band alone.
+    static let mapAdaptiveCenterBounds = true
+    /// The visible north edge may pass the limit by this much before the camera is moved back.
+    static let mapNorthToleranceMeters = 10.0
+    /// The correction moves this much further south than the excess, so its own check passes.
+    static let mapCorrectionPaddingMeters = 5.0
+
+    // Location
+    /// Key in `NSLocationTemporaryUsageDescriptionDictionary` (Info.plist).
+    static let preciseLocationPurposeKey = "FoodNearby"
+
+    // Admin moderation (Settings > Moderation, for the `admin` claim)
+    static let adminSyncTimeoutSeconds = 10
+    /// Appeals and reports shown at most.
+    static let adminListLimit = 100
+    /// An admin action waits this long for `onAdminActionCreated` to write its status.
+    static let adminActionTimeoutSeconds = 20
+    /// Reports are deleted after this many days (TTL); the admin list covers the same window.
+    static let reportRetentionDays = 90
+
+    // Runtime config (Firebase Remote Config)
+    /// The launch fetch gives up after this long; the UI never waits for it (cached or default values show first).
+    static let runtimeConfigFetchTimeoutSeconds = 5
+    /// Release builds fetch at most this often; realtime updates arrive sooner anyway. DEBUG uses 0.
+    static let runtimeConfigMinimumFetchIntervalSeconds = 3600.0
+}
