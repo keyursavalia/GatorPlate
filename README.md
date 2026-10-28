@@ -352,8 +352,10 @@ A selection of the hardest problems, how I diagnosed them, and how I solved them
 
 ## Author
 
-**KEYUR DIPAKBHAI SAVALIA**, a designer and developer of Gator Plate.<br/>
-A student of San Francisco State University, trying to make everyone's life on campus a little better every day.
+**KEYUR DIPAKBHAI SAVALIA**
+
+~ a designer and developer of Gator Plate.<br/>
+~ a student of San Francisco State University, trying to make everyone's life on campus a little better every day.
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-keyursavalia-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/keyursavalia)
 [![App Store](https://img.shields.io/badge/App%20Store-Gator%20Plate-0D96F6?logo=appstore&logoColor=white)](https://apps.apple.com/us/app/gator-plate/id6826729237)
@@ -363,5 +365,5 @@ If GatorPlate helped you find lunch, or you'd like to bring it to your campus, I
 ---
 
 <div align="center">
-<sub>© 2026 KEYUR DIPAKBHAI SAVALIA. All rights reserved. GatorPlate is an independent project and is not affiliated with or endorsed by San Francisco State University.<br/>Apple, the Apple logo and App Store are trademarks of Apple Inc. Firebase and Gemini are trademarks of Google LLC.</sub>
+<sub>GatorPlate is an independent project and is not affiliated with or endorsed by San Francisco State University.<br/>Apple, the Apple logo and App Store are trademarks of Apple Inc. Firebase and Gemini are trademarks of Google LLC.</sub>
 </div>
